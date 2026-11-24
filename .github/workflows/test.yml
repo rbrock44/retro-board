@@ -18,6 +18,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # The launcher, under Ubuntu's sh (dash)
+      - run: sh scripts/test-launch.sh
 
   docker:
     runs-on: ubuntu-latest
@@ -25,6 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t retro-board:ci .
+      # The launcher again under Alpine's BusyBox sh, the strictest common one
+      - run: docker run --rm -v "$PWD:/repo:ro" alpine:3.20 sh /repo/scripts/test-launch.sh
 
   # The public demo at retro.ryan-brock.com: the same web app on GitHub Pages. There's no API there, so the app
   # starts in demo mode with sample data saved in each visitor's browser.

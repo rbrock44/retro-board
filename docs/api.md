@@ -111,6 +111,9 @@ Unused uploads (never attached to a card or reply) stay in storage; they are sma
 
 | Method | Path | Body |
 |---|---|---|
+| GET | `/api/admin/settings` | Instance settings in effect, the launch defaults, which ones were changed, templates, and where data is stored |
+| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, votesPerUser, maxVotesPerCard, allowAnonymous, signup`, plus `reset: [keys]` to go back to launch defaults |
+| POST | `/api/admin/templates` | `name, description?, columns[{title,color,description?}]`. A template every team can use; delete with `DELETE /api/templates/:id` |
 | GET | `/api/admin/users` | |
 | PATCH | `/api/admin/users/:userId` | `role?: admin\|user, disabled?` |
 

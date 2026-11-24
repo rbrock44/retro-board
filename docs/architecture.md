@@ -104,6 +104,9 @@ Notes:
 - **Carry over**: creating a board copies every team card marked `carry_over` whose `carried_to_board_id` is
   still empty into a new "Carried over" column, copies their attachments (sharing the stored file), then sets
   `carried_to_board_id` on the originals so each is carried once
+- **Instance settings** (site name, default theme, columns, vote defaults, sign-up rule) are the launch values from
+  the environment with admin overrides from the one-row `instance_settings` table on top (`lib/instance.ts`). New
+  boards take built-in defaults, then the instance's, then the team's. Templates with no team are instance templates
 - **Board settings** and **team settings** are `jsonb`, merged over defaults on read, so adding a setting needs
   no migration
 

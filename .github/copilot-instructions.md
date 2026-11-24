@@ -32,6 +32,13 @@ behavior changes; `docs/api.md` lists every endpoint.
 - Styles use theme tokens only (`var(--bg)`, `var(--surface)`, `var(--accent)`, …), never literal colors
 - Uploads are type-checked from bytes (sharp / magic numbers), never from names or claimed MIME types
 - Sign-in providers implement `AuthProvider` (`start`/`finish`) in `apps/api/src/auth/`; config in `config/auth.yaml`
+- **Setup is a top priority.** `launch.sh` (POSIX sh: test with dash and BusyBox, no bashisms) and `launch.ps1`
+  (Windows PowerShell 5.1 compatible) must stay feature-for-feature identical: same questions, options, backup,
+  restore and data moves. Pass SQL to `psql` on stdin from PowerShell (it mangles nested quotes), call Windows'
+  own `System32\tar.exe`, and in Git Bash avoid native arguments that start with `/`
+- Instance settings: launch defaults come from env (`config.defaults`), admin overrides from `instance_settings`;
+  read them with `getSettings(ctx)` and add new ones to `InstanceSettings`, `launchDefaults()`, the Customize page,
+  `.env.example`, both launchers and the demo backend
 - Demo mode (`apps/web/src/app/demo/`) is a full in-browser copy of the API. **When you add or change an endpoint
   the web app calls, update `demo-backend.ts` too**, or the public demo breaks. `demo-backend.spec.ts` covers the core
 - `AUTH_MODE=none` makes every visitor a guest (`users.guest`): team admin everywhere via `teamRole()`, sees all

@@ -17,8 +17,11 @@ services:
       DATABASE_URL: postgres://retro:${POSTGRES_PASSWORD:-retro}@db:5432/retro
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
       PORT: 8080
+    # Runs as you on Linux when data is in ./data, so the files there are yours (the launch scripts set this)
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     volumes:
-      - uploads:/data
+      # Where uploads live: a Docker volume (default) or ./data/uploads. The launch scripts set UPLOADS_MOUNT.
+      - ${UPLOADS_MOUNT:-uploads:/data}
       - ./config:/app/config:ro
     depends_on:
       db:
@@ -32,7 +35,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retro}
       POSTGRES_DB: retro
     volumes:
-      - db:/var/lib/postgresql/data
+      # Where the database lives: a Docker volume (default) or ./data/postgres. The launch scripts set DB_MOUNT.
+      - ${DB_MOUNT:-db:/var/lib/postgresql/data}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U retro -d retro"]
       interval: 5s

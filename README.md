@@ -22,6 +22,8 @@
 - [Technologies](#-technologies)
 - [Getting Started (Local Setup)](#-getting-started-local-setup)
   - [Launch (One Command)](#launch-one-command)
+  - [Your Data](#your-data)
+  - [Customize](#customize)
   - [Share on Your Network](#share-on-your-network)
   - [No Sign-in Mode](#no-sign-in-mode)
   - [Sign-in Providers](#sign-in-providers)
@@ -163,30 +165,47 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 
 ### Launch (One Command)
 
-Needs only [Docker](https://docs.docker.com/get-docker/).
+Works on **Windows, macOS and Linux** (Intel or ARM: Apple Silicon Macs, and Raspberry Pi 4/5 with the 64-bit OS). The only thing
+to install is Docker.
+
+**1. Install Docker** (skip if you have it)
+
+| Your computer | Get |
+|---|---|
+| Windows 10/11 | [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/) |
+| Mac | [Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/) |
+| Linux | [Docker Engine](https://docs.docker.com/engine/install/), or `curl -fsSL https://get.docker.com \| sh` |
+
+**2. Get Retro Board.** Either `git clone https://github.com/rbrock44/retro-board.git`, or download the ZIP from
+GitHub (`Code` → `Download ZIP`) and unzip it. No git needed.
+
+**3. Run it** from the `retro-board` folder:
+
+| Windows | macOS / Linux |
+|---|---|
+| Double-click `launch.cmd`, or run `launch.cmd` in a terminal | `./launch.sh` |
+
+It asks a few questions, each with a sensible default already filled in (press Enter to keep it):
+
+1. **Where your data lives**: a plain `data` folder next to the app, or Docker-managed volumes. It stays on your
+   computer either way ([Your Data](#your-data))
+2. **Who will open it**: just you, people on your network, or a real web address
+3. **How people get in**: accounts, or no sign-in at all ([No Sign-in Mode](#no-sign-in-mode)), plus
+   Google / GitHub / Microsoft / Okta if you want them
+4. **Look and defaults** (optional): site name, theme and accent color, default columns, votes per person
+5. **GIF search** (optional)
+
+Then it builds, starts, waits until everything is healthy, and opens your browser. **In accounts mode, the first
+account you create becomes the admin.** The first start takes a minute or two; later ones are quick.
+
+The launcher looks after the usual snags: it starts Docker Desktop if it's installed but not running, tells you
+exactly what to install if Docker or Docker Compose is missing or too old, and offers another port if 8080 is taken.
+
+Pass options instead of answering questions, which suits scripts and servers:
 
 ```bash
-git clone <this repo> retro-board
-cd retro-board
-./launch.sh          # macOS / Linux
-launch.cmd           # Windows
-```
-
-Run on its own, it asks a few questions, each showing the current value (Enter keeps it):
-
-- **Sign-in**: `accounts` (people sign in) or `none` (no sign-in; see [No Sign-in Mode](#no-sign-in-mode))
-- who can create an account, admin emails, and which of Google, GitHub, Microsoft and Okta to turn on
-- port, **who will open it** (just you, people on your network, or a real domain), and an optional GIF search key
-
-Then it saves the answers in `.env` (creating it with a random session secret the first time), builds the image,
-starts the app and Postgres, waits until the app is healthy, and opens the browser. **In accounts mode the first
-account you create becomes the admin.**
-
-Pass options instead to skip the questions, which suits scripts and servers:
-
-```bash
-./launch.sh --network --auth none      # share it on your office network
-./launch.sh --auth none --port 3000
+./launch.sh --data folder --network --auth none        # office network, no sign-in
+./launch.sh --site-name "Team Retros" --theme forest --accent "#ffcd00" --columns 4ls
 ./launch.sh --auth accounts --signup invite --google-id … --google-secret …
 ./launch.sh -y          # no questions, current settings
 ./launch.sh --help      # every option
@@ -194,13 +213,53 @@ Pass options instead to skip the questions, which suits scripts and servers:
 
 | Command | Does |
 |---|---|
-| `./launch.sh` | Ask, then build and start (safe to re-run) |
+| `./launch.sh` | Ask, then build and start (safe to re-run; your answers become the defaults) |
 | `./launch.sh [options]` / `-y` | Build and start without asking |
-| `./launch.sh update` | Rebuild after pulling new code |
+| `./launch.sh update` | Rebuild after pulling or downloading new code |
+| `./launch.sh backup` | Save everything to one file in `backups/` |
+| `./launch.sh restore <file>` | Put a backup back |
 | `./launch.sh logs` | Follow the app logs |
-| `./launch.sh stop` | Stop everything (data is kept in Docker volumes) |
+| `./launch.sh stop` | Stop it (your data stays) |
 
-`launch.cmd` takes the same commands and options on Windows. Plain `docker compose up -d --build` works too.
+`launch.cmd` takes the same commands and options on Windows (it runs `launch.ps1`). Plain
+`docker compose up -d --build` works too.
+
+### Your Data
+
+**Everything stays on the computer running Retro Board.** There's no cloud service, no account with us, and no
+tracking. The only things that ever leave the machine are ones you turn on: GIF searches (sent to Tenor, if you add
+a key) and sign-ins through a provider you set up (Google, Microsoft, …).
+
+Where it lives is your choice at setup:
+
+| Choice | Where | Good for |
+|---|---|---|
+| `folder` (the default) | `data/postgres` (database) and `data/uploads` (images, GIFs, videos) next to the app | Seeing your data, copying it, backing it up with whatever you already use |
+| `volumes` | Docker volumes `retro-board_db` and `retro-board_uploads` | Keeping it out of sight; slightly faster on Mac and Windows |
+
+Switch any time with `./launch.sh --data folder` (or `volumes`): the launcher saves a backup, moves the data
+across, and leaves the old copy where it was. Admins also see where the data is in **Admin → Customize**.
+
+**Backups** are one file with the database and every upload:
+
+```bash
+./launch.sh backup                                        # → backups/retro-board-2026-11-24_103000.tar.gz
+./launch.sh restore backups/retro-board-2026-11-24_103000.tar.gz
+```
+
+A backup restores on any computer, in either storage mode, and into newer versions of Retro Board.
+
+### Customize
+
+Almost everything can be changed, at three levels:
+
+| Who | Where | What |
+|---|---|---|
+| The person setting it up | `./launch.sh` questions or options | Site name, theme, accent color, default columns, votes per person, sign-in, providers |
+| Instance admins | **Admin → Customize** | The same look and defaults, plus templates every team can use and who can sign up. Starts from the launch settings; **Reset** goes back to them |
+| Team admins | Team **History → Settings** | The team's default columns and votes, and saved column templates |
+| Facilitators | **⚙ Board settings** on a board | Columns (add, rename, recolor, reorder), votes, anonymous cards, lock, and a theme just for that board |
+| Everyone | **Profile & theme** | Their own theme: 7 presets or any colors, with a readability check |
 
 ### Share on Your Network
 

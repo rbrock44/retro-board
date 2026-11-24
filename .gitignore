@@ -10,3 +10,4 @@ uploads/
 config/auth.yaml
 .DS_Store
 Thumbs.db
+backups/

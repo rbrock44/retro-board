@@ -74,8 +74,15 @@ done
 sh launch.sh --help | grep -q "Your data" && echo "  ok   --help" || { echo "  FAIL --help"; fail=1; }
 
 echo "-- no docker"
-fresh
-PATH=$(printf %s "$PATH" | sed "s#$WORK/bin:##") sh launch.sh -y </dev/null >out.txt 2>&1 && { echo "  FAIL ran without docker"; fail=1; } || grep -q "isn't installed" out.txt && echo "  ok   explains Docker is missing"
+nodocker=$(printf %s "$PATH" | sed "s#$WORK/bin:##")
+if PATH=$nodocker command -v docker >/dev/null 2>&1; then
+  echo "  skip a real docker is installed here"
+else
+  fresh
+  if PATH=$nodocker sh launch.sh -y </dev/null >out.txt 2>&1; then echo "  FAIL ran without docker"; fail=1
+  elif grep -q "isn't installed" out.txt; then echo "  ok   explains Docker is missing"
+  else echo "  FAIL message"; fail=1; fi
+fi
 
 rm -rf "$WORK"
 exit $fail

@@ -117,26 +117,25 @@ Postgres 14 or newer. The app creates its tables on first start.
 
 ## Backups
 
-Two things hold data: the database and uploaded files.
-
 ```bash
-# database
-docker compose exec -T db pg_dump -U retro -Fc retro > retro-$(date +%F).dump
-
-# uploads (local storage)
-docker run --rm -v retro-board_uploads:/data -v "$PWD":/backup alpine \
-  tar czf /backup/uploads-$(date +%F).tgz -C /data uploads
+./launch.sh backup                       # one file in backups/: database + every upload
+./launch.sh restore backups/<file>.tar.gz
 ```
 
-Restore:
+A backup restores into either storage mode and into newer versions (the database is replaced, then upgraded as
+usual on start). Run `backup` from cron or Task Scheduler for regular copies, and keep some of them on another
+machine.
+
+With `--data folder`, the live data is also plain files in `data/`, so a normal file backup works too **while the
+app is stopped** (`./launch.sh stop`); copying a running database's files can catch it mid-write. With S3 storage,
+back up the bucket with your provider's tools; `backup` only covers the database then.
+
+By hand, without the launcher:
 
 ```bash
-docker compose exec -T db pg_restore -U retro -d retro --clean < retro-2026-01-01.dump
-docker run --rm -v retro-board_uploads:/data -v "$PWD":/backup alpine \
-  tar xzf /backup/uploads-2026-01-01.tgz -C /data
+docker compose exec -T db pg_dump -U retro -Fc retro > retro.dump
+docker compose exec -T app tar czf - -C /data uploads > uploads.tgz
 ```
-
-With S3 storage, back up the bucket with your provider's tools instead.
 
 ## Upgrades
 

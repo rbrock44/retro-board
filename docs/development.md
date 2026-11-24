@@ -29,6 +29,7 @@ Run one side at a time with `npm run dev -w @retro/api` or `npm start -w @retro/
 | `npm start` | Serve the build on :8080 |
 | `npm run db:generate` | Create a SQL migration after changing `apps/api/src/db/schema.ts` |
 | `./launch.sh` | Build and run the Docker image (`--help` for options) |
+| `sh scripts/test-launch.sh` | Test the launcher against a fake Docker (CI runs it with dash and BusyBox) |
 
 ## Conventions
 

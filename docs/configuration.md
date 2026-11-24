@@ -34,6 +34,34 @@ Migrations run automatically at startup. There's nothing to run by hand.
 out, development and small single-instance installs. For anything you depend on, use a Postgres server; the Docker
 setup does.
 
+## Your data
+
+Set by the launch scripts from your answer to "Where should your data live?" (`--data folder|volumes`). You
+normally don't edit these by hand.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DATA_STORAGE` | `folder` for new installs | `folder` (plain folders in `./data`) or `volumes` (Docker volumes). Switching with `./launch.sh --data …` moves the data |
+| `DB_MOUNT` | `db:/var/lib/postgresql/data` | Docker Compose mount for the database, derived from `DATA_STORAGE` |
+| `UPLOADS_MOUNT` | `uploads:/data` | Docker Compose mount for uploads, derived from `DATA_STORAGE` |
+| `APP_UID`, `APP_GID` | `1000` | On Linux with `folder`, your user id, so the files in `./data/uploads` belong to you |
+| `DATA_LOCATION` | | A description of where the data is, shown to admins in Admin → Customize |
+
+## Look and defaults
+
+Starting values for the instance settings. Admins can change each one later in **Admin → Customize**; their change
+is saved in the database and wins over these, and **Reset** goes back to these.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SITE_NAME` | `Retro Board` | Shown in the top bar, sign-in page and browser tab |
+| `DEFAULT_THEME` | `auto` | `auto` (light or dark, following each device), or `light`, `dark`, `midnight`, `forest`, `sunset`, `grape`, `high-contrast`. Applies to people who haven't picked their own |
+| `DEFAULT_ACCENT` | | An accent color like `#ffcd00` on top of the theme |
+| `DEFAULT_TEMPLATE` | `went-well` | Columns for new boards: `went-well`, `start-stop-continue`, `mad-sad-glad`, `4ls`, `sailboat`, `blank`. Teams can set their own |
+| `DEFAULT_VOTES` | `6` | Votes per person on a new board |
+| `DEFAULT_MAX_VOTES_PER_CARD` | `3` | Most votes one person can put on one card |
+| `DEFAULT_ANONYMOUS` | `true` | Whether new boards allow anonymous cards |
+
 ## Accounts
 
 | Variable | Default | Meaning |

@@ -17,7 +17,7 @@ behavior changes; `docs/api.md` lists every endpoint.
 - `npm test` - shared, API and web tests. API tests run the real app on in-memory PGlite
 - `npm run build` / `npm start`
 - `npm run db:generate -- --name <what>` after editing `apps/api/src/db/schema.ts`; commit the SQL in `apps/api/drizzle/`
-- `./launch.sh` / `launch.cmd` - one-command Docker launch (creates `.env`, builds, waits for health)
+- `./launch.sh` / `launch.cmd` - one-command Docker launch. Bare: prompts for settings; with options (`--help`) or `-y`: no prompts. `launch.cmd` runs `launch.ps1`; keep both scripts' options in step
 
 ## Rules
 
@@ -32,4 +32,6 @@ behavior changes; `docs/api.md` lists every endpoint.
 - Styles use theme tokens only (`var(--bg)`, `var(--surface)`, `var(--accent)`, …), never literal colors
 - Uploads are type-checked from bytes (sharp / magic numbers), never from names or claimed MIME types
 - Sign-in providers implement `AuthProvider` (`start`/`finish`) in `apps/api/src/auth/`; config in `config/auth.yaml`
+- `AUTH_MODE=none` makes every visitor a guest (`users.guest`): team admin everywhere via `teamRole()`, sees all
+  teams, must have a name before writing (`requireNamed()`). Guest sessions are ignored in `accounts` mode
 - Default branch is `master`. CI runs tests, build and a Docker build; no lint gate

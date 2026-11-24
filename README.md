@@ -19,6 +19,7 @@
 - [Technologies](#-technologies)
 - [Getting Started (Local Setup)](#-getting-started-local-setup)
   - [Launch (One Command)](#launch-one-command)
+  - [No Sign-in Mode](#no-sign-in-mode)
   - [Sign-in Providers](#sign-in-providers)
   - [Configuration](#configuration)
   - [Develop Without Docker](#develop-without-docker)
@@ -139,25 +140,54 @@ cd retro-board
 launch.cmd           # Windows
 ```
 
-It creates `.env` with a random session secret, builds the image, starts the app and Postgres, waits until the
-app is healthy, and opens http://localhost:8080. **The first account you create becomes the admin.**
+Run on its own, it asks a few questions, each showing the current value (Enter keeps it):
+
+- **Sign-in**: `accounts` (people sign in) or `none` (no sign-in; see [No Sign-in Mode](#no-sign-in-mode))
+- who can create an account, admin emails, and which of Google, GitHub, Microsoft and Okta to turn on
+- port, the address people open, and an optional GIF search key
+
+Then it saves the answers in `.env` (creating it with a random session secret the first time), builds the image,
+starts the app and Postgres, waits until the app is healthy, and opens the browser. **In accounts mode the first
+account you create becomes the admin.**
+
+Pass options instead to skip the questions, which suits scripts and servers:
+
+```bash
+./launch.sh --auth none --port 3000
+./launch.sh --auth accounts --signup invite --google-id … --google-secret …
+./launch.sh -y          # no questions, current settings
+./launch.sh --help      # every option
+```
 
 | Command | Does |
 |---|---|
-| `./launch.sh` | Build and start (safe to re-run) |
+| `./launch.sh` | Ask, then build and start (safe to re-run) |
+| `./launch.sh [options]` / `-y` | Build and start without asking |
 | `./launch.sh update` | Rebuild after pulling new code |
 | `./launch.sh logs` | Follow the app logs |
 | `./launch.sh stop` | Stop everything (data is kept in Docker volumes) |
 
-Plain `docker compose up -d --build` works too.
+`launch.cmd` takes the same commands and options on Windows. Plain `docker compose up -d --build` works too.
+
+### No Sign-in Mode
+
+`./launch.sh --auth none` (or `AUTH_MODE=none` in `.env`) turns accounts off. Anyone who can open the site can see
+every team and board and do everything, including starting and facilitating retros. Each browser gets a guest
+identity, and people are asked for their name the first time they add a card or reply.
+
+Use it only on a trusted network, or behind something that already controls who gets in (a VPN, or a proxy with
+its own login). Switching back to `accounts` signs guests out; what they wrote stays.
 
 ### Sign-in Providers
 
-Email and password works out of the box. To add Google, Microsoft, Okta, Keycloak, Authentik, GitHub or any other
-OpenID Connect provider:
+Email and password works out of the box. **Google, GitHub, Microsoft and Okta** are already wired up: fill in their
+values when `./launch.sh` asks (or pass `--google-id`, `--google-secret` and so on, or edit `.env`). Each sign-in
+button appears once its values are set.
+
+For Keycloak, Authentik or any other OpenID Connect provider, or to change sign-up rules:
 
 ```bash
-cp config/auth.example.yaml config/auth.yaml   # uncomment and fill in the providers you want
+cp config/auth.example.yaml config/auth.yaml   # then edit
 ./launch.sh update
 ```
 

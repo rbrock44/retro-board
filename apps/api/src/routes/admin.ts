@@ -70,12 +70,10 @@ export async function adminRoutes(app: FastifyInstance, ctx: Ctx) {
       siteName: z.string().trim().min(1, 'give the site a name').max(60).optional(),
       theme: zTheme.nullable().optional(),
       defaultTemplateId: z.string().max(64).optional(),
-      votesPerUser: z.number().int().min(0).max(100).optional(),
-      maxVotesPerCard: z.number().int().min(1).max(100).optional(),
       allowAnonymous: z.boolean().optional(),
       signup: z.enum(['open', 'invite', 'closed']).optional(),
       /** Settings to put back to their launch default */
-      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'votesPerUser', 'maxVotesPerCard', 'allowAnonymous', 'signup'])).default([]),
+      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'allowAnonymous', 'signup'])).default([]),
     }), req.body);
     const { reset, ...set } = body;
     if (set.defaultTemplateId && !(await adminDto()).templates.some(t => t.id === set.defaultTemplateId)) {

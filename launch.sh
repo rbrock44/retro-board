@@ -53,7 +53,6 @@ Look and defaults (admins can change these later in the app: Admin > Customize)
   --theme NAME              auto (light/dark per device), light, dark, midnight, forest, sunset, grape, high-contrast
   --accent #RRGGBB          accent color on top of the theme
   --columns TEMPLATE        went-well, start-stop-continue, mad-sad-glad, 4ls, sailboat, blank
-  --votes N                 votes per person on a new board (default 6)
 
 Other
   --tenor-key KEY           turns on GIF search (searches go to Tenor)
@@ -122,7 +121,7 @@ while [ $# -gt 0 ]; do
     -y|--yes) ask=0; shift; continue ;;
     --network) add_set ACCESS network; shift; continue ;;
     --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--tenor-key) ;;
-    --data|--site-name|--theme|--accent|--columns|--votes) ;;
+    --data|--site-name|--theme|--accent|--columns) ;;
     *) warn "Unknown option $opt (see ./launch.sh --help)"; exit 2 ;;
   esac
   [ $# -ge 2 ] || { warn "$opt needs a value (see ./launch.sh --help)"; exit 2; }
@@ -166,9 +165,6 @@ while [ $# -gt 0 ]; do
     --columns)
       case "$val" in went-well|start-stop-continue|mad-sad-glad|4ls|sailboat|blank) ;; *) warn "--columns is went-well, start-stop-continue, mad-sad-glad, 4ls, sailboat or blank"; exit 2 ;; esac
       add_set DEFAULT_TEMPLATE "$val" ;;
-    --votes)
-      case "$val" in ''|*[!0-9]*) warn "--votes is a number"; exit 2 ;; esac
-      add_set DEFAULT_VOTES "$val" ;;
   esac
   shift 2
 done
@@ -440,11 +436,6 @@ if [ "$ask" = 1 ]; then
     say "   mad-sad-glad, 4ls (Liked / Learned / Lacked / Longed for), sailboat, blank"
     choose cols "   Columns" "${cols:-went-well}" "went-well|start-stop-continue|mad-sad-glad|4ls|sailboat|blank"
     set_env DEFAULT_TEMPLATE "$cols"
-    while :; do
-      votes=$(get_env DEFAULT_VOTES); prompt votes "   Votes per person" "${votes:-6}"
-      case "$votes" in ''|*[!0-9]*) say "   a number, please" ;; *) break ;; esac
-    done
-    set_env DEFAULT_VOTES "$votes"
   fi
 
   say ""

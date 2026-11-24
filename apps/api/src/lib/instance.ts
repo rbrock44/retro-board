@@ -18,8 +18,6 @@ export function launchDefaults(ctx: Pick<Ctx, 'config' | 'auth'>): InstanceSetti
     siteName: env.siteName,
     theme: defaultTheme(env.themePreset, env.accent),
     defaultTemplateId: env.templateId,
-    votesPerUser: env.votesPerUser,
-    maxVotesPerCard: env.maxVotesPerCard,
     allowAnonymous: env.allowAnonymous,
     signup: ctx.auth.local.signup,
   };
@@ -74,21 +72,15 @@ function cleanOverrides(raw: Record<string, unknown>): Partial<InstanceSettings>
     out.theme = { preset: typeof t.preset === 'string' ? t.preset.slice(0, 40) : 'custom', tokens: sanitizeTokens(t.tokens) };
   }
   if (typeof raw['defaultTemplateId'] === 'string') out.defaultTemplateId = raw['defaultTemplateId'];
-  for (const k of ['votesPerUser', 'maxVotesPerCard'] as const) {
-    const n = raw[k];
-    if (typeof n === 'number' && Number.isInteger(n) && n >= (k === 'votesPerUser' ? 0 : 1) && n <= 100) out[k] = n;
-  }
   if (typeof raw['allowAnonymous'] === 'boolean') out.allowAnonymous = raw['allowAnonymous'];
   if (raw['signup'] === 'open' || raw['signup'] === 'invite' || raw['signup'] === 'closed') out.signup = raw['signup'];
   return out;
 }
 
-/** Board settings for a new board: built-in defaults, then the instance's, then the team's. */
-export function newBoardSettings(site: InstanceSettings, team: { votesPerUser?: number; maxVotesPerCard?: number; anonymousByDefault?: boolean }) {
+/** Board settings for a new board: built-in defaults, then the instance's. */
+export function newBoardSettings(site: InstanceSettings) {
   return {
     ...DEFAULT_BOARD_SETTINGS,
-    votesPerUser: team.votesPerUser ?? site.votesPerUser,
-    maxVotesPerCard: team.maxVotesPerCard ?? site.maxVotesPerCard,
     allowAnonymous: site.allowAnonymous,
   };
 }

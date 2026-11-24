@@ -2,8 +2,8 @@
 
 Self-hosted, real-time team retrospective board. npm workspaces monorepo:
 
-- `packages/shared` - DTO types, socket event types, templates, theme presets, and pure rules (permissions, vote
-  limits, fractional ordering, theme validation) used by both apps. No Node or Angular imports
+- `packages/shared` - DTO types, socket event types, templates, theme presets, and pure rules (permissions,
+  fractional ordering, theme validation) used by both apps. No Node or Angular imports
 - `apps/api` - Node 24 + Fastify 5 + Socket.IO + Drizzle ORM. Postgres in production, PGlite (embedded Postgres)
   for dev and tests. Serves the built web app too
 - `apps/web` - Angular 22, standalone components, signals, zoneless, Angular CDK drag and drop
@@ -30,6 +30,8 @@ behavior changes; `docs/api.md` lists every endpoint.
 - Every non-GET `/api` request needs header `x-retro-csrf: 1`; the web `Api` service adds it
 - Board state on the web lives in `BoardStore` (one per board page); `applyEvent()` stays pure
 - Styles use theme tokens only (`var(--bg)`, `var(--surface)`, `var(--accent)`, …), never literal colors
+- Likes: one per person per card, a toggle (`POST` / `DELETE /api/cards/:id/vote`, rows in `votes` with count 1).
+  No budget, cap or setting; cards carry `likes` and `liked`
 - Uploads are type-checked from bytes (sharp / magic numbers), never from names or claimed MIME types
 - Sign-in providers implement `AuthProvider` (`start`/`finish`) in `apps/api/src/auth/`; config in `config/auth.yaml`
 - **Setup is a top priority.** `launch.sh` (POSIX sh: test with dash and BusyBox, no bashisms) and `launch.ps1`

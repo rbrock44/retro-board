@@ -75,8 +75,6 @@ export interface InstanceSettings {
   theme: ThemePreference | null;
   /** Columns a new board starts with when nobody picks a template (team setting wins) */
   defaultTemplateId: string;
-  votesPerUser: number;
-  maxVotesPerCard: number;
   allowAnonymous: boolean;
   /** Who can create an email/password account */
   signup: 'open' | 'invite' | 'closed';
@@ -118,8 +116,6 @@ export interface TeamDto {
 
 export interface TeamSettings {
   defaultTemplateId?: string;
-  votesPerUser?: number;
-  maxVotesPerCard?: number;
   anonymousByDefault?: boolean;
 }
 
@@ -160,8 +156,6 @@ export interface TemplateDto {
 
 export interface BoardSettings {
   allowAnonymous: boolean;
-  votesPerUser: number;
-  maxVotesPerCard: number;
   locked: boolean;
   theme?: ThemeTokens | null;
 }
@@ -241,8 +235,10 @@ export interface CardDto {
   author: UserDto | null;
   mine: boolean;
   status: CardStatus;
-  votes: number;
-  myVotes: number;
+  /** How many people like this card (one like per person) */
+  likes: number;
+  /** Whether the viewer likes it */
+  liked: boolean;
   attachments: AttachmentDto[];
   reactions: ReactionSummary[];
   replies: ReplyDto[];
@@ -280,7 +276,6 @@ export interface BoardStateDto {
   actions: ActionItemDto[];
   members: UserDto[];
   permissions: BoardPermissions;
-  myVotesUsed: number;
 }
 
 export interface SearchResultDto {

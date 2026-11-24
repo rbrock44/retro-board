@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   BUILT_IN_TEMPLATES, TEAM_ROLES, type InviteDto, type SearchResultDto, type TeamDto, type TeamMemberDto,
-  type TemplateDto,
+  type TeamSettings, type TemplateDto,
 } from '@retro/shared';
 import { findUserByEmail, toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
@@ -19,10 +19,16 @@ import { boardDtos, loadActions } from '../lib/serialize';
 const zRole = z.enum(TEAM_ROLES as [string, ...string[]]).transform(r => r as (typeof TEAM_ROLES)[number]);
 const zTeamSettings = z.object({
   defaultTemplateId: z.string().max(64).optional(),
-  votesPerUser: z.number().int().min(1).max(100).optional(),
-  maxVotesPerCard: z.number().int().min(1).max(100).optional(),
   anonymousByDefault: z.boolean().optional(),
 });
+
+/** Only the settings teams still have; older rows may carry keys that are gone (like vote limits). */
+function teamSettings(stored: TeamSettings | null | undefined): TeamSettings {
+  const out: TeamSettings = {};
+  if (stored?.defaultTemplateId !== undefined) out.defaultTemplateId = stored.defaultTemplateId;
+  if (stored?.anonymousByDefault !== undefined) out.anonymousByDefault = stored.anonymousByDefault;
+  return out;
+}
 
 async function teamDto(ctx: Ctx, team: Team, user: User): Promise<TeamDto> {
   const [m] = await ctx.db.select({ n: count() }).from(teamMembers).where(eq(teamMembers.teamId, team.id));
@@ -32,7 +38,7 @@ async function teamDto(ctx: Ctx, team: Team, user: User): Promise<TeamDto> {
     description: team.description,
     myRole: await teamRole(ctx.db, user, team.id),
     memberCount: Number(m.n),
-    settings: team.settings,
+    settings: teamSettings(team.settings),
     createdAt: team.createdAt.toISOString(),
   };
 }
@@ -88,7 +94,7 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
     const [updated] = await db.update(teams).set({
       name: body.name ?? team.name,
       description: body.description ?? team.description,
-      settings: body.settings ? { ...team.settings, ...body.settings } : team.settings,
+      settings: body.settings ? { ...teamSettings(team.settings), ...body.settings } : team.settings,
     }).where(eq(teams.id, team.id)).returning();
     return teamDto(ctx, updated, user);
   });

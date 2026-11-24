@@ -111,7 +111,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
                 <summary>What can each role do?</summary>
                 <ul>
                   <li><strong>admin</strong>: everything, including members, invites, templates, closing and deleting boards</li>
-                  <li><strong>member</strong>: start retros, add cards, replies and media, vote, react, manage action items. Facilitates boards they start</li>
+                  <li><strong>member</strong>: start retros, add cards, replies and media, like cards, react, manage action items. Facilitates boards they start</li>
                   <li><strong>viewer</strong>: read-only access to boards and history</li>
                 </ul>
               </details>
@@ -156,10 +156,6 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
                   @for (tpl of templates(); track tpl.id) { <option [value]="tpl.id">{{ tpl.name }}</option> }
                 </select>
               </label>
-              <div class="row wrap">
-                <label>Votes per person <input type="number" min="1" max="100" [(ngModel)]="edit.votesPerUser"></label>
-                <label>Max votes per card <input type="number" min="1" max="100" [(ngModel)]="edit.maxVotesPerCard"></label>
-              </div>
               <div class="row"><button class="btn primary" type="button" (click)="saveTeam()">Save</button></div>
 
               <h2>Custom templates</h2>
@@ -211,8 +207,6 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               }
             </fieldset>
             <div class="row wrap">
-              <label>Votes per person <input name="vpu" type="number" min="0" max="100" [(ngModel)]="boardVotes"></label>
-              <label>Max per card <input name="vpc" type="number" min="1" max="100" [(ngModel)]="boardMaxPerCard"></label>
               <label class="check"><input name="anon" type="checkbox" [(ngModel)]="boardAnon"> Allow anonymous cards</label>
             </div>
             <label class="check">
@@ -263,13 +257,11 @@ export class TeamPage {
   protected inviteEmail = '';
   protected inviteRole: TeamRole = 'member';
   protected existingEmail = '';
-  protected edit = { name: '', description: '', defaultTemplateId: 'went-well', votesPerUser: 6, maxVotesPerCard: 3 };
+  protected edit = { name: '', description: '', defaultTemplateId: 'went-well' };
   protected tplName = '';
   protected tplColumns = signal<ColumnSpec[]>([{ title: 'Went well', color: '#22c55e' }]);
   protected boardTitle = '';
   protected boardTemplate = 'went-well';
-  protected boardVotes = 6;
-  protected boardMaxPerCard = 3;
   protected boardAnon = true;
   protected boardCarry = true;
 
@@ -310,7 +302,6 @@ export class TeamPage {
       this.edit = {
         name: team.name, description: team.description,
         defaultTemplateId: team.settings.defaultTemplateId ?? 'went-well',
-        votesPerUser: team.settings.votesPerUser ?? 6, maxVotesPerCard: team.settings.maxVotesPerCard ?? 3,
       };
       const [boards, members, templates] = await Promise.all([
         this.api.get<BoardSummaryDto[]>(`${this.base()}/boards`),
@@ -336,8 +327,6 @@ export class TeamPage {
     const t = this.team()!;
     this.boardTitle = `Retro ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
     this.boardTemplate = t.settings.defaultTemplateId ?? 'went-well';
-    this.boardVotes = t.settings.votesPerUser ?? 6;
-    this.boardMaxPerCard = t.settings.maxVotesPerCard ?? 3;
     this.carry.set(await this.api.get(`${this.base()}/carry-over`));
     this.newBoardOpen.set(true);
   }
@@ -348,7 +337,7 @@ export class TeamPage {
         title: this.boardTitle,
         templateId: this.boardTemplate,
         carryOver: this.boardCarry,
-        settings: { votesPerUser: Number(this.boardVotes), maxVotesPerCard: Number(this.boardMaxPerCard), allowAnonymous: this.boardAnon },
+        settings: { allowAnonymous: this.boardAnon },
       });
       await this.router.navigate(['/boards', b.id]);
     } catch (err) {
@@ -439,7 +428,7 @@ export class TeamPage {
     try {
       this.team.set(await this.api.patch<TeamDto>(this.base(), {
         name: this.edit.name, description: this.edit.description,
-        settings: { defaultTemplateId: this.edit.defaultTemplateId, votesPerUser: Number(this.edit.votesPerUser), maxVotesPerCard: Number(this.edit.maxVotesPerCard) },
+        settings: { defaultTemplateId: this.edit.defaultTemplateId },
       }));
       this.toast.show('Saved');
     } catch (err) {

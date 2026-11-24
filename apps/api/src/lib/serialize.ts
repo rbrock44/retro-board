@@ -1,6 +1,6 @@
 import { and, count, eq, inArray, type SQL } from 'drizzle-orm';
 import type {
-  ActionItemDto, AttachmentDto, BoardDto, CardDto, ColumnDto, ReactionSummary, ReplyDto, UserDto,
+  ActionItemDto, AttachmentDto, BoardDto, BoardSettings, CardDto, ColumnDto, ReactionSummary, ReplyDto, UserDto,
 } from '@retro/shared';
 import { DEFAULT_BOARD_SETTINGS } from '@retro/shared';
 import { toUserDto } from '../auth/users';
@@ -50,7 +50,7 @@ function summarizeReactions(rows: { emoji: string; userId: string }[], viewerId:
 
 /**
  * Loads cards with everything shown on them and returns a function that shapes them for one viewer.
- * Shaping is per viewer because anonymous authors, "mine" flags and own votes differ per person;
+ * Shaping is per viewer because anonymous authors, "mine" flags and own likes differ per person;
  * the realtime hub calls it once per connected socket.
  */
 export async function loadCards(db: Db, boardId: string, cardIds?: string[]): Promise<(viewerId: string) => CardDto[]> {
@@ -68,7 +68,7 @@ export async function loadCards(db: Db, boardId: string, cardIds?: string[]): Pr
   const cardAttach = await db.select().from(attachments).where(inArray(attachments.cardId, ids)).orderBy(attachments.createdAt);
   const reactionRows = await db.select().from(reactions)
     .where(and(eq(reactions.boardId, boardId), inArray(reactions.targetId, [...ids, ...replyIds])));
-  const voteRows = await db.select().from(votes).where(inArray(votes.cardId, ids));
+  const likeRows = await db.select().from(votes).where(inArray(votes.cardId, ids));
 
   const carriedIds = cardRows.map(c => c.carriedFromId).filter((x): x is string => !!x);
   const carried = carriedIds.length
@@ -84,7 +84,7 @@ export async function loadCards(db: Db, boardId: string, cardIds?: string[]): Pr
   return (viewerId: string) => cardRows.map(c => {
     const author = c.authorId ? people.get(c.authorId) : undefined;
     const showAuthor = !c.anonymous && author;
-    const cardVotes = voteRows.filter(v => v.cardId === c.id);
+    const cardLikes = likeRows.filter(v => v.cardId === c.id);
     const from = c.carriedFromId ? carriedMap.get(c.carriedFromId) : undefined;
     const replyDtos: ReplyDto[] = replyRows.filter(r => r.cardId === c.id).map(r => {
       const ra = r.authorId ? people.get(r.authorId) : undefined;
@@ -113,8 +113,8 @@ export async function loadCards(db: Db, boardId: string, cardIds?: string[]): Pr
       author: showAuthor ? toUserDto(author) : null,
       mine: c.authorId === viewerId,
       status: c.status,
-      votes: cardVotes.reduce((n, v) => n + v.count, 0),
-      myVotes: cardVotes.find(v => v.userId === viewerId)?.count ?? 0,
+      likes: cardLikes.length,
+      liked: cardLikes.some(v => v.userId === viewerId),
       attachments: cardAttach.filter(a => a.cardId === c.id).map(attachmentDto),
       reactions: summarizeReactions(reactionRows.filter(x => x.targetType === 'card' && x.targetId === c.id), viewerId, people),
       replies: replyDtos,
@@ -171,9 +171,15 @@ export async function boardDtos(db: Db, rows: Board[]): Promise<BoardDto[]> {
       createdBy: creator ? toUserDto(creator) : null,
       cardCount: Number(cardCounts.find(c => c.boardId === b.id)?.n ?? 0),
       actionCount: Number(actionCounts.find(c => c.boardId === b.id)?.n ?? 0),
-      settings: { ...DEFAULT_BOARD_SETTINGS, ...b.settings },
+      settings: boardSettings(b.settings),
     };
   });
+}
+
+/** Only the settings boards still have; older rows may carry keys that are gone (like vote limits). */
+export function boardSettings(stored: Partial<BoardSettings> | null | undefined): BoardSettings {
+  const s = { ...DEFAULT_BOARD_SETTINGS, ...stored };
+  return { allowAnonymous: s.allowAnonymous, locked: s.locked, theme: s.theme ?? null };
 }
 
 export async function boardDto(db: Db, b: Board): Promise<BoardDto> {

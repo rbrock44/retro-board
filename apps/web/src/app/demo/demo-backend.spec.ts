@@ -21,13 +21,17 @@ describe('demo backend', () => {
     expect(state.cards.find(c => c.groupTitle === 'Test reliability')).toBeTruthy();
   });
 
-  it('enforces the vote budget like the server', async () => {
+  it('lets you like a card once and unlike it, like the server', async () => {
     const { b } = backend();
+    const likesOf = async (id: string) => ((await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto).cards.find(c => c.id === id)!;
     const state = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
-    const fresh = state.cards.find(c => c.myVotes === 0 && !c.parentId)!;
-    const left = 6 - state.myVotesUsed;
-    for (let i = 0; i < Math.min(left, 3); i++) await b.handle('POST', `/api/cards/${fresh.id}/vote`);
-    await expect(b.handle('POST', `/api/cards/${fresh.id}/vote`)).rejects.toThrow(/votes/);
+    const fresh = state.cards.find(c => !c.liked && !c.parentId)!;
+    await b.handle('POST', `/api/cards/${fresh.id}/vote`);
+    await b.handle('POST', `/api/cards/${fresh.id}/vote`);
+    expect(await likesOf(fresh.id)).toMatchObject({ likes: fresh.likes + 1, liked: true });
+    await b.handle('DELETE', `/api/cards/${fresh.id}/vote`);
+    expect(await likesOf(fresh.id)).toMatchObject({ likes: fresh.likes, liked: false });
+    expect(state.board.settings).toEqual({ allowAnonymous: true, locked: false, theme: null });
   });
 
   it('adds cards, plays events back to the board, and reports changes', async () => {

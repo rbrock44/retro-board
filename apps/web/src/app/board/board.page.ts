@@ -54,11 +54,6 @@ import { Composer, type ComposerResult } from './composer';
             @for (u of store.presence().slice(0, 8); track u.id) { <app-avatar [user]="u" [size]="26" /> }
             @if (store.presence().length > 8) { <span class="more">+{{ store.presence().length - 8 }}</span> }
           </div>
-          @if (perm().canVote) {
-            <span class="votes-left" [class.none]="store.votesLeft() === 0" title="Votes you have left on this board">
-              🗳 {{ store.votesLeft() }} / {{ s.board.settings.votesPerUser }}
-            </span>
-          }
         </header>
 
         @if (s.board.status !== 'open') {
@@ -79,7 +74,7 @@ import { Composer, type ComposerResult } from './composer';
           <label>Sort
             <select [ngModel]="store.sort()" (ngModelChange)="store.sort.set($event)">
               <option value="position">Manual</option>
-              <option value="votes">Most votes</option>
+              <option value="likes">Most liked</option>
             </select>
           </label>
           @if (perm().canWrite) {
@@ -140,7 +135,7 @@ import { Composer, type ComposerResult } from './composer';
                 }
 
                 <div class="card-list" cdkDropList [cdkDropListData]="col.id" [id]="'col-' + col.id"
-                     [cdkDropListSortingDisabled]="store.groupMode() || store.sort() === 'votes'"
+                     [cdkDropListSortingDisabled]="store.groupMode() || store.sort() === 'likes'"
                      (cdkDropListDropped)="drop($event)">
                   @for (card of store.columnCards().get(col.id) ?? []; track card.id) {
                     <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="!perm().canWrite" class="drag-wrap">
@@ -212,12 +207,8 @@ import { Composer, type ComposerResult } from './composer';
       @if (settingsOpen()) {
         <app-modal heading="Board settings" [wide]="true" (closed)="settingsOpen.set(false)">
           <form class="stack" (ngSubmit)="saveSettings()">
-            <div class="row wrap">
-              <label>Votes per person <input name="vpu" type="number" min="0" max="100" [(ngModel)]="form.votesPerUser"></label>
-              <label>Max votes per card <input name="vpc" type="number" min="1" max="100" [(ngModel)]="form.maxVotesPerCard"></label>
-            </div>
             <label class="check"><input name="anon" type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
-            <label class="check"><input name="lock" type="checkbox" [(ngModel)]="form.locked"> Lock board (no new or edited cards; voting stays open)</label>
+            <label class="check"><input name="lock" type="checkbox" [(ngModel)]="form.locked"> Lock board (no new or edited cards; likes and reactions stay open)</label>
 
             <fieldset>
               <legend>Board theme</legend>
@@ -269,7 +260,7 @@ export class BoardPage implements OnDestroy {
   protected settingsOpen = signal(false);
   protected columnEdit = signal<{ id: string | null; title: string; color: string; description: string } | null>(null);
   protected form = {
-    votesPerUser: 6, maxVotesPerCard: 3, allowAnonymous: true, locked: false, themed: false,
+    allowAnonymous: true, locked: false, themed: false,
     theme: { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } } as ThemePreference,
   };
 
@@ -359,7 +350,7 @@ export class BoardPage implements OnDestroy {
       void this.store.moveCard(card, targetColumn, list.length);
       return;
     }
-    if (this.store.sort() === 'votes' && targetColumn === card.columnId) return;
+    if (this.store.sort() === 'likes' && targetColumn === card.columnId) return;
     void this.store.moveCard(card, targetColumn, e.currentIndex);
   }
 
@@ -419,7 +410,7 @@ export class BoardPage implements OnDestroy {
   openSettings() {
     const s = this.store.board()!.settings;
     this.form = {
-      votesPerUser: s.votesPerUser, maxVotesPerCard: s.maxVotesPerCard, allowAnonymous: s.allowAnonymous, locked: s.locked,
+      allowAnonymous: s.allowAnonymous, locked: s.locked,
       themed: !!s.theme,
       theme: s.theme ? { preset: 'custom', tokens: { ...s.theme } } : { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } },
     };
@@ -429,7 +420,6 @@ export class BoardPage implements OnDestroy {
   async saveSettings() {
     await this.store.updateBoard({
       settings: {
-        votesPerUser: Number(this.form.votesPerUser), maxVotesPerCard: Number(this.form.maxVotesPerCard),
         allowAnonymous: this.form.allowAnonymous, locked: this.form.locked,
         theme: this.form.themed ? this.form.theme.tokens : null,
       },

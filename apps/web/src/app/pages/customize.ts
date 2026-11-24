@@ -86,16 +86,12 @@ type Key = keyof InstanceSettings;
         </section>
 
         <section class="card-surface stack">
-          <h2>Voting and cards</h2>
-          <div class="row wrap">
-            <label>Votes per person <input type="number" min="0" max="100" [(ngModel)]="form.votesPerUser"></label>
-            <label>Max votes on one card <input type="number" min="1" max="100" [(ngModel)]="form.maxVotesPerCard"></label>
-          </div>
+          <h2>Cards</h2>
           <label class="row"><input type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
-          <p class="muted small">Defaults for new boards; teams and facilitators can change them.
-            {{ hint('votesPerUser') }}
-            @if (overridden('votesPerUser') || overridden('maxVotesPerCard') || overridden('allowAnonymous')) {
-              <button type="button" class="link-btn" (click)="reset('votesPerUser', 'maxVotesPerCard', 'allowAnonymous')">Reset</button>
+          <p class="muted small">Default for new boards; facilitators can change it.
+            {{ hint('allowAnonymous') }}
+            @if (overridden('allowAnonymous')) {
+              <button type="button" class="link-btn" (click)="reset('allowAnonymous')">Reset</button>
             }</p>
         </section>
 
@@ -184,7 +180,7 @@ export class Customize {
     const v = d[key];
     const shown = key === 'theme' ? (v ? (v as ThemePreference).preset : 'light or dark') :
       key === 'defaultTemplateId' ? this.data()!.templates.find(t => t.id === v)?.name ?? v :
-      key === 'votesPerUser' ? `${d.votesPerUser} votes, ${d.maxVotesPerCard} per card, anonymous ${d.allowAnonymous ? 'on' : 'off'}` : v;
+      key === 'allowAnonymous' ? `anonymous ${v ? 'on' : 'off'}` : v;
     return `${this.overridden(key) ? 'Changed here. ' : ''}Launch setting: ${shown}.`;
   }
 

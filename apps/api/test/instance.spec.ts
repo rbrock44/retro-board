@@ -7,7 +7,7 @@ afterEach(async () => t?.close());
 
 describe('instance settings (Customize)', () => {
   it('starts from the launch settings in the environment', async () => {
-    t = await makeApp({ env: { SITE_NAME: 'Hawkeye Retros', DEFAULT_THEME: 'forest', DEFAULT_ACCENT: '#ffcd00', DEFAULT_VOTES: '4', DEFAULT_TEMPLATE: 'mad-sad-glad' } });
+    t = await makeApp({ env: { SITE_NAME: 'Hawkeye Retros', DEFAULT_THEME: 'forest', DEFAULT_ACCENT: '#ffcd00', DEFAULT_ANONYMOUS: 'false', DEFAULT_TEMPLATE: 'mad-sad-glad' } });
     const cfg = (await new Client(t.app).get('/api/auth/config')).body;
     expect(cfg.site.name).toBe('Hawkeye Retros');
     expect(cfg.site.theme.tokens.accent).toBe('#ffcd00');
@@ -17,7 +17,8 @@ describe('instance settings (Customize)', () => {
     const { boardId } = (await client.post(`/api/teams/${team.id}/current`)).body;
     const s = (await client.get(`/api/boards/${boardId}`)).body as BoardStateDto;
     expect(s.columns.map(c => c.title)).toEqual(['Mad', 'Sad', 'Glad']);
-    expect(s.board.settings.votesPerUser).toBe(4);
+    expect(s.board.settings.allowAnonymous).toBe(false);
+    expect(Object.keys(s.board.settings).sort()).toEqual(['allowAnonymous', 'locked', 'theme']);
   });
 
   it('lets admins override, reset, and add templates for every team', async () => {
@@ -34,10 +35,10 @@ describe('instance settings (Customize)', () => {
       name: 'Rose / Thorn / Bud', columns: [{ title: 'Rose', color: '#ef4444' }, { title: 'Thorn', color: '#22c55e' }, { title: 'Bud', color: '#3b82f6' }],
     })).body;
     const after = (await admin.client.patch('/api/admin/settings', {
-      siteName: 'Our Retros', defaultTemplateId: tpl.id, votesPerUser: 9, signup: 'closed',
+      siteName: 'Our Retros', defaultTemplateId: tpl.id, allowAnonymous: false, signup: 'closed',
     })).body as InstanceSettingsAdminDto;
-    expect(after.settings).toMatchObject({ siteName: 'Our Retros', defaultTemplateId: tpl.id, votesPerUser: 9, signup: 'closed' });
-    expect(after.overridden.sort()).toEqual(['defaultTemplateId', 'signup', 'siteName', 'votesPerUser']);
+    expect(after.settings).toMatchObject({ siteName: 'Our Retros', defaultTemplateId: tpl.id, allowAnonymous: false, signup: 'closed' });
+    expect(after.overridden.sort()).toEqual(['allowAnonymous', 'defaultTemplateId', 'signup', 'siteName']);
 
     // sign-up rule applies straight away
     const stranger = new Client(t.app);
@@ -50,7 +51,7 @@ describe('instance settings (Customize)', () => {
     const { boardId } = (await user.client.post(`/api/teams/${team.id}/current`)).body;
     const s = (await user.client.get(`/api/boards/${boardId}`)).body as BoardStateDto;
     expect(s.columns.map(c => c.title)).toEqual(['Rose', 'Thorn', 'Bud']);
-    expect(s.board.settings.votesPerUser).toBe(9);
+    expect(s.board.settings.allowAnonymous).toBe(false);
     // only instance admins can delete an instance template
     expect((await user.client.del(`/api/templates/${tpl.id}`)).status).toBe(403);
 

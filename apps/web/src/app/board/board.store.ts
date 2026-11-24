@@ -8,7 +8,7 @@ import { Api } from '../core/api.service';
 import { ToastService } from '../core/toast.service';
 import { DemoService } from '../demo/demo.service';
 
-export type SortMode = 'position' | 'votes';
+export type SortMode = 'position' | 'likes';
 
 /** Applies one realtime event to a board state. Pure, so it is easy to test. */
 export function applyEvent(s: BoardStateDto, e: BoardEvent): BoardStateDto {
@@ -27,8 +27,6 @@ export function applyEvent(s: BoardStateDto, e: BoardEvent): BoardStateDto {
       return { ...s, actions: upsert(s.actions, e.action) };
     case 'action.delete':
       return { ...s, actions: s.actions.filter(a => a.id !== e.id) };
-    case 'votes.used':
-      return { ...s, myVotesUsed: e.used };
     case 'presence':
     case 'board.next':
       return s;
@@ -43,8 +41,9 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
   return copy;
 }
 
-export function groupVotes(head: CardDto, kids: CardDto[]): number {
-  return head.votes + kids.reduce((n, k) => n + k.votes, 0);
+/** Likes on a group head plus every card in its group. */
+export function groupLikes(head: CardDto, kids: CardDto[]): number {
+  return head.likes + kids.reduce((n, k) => n + k.likes, 0);
 }
 
 /** One board's live state. Provided by the board page, so each open board gets its own store and socket. */
@@ -76,10 +75,6 @@ export class BoardStore {
   readonly actions = computed(() => this.state()?.actions ?? []);
   readonly members = computed(() => this.state()?.members ?? []);
   readonly permissions = computed(() => this.state()?.permissions ?? null);
-  readonly votesLeft = computed(() => {
-    const s = this.state();
-    return s ? Math.max(0, s.board.settings.votesPerUser - s.myVotesUsed) : 0;
-  });
   readonly openActions = computed(() => this.actions().filter(a => a.status === 'open'));
   readonly boardActions = computed(() => {
     const id = this.board()?.id;
@@ -113,7 +108,7 @@ export class BoardStore {
       map.get(c.columnId)?.push(c);
     }
     for (const list of map.values()) {
-      if (sort === 'votes') list.sort((a, b) => groupVotes(b, kids.get(b.id) ?? []) - groupVotes(a, kids.get(a.id) ?? []) || byPosition(a, b));
+      if (sort === 'likes') list.sort((a, b) => groupLikes(b, kids.get(b.id) ?? []) - groupLikes(a, kids.get(a.id) ?? []) || byPosition(a, b));
       else list.sort(byPosition);
     }
     return map;
@@ -260,13 +255,10 @@ export class BoardStore {
     return this.run(this.api.post(`/api/cards/${cardId}/ungroup`));
   }
 
-  vote(card: CardDto) {
-    return this.run(this.api.post(`/api/cards/${card.id}/vote`));
-  }
-
-  unvote(card: CardDto) {
-    if (!card.myVotes) return undefined;
-    return this.run(this.api.delete(`/api/cards/${card.id}/vote`));
+  /** Like or unlike a card. One like per person; the card comes back over the socket. */
+  toggleLike(card: CardDto) {
+    const url = `/api/cards/${card.id}/vote`;
+    return this.run(card.liked ? this.api.delete(url) : this.api.post(url));
   }
 
   react(targetType: 'card' | 'reply', targetId: string, emoji: string) {

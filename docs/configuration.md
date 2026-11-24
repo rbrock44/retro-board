@@ -58,9 +58,9 @@ is saved in the database and wins over these, and **Reset** goes back to these.
 | `DEFAULT_THEME` | `auto` | `auto` (light or dark, following each device), or `light`, `dark`, `midnight`, `forest`, `sunset`, `grape`, `high-contrast`. Applies to people who haven't picked their own |
 | `DEFAULT_ACCENT` | | An accent color like `#ffcd00` on top of the theme |
 | `DEFAULT_TEMPLATE` | `went-well` | Columns for new boards: `went-well`, `start-stop-continue`, `mad-sad-glad`, `4ls`, `sailboat`, `blank`. Teams can set their own |
-| `DEFAULT_VOTES` | `6` | Votes per person on a new board |
-| `DEFAULT_MAX_VOTES_PER_CARD` | `3` | Most votes one person can put on one card |
 | `DEFAULT_ANONYMOUS` | `true` | Whether new boards allow anonymous cards |
+
+There are no vote settings: everyone can like every card, once. Vote settings left in an older `.env` are ignored.
 
 ## Accounts
 

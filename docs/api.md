@@ -61,8 +61,8 @@ curl -b jar http://localhost:8080/api/teams
 
 | Method | Path | Body / query | Needs |
 |---|---|---|---|
-| GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards, actions, members, your permissions and votes used |
-| PATCH | `/api/boards/:boardId` | `title?, status?, settings?{allowAnonymous, votesPerUser, maxVotesPerCard, locked, theme}` | facilitate |
+| GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards (each with `likes` and whether you `liked` it), actions, members and your permissions |
+| PATCH | `/api/boards/:boardId` | `title?, status?, settings?{allowAnonymous, locked, theme}` | facilitate |
 | POST | `/api/boards/:boardId/save` | `name?, date? (YYYY-MM-DD)` | facilitate. Files the board in the history as `date · name` (closed) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
 | DELETE | `/api/boards/:boardId` | | team admin |
 | POST | `/api/boards/:boardId/save-template` | `name, description?` | team admin |
@@ -76,12 +76,12 @@ curl -b jar http://localhost:8080/api/teams
 | Method | Path | Body | Needs |
 |---|---|---|---|
 | POST | `/api/boards/:boardId/cards` | `columnId, body, anonymous?, attachmentIds?` | write |
-| PATCH | `/api/cards/:cardId` | `body?, anonymous?, attachmentIds?, removeAttachmentIds?` (author or facilitator); `status?, groupTitle?` (anyone who can vote) | |
+| PATCH | `/api/cards/:cardId` | `body?, anonymous?, attachmentIds?, removeAttachmentIds?` (author or facilitator); `status?, groupTitle?` (anyone who can like) | |
 | DELETE | `/api/cards/:cardId` | | write + author or facilitator |
 | POST | `/api/cards/:cardId/move` | `columnId, position` | write. `position` is a fractional key; see `positionBetween()` in shared |
 | POST | `/api/cards/:cardId/group` | `targetId` | write |
 | POST | `/api/cards/:cardId/ungroup` | | write |
-| POST / DELETE | `/api/cards/:cardId/vote` | | vote. Returns `{ used }` |
+| POST / DELETE | `/api/cards/:cardId/vote` | | vote (like). POST likes the card, DELETE unlikes it; one like per person per card, so repeating either is harmless. Returns `{ ok: true }`; the card arrives as `card.upsert` |
 | POST | `/api/reactions` | `targetType: card\|reply, targetId, emoji` | vote. Toggles |
 | POST | `/api/cards/:cardId/replies` | `body, parentId?, attachmentIds?` | write |
 | PATCH / DELETE | `/api/replies/:replyId` | PATCH: `body` | write + author or facilitator |
@@ -112,7 +112,7 @@ Unused uploads (never attached to a card or reply) stay in storage; they are sma
 | Method | Path | Body |
 |---|---|---|
 | GET | `/api/admin/settings` | Instance settings in effect, the launch defaults, which ones were changed, templates, and where data is stored |
-| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, votesPerUser, maxVotesPerCard, allowAnonymous, signup`, plus `reset: [keys]` to go back to launch defaults |
+| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, allowAnonymous, signup`, plus `reset: [keys]` to go back to launch defaults |
 | POST | `/api/admin/templates` | `name, description?, columns[{title,color,description?}]`. A template every team can use; delete with `DELETE /api/templates/:id` |
 | GET | `/api/admin/users` | |
 | PATCH | `/api/admin/users/:userId` | `role?: admin\|user, disabled?` |
@@ -139,7 +139,6 @@ type BoardEvent =
   | { type: 'column.upsert'; column } | { type: 'column.delete'; id }
   | { type: 'card.upsert'; card }     | { type: 'card.delete'; id }
   | { type: 'action.upsert'; action } | { type: 'action.delete'; id }
-  | { type: 'votes.used'; used }        // only to the person who voted
   | { type: 'presence'; users }         // everyone currently on the board
   | { type: 'board.next'; boardId; savedTitle };  // board was saved; move to the fresh one
 ```

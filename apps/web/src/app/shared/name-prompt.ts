@@ -85,7 +85,7 @@ export class NamePrompt {
     }, someoneElse);
   }
 
-  /** `switched`: became a different person, so reload to reconnect live updates and votes as them. */
+  /** `switched`: became a different person, so reload to reconnect live updates and likes as them. */
   private async run(fn: () => Promise<void>, switched = false) {
     this.busy.set(true);
     this.error.set('');

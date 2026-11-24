@@ -1,6 +1,6 @@
 import {
   BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
-  canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens, voteBlockedReason,
+  canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
   type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
@@ -93,7 +93,9 @@ export class DemoBackend {
 
   private teamDto(t: DemoState['teams'][number]): TeamDto {
     return {
-      id: t.id, name: t.name, description: t.description, settings: t.settings, createdAt: t.createdAt,
+      id: t.id, name: t.name, description: t.description, createdAt: t.createdAt,
+      // Only the settings teams still have (a demo saved by an older version may carry vote limits).
+      settings: { defaultTemplateId: t.settings.defaultTemplateId, anonymousByDefault: t.settings.anonymousByDefault },
       myRole: this.role(t.id), memberCount: this.state.members.filter(m => m.teamId === t.id).length,
     };
   }
@@ -101,7 +103,8 @@ export class DemoBackend {
   private boardDto(b: DemoState['boards'][number]): BoardDto {
     return {
       id: b.id, teamId: b.teamId, title: b.title, status: b.status, createdAt: b.createdAt, closedAt: b.closedAt,
-      createdBy: this.user(b.createdBy), settings: b.settings,
+      createdBy: this.user(b.createdBy),
+      settings: { allowAnonymous: b.settings.allowAnonymous, locked: b.settings.locked, theme: b.settings.theme ?? null },
       cardCount: this.state.cards.filter(c => c.boardId === b.id).length,
       actionCount: this.state.actions.filter(a => a.boardId === b.id).length,
     };
@@ -138,7 +141,7 @@ export class DemoBackend {
   }
 
   private cardDto(c: DemoCard): CardDto {
-    const votes = this.state.votes.filter(v => v.cardId === c.id);
+    const likes = this.state.votes.filter(v => v.cardId === c.id);
     const from = c.carriedFromId ? this.state.cards.find(x => x.id === c.carriedFromId) : null;
     const fromBoard = from ? this.state.boards.find(b => b.id === from.boardId) : null;
     return {
@@ -146,8 +149,8 @@ export class DemoBackend {
       position: c.position, body: c.body, anonymous: c.anonymous,
       author: c.anonymous && c.authorId !== this.state.meId ? null : this.user(c.authorId),
       mine: c.authorId === this.state.meId, status: c.status,
-      votes: votes.reduce((n, v) => n + v.count, 0),
-      myVotes: votes.find(v => v.userId === this.state.meId)?.count ?? 0,
+      likes: likes.length,
+      liked: likes.some(v => v.userId === this.state.meId),
       attachments: this.attachmentsFor(c.attachmentIds),
       reactions: this.reactionsFor('card', c.id),
       replies: this.state.replies.filter(r => r.cardId === c.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(r => this.replyDto(r)),
@@ -168,8 +171,11 @@ export class DemoBackend {
     return this.state.actions.filter(a => a.teamId === teamId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(a => this.actionDto(a));
   }
 
-  private votesUsed(boardId: string, userId = this.state.meId) {
-    return this.state.votes.filter(v => v.boardId === boardId && v.userId === userId).reduce((n, v) => n + v.count, 0);
+  /** One like per person per card, like the server's `votes` table. */
+  private like(boardId: string, cardId: string, userId: string): boolean {
+    if (this.state.votes.some(v => v.cardId === cardId && v.userId === userId)) return false;
+    this.state.votes.push({ boardId, cardId, userId, count: 1 });
+    return true;
   }
 
   private templates(teamId: string): TemplateDto[] {
@@ -185,12 +191,14 @@ export class DemoBackend {
   }
 
   private static readonly SITE_DEFAULTS: InstanceSettings = {
-    siteName: 'Retro Board', theme: null, defaultTemplateId: 'went-well', votesPerUser: 6, maxVotesPerCard: 3,
+    siteName: 'Retro Board', theme: null, defaultTemplateId: 'went-well',
     allowAnonymous: true, signup: 'open',
   };
 
   private site(): InstanceSettings {
-    return { ...DemoBackend.SITE_DEFAULTS, ...(this.state.site ?? {}) };
+    // Only known keys: a demo saved by an older version may carry settings that are gone.
+    const saved = Object.entries(this.state.site ?? {}).filter(([k]) => k in DemoBackend.SITE_DEFAULTS);
+    return { ...DemoBackend.SITE_DEFAULTS, ...Object.fromEntries(saved) };
   }
 
   private siteAdminDto(): InstanceSettingsAdminDto {
@@ -245,7 +253,7 @@ export class DemoBackend {
     for (const b of this.state.boards.filter(x => x.teamId === a.teamId)) this.emit(b.id, { type: 'action.upsert', action: dto });
   }
 
-  /** Pretend teammates: every so often someone on an open board votes, reacts, replies or adds a card. */
+  /** Pretend teammates: every so often someone on an open board likes a card, reacts, replies or adds a card. */
   private startBot() {
     if (this.bot) return;
     this.bot = setInterval(() => this.botTurn(), 9000 + Math.random() * 6000);
@@ -290,14 +298,7 @@ export class DemoBackend {
     if (!cards.length) return;
     const target = pick(cards);
     if (roll < 0.7) {
-      if (voteBlockedReason({
-        usedOnBoard: this.votesUsed(boardId, who.id),
-        usedOnCard: this.state.votes.find(v => v.cardId === target.id && v.userId === who.id)?.count ?? 0,
-        settings: board.settings,
-      })) return;
-      const v = this.state.votes.find(x => x.cardId === target.id && x.userId === who.id);
-      if (v) v.count++;
-      else this.state.votes.push({ boardId, cardId: target.id, userId: who.id, count: 1 });
+      if (!this.like(boardId, target.id, who.id)) return;
     } else if (roll < 0.9) {
       const emoji = pick(REACTION_EMOJI);
       if (this.state.reactions.some(r => r.targetId === target.id && r.userId === who.id && r.emoji === emoji)) return;
@@ -319,13 +320,14 @@ export class DemoBackend {
     const actions = this.state.actions.filter(a => a.boardId === boardId).map(a => this.actionDto(a));
     const slug = board.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'board';
     const who = (c: CardDto) => (c.anonymous ? 'Anonymous' : c.author?.name ?? 'Someone');
+    const likes = (n: number) => `${n} ${n === 1 ? 'like' : 'likes'}`;
     if (format === 'csv') {
       const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const lines = [['column', 'group', 'card', 'author', 'votes', 'status', 'replies', 'created'].join(',')];
+      const lines = [['column', 'group', 'card', 'author', 'likes', 'status', 'replies', 'created'].join(',')];
       for (const col of cols) {
         for (const c of all.filter(x => x.columnId === col.id)) {
           const head = c.parentId ? all.find(x => x.id === c.parentId) : null;
-          lines.push([col.title, head ? head.groupTitle ?? head.body.slice(0, 40) : c.groupTitle ?? '', c.body, who(c), c.votes,
+          lines.push([col.title, head ? head.groupTitle ?? head.body.slice(0, 40) : c.groupTitle ?? '', c.body, who(c), c.likes,
             CARD_STATUS_LABELS[c.status], c.replies.length, c.createdAt].map(esc).join(','));
         }
       }
@@ -336,16 +338,16 @@ export class DemoBackend {
     const md: string[] = [`# ${board.title}`, '', `_${new Date(board.createdAt).toDateString()} · ${board.status}_`, ''];
     for (const col of cols) {
       md.push(`## ${col.title}`, '');
-      const heads = all.filter(c => c.columnId === col.id && !c.parentId).sort((a, b) => b.votes - a.votes);
+      const heads = all.filter(c => c.columnId === col.id && !c.parentId).sort((a, b) => b.likes - a.likes);
       if (!heads.length) md.push('_No cards_', '');
       for (const h of heads) {
         const kids = all.filter(c => c.parentId === h.id);
         const tag = h.status !== 'none' ? ` \`${CARD_STATUS_LABELS[h.status]}\`` : '';
         if (kids.length) {
-          md.push(`- **${h.groupTitle ?? 'Group'}** (${h.votes + kids.reduce((n, k) => n + k.votes, 0)} votes)${tag}`);
-          for (const c of [h, ...kids]) md.push(`  - ${c.body.replace(/\n+/g, ' ')} — ${who(c)} (${c.votes})`);
+          md.push(`- **${h.groupTitle ?? 'Group'}** (${likes(h.likes + kids.reduce((n, k) => n + k.likes, 0))})${tag}`);
+          for (const c of [h, ...kids]) md.push(`  - ${c.body.replace(/\n+/g, ' ')} — ${who(c)} (${c.likes})`);
         } else {
-          md.push(`- ${h.body.replace(/\n+/g, ' ')} — ${who(h)} (${h.votes} votes)${tag}`);
+          md.push(`- ${h.body.replace(/\n+/g, ' ')} — ${who(h)} (${likes(h.likes)})${tag}`);
         }
         for (const r of [h, ...kids].flatMap(c => c.replies)) md.push(`  - ↳ ${r.author?.name ?? 'Someone'}: ${r.body.replace(/\n+/g, ' ')}`);
       }
@@ -591,7 +593,6 @@ export class DemoBackend {
         actions: this.teamActions(team.id),
         members: this.state.members.filter(m => m.teamId === team.id).map(m => this.user(m.userId)!).sort((a, b) => a.name.localeCompare(b.name)),
         permissions: { role: ctx.role, canWrite: ctx.canWrite, canVote: ctx.canVote, canFacilitate: ctx.canFacilitate },
-        myVotesUsed: this.votesUsed(id),
       };
     }],
     ['PATCH', /^\/api\/boards\/([^/]+)$/, ([id], b) => {
@@ -734,28 +735,16 @@ export class DemoBackend {
     ['POST', /^\/api\/cards\/([^/]+)\/vote$/, ([id]) => {
       const c = this.card(id);
       const { board } = this.requireBoard(c.boardId, 'vote');
-      const mine = this.state.votes.find(v => v.cardId === id && v.userId === this.state.meId);
-      const reason = voteBlockedReason({ usedOnBoard: this.votesUsed(board.id), usedOnCard: mine?.count ?? 0, settings: board.settings });
-      if (reason) fail(400, reason);
-      if (mine) mine.count++;
-      else this.state.votes.push({ boardId: board.id, cardId: id, userId: this.state.meId, count: 1 });
-      const used = this.votesUsed(board.id);
+      this.like(board.id, id, this.state.meId);
       this.emitCards(board.id, [id]);
-      this.emit(board.id, { type: 'votes.used', used });
-      return { used };
+      return { ok: true };
     }],
     ['DELETE', /^\/api\/cards\/([^/]+)\/vote$/, ([id]) => {
       const c = this.card(id);
       const { board } = this.requireBoard(c.boardId, 'vote');
-      const mine = this.state.votes.find(v => v.cardId === id && v.userId === this.state.meId);
-      if (mine) {
-        mine.count--;
-        if (mine.count <= 0) this.state.votes = this.state.votes.filter(v => v !== mine);
-      }
-      const used = this.votesUsed(board.id);
+      this.state.votes = this.state.votes.filter(v => !(v.cardId === id && v.userId === this.state.meId));
       this.emitCards(board.id, [id]);
-      this.emit(board.id, { type: 'votes.used', used });
-      return { used };
+      return { ok: true };
     }],
     ['POST', /^\/api\/reactions$/, (_p, b) => {
       const cardId = b.targetType === 'card' ? b.targetId : (this.state.replies.find(r => r.id === b.targetId) ?? notFound('Reply')).cardId;
@@ -846,8 +835,6 @@ export class DemoBackend {
       id: newId(), teamId, title: title.slice(0, 120), status: 'open' as const, createdAt: nowIso(), closedAt: null, createdBy: this.state.meId,
       settings: {
         ...DEFAULT_BOARD_SETTINGS,
-        votesPerUser: team.settings.votesPerUser ?? site.votesPerUser,
-        maxVotesPerCard: team.settings.maxVotesPerCard ?? site.maxVotesPerCard,
         allowAnonymous: site.allowAnonymous,
         ...(b.settings ?? {}),
       },

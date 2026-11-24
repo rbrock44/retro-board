@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { MarkdownPipe } from '../core/markdown.pipe';
 import { Avatar } from '../shared/avatar';
 import { RelativeTimePipe } from '../shared/relative-time.pipe';
-import { BoardStore, groupVotes } from './board.store';
+import { BoardStore, groupLikes } from './board.store';
 import { Composer, type ComposerResult } from './composer';
 import { Media } from './media';
 import { Reactions } from './reactions';
@@ -29,7 +29,7 @@ import { Reply } from './reply';
               {{ card().groupTitle || 'Group of ' + (kids().length + 1) }}
             </button>
           }
-          <span class="tag">{{ totalVotes() }} votes</span>
+          <span class="tag">👍 {{ totalLikes() }}</span>
         </div>
       }
 
@@ -54,17 +54,14 @@ import { Reply } from './reply';
         </span>
         <div class="spacer"></div>
         @if (card().status !== 'none') { <span class="status-badge" [attr.data-status]="card().status">{{ labels[card().status] }}</span> }
-        <span class="votes" [class.has-mine]="card().myVotes > 0">
-          @if (canVote() && card().myVotes) {
-            <button type="button" class="vote-btn" (click)="store.unvote(card())" aria-label="Remove one of your votes">−</button>
-          }
-          <span class="vote-count" [title]="card().myVotes + ' of these are yours'">
-            @for (d of myDots(); track $index) { <i class="dot mine"></i> }{{ card().votes }}
-          </span>
-          @if (canVote()) {
-            <button type="button" class="vote-btn plus" (click)="store.vote(card())" [disabled]="store.votesLeft() === 0" aria-label="Vote for this card">+</button>
-          }
-        </span>
+        @if (canVote()) {
+          <button type="button" class="likes" [class.on]="card().liked" [attr.aria-pressed]="card().liked"
+                  [attr.aria-label]="(card().liked ? 'Unlike' : 'Like') + ' (' + likesLabel() + ')'"
+                  [title]="card().liked ? 'You like this. Click to unlike' : 'Like this card'"
+                  (click)="store.toggleLike(card())">👍 {{ card().likes }}</button>
+        } @else if (card().likes) {
+          <span class="likes" [class.on]="card().liked" [title]="likesLabel()">👍 {{ card().likes }}</span>
+        }
       </footer>
 
       <div class="card-actions">
@@ -140,8 +137,8 @@ export class Card {
   protected replyingTo = signal<ReplyDto | null>(null);
 
   protected kids = computed(() => (this.nested() ? [] : this.store.childrenOf().get(this.card().id) ?? []));
-  protected totalVotes = computed(() => groupVotes(this.card(), this.kids()));
-  protected myDots = computed(() => Array.from({ length: Math.min(this.card().myVotes, 5) }));
+  protected totalLikes = computed(() => groupLikes(this.card(), this.kids()));
+  protected likesLabel = computed(() => `${this.card().likes} ${this.card().likes === 1 ? 'like' : 'likes'}`);
   protected canWrite = computed(() => !!this.store.permissions()?.canWrite);
   protected canVote = computed(() => !!this.store.permissions()?.canVote);
   protected canMark = computed(() => !!this.store.permissions()?.canVote);

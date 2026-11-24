@@ -23,8 +23,6 @@ export interface AppConfig {
     themePreset: string | null;
     accent: string | null;
     templateId: string;
-    votesPerUser: number;
-    maxVotesPerCard: number;
     allowAnonymous: boolean;
   };
   adminEmails: string[];
@@ -117,8 +115,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       themePreset: env.DEFAULT_THEME && env.DEFAULT_THEME !== 'auto' ? env.DEFAULT_THEME : null,
       accent: /^#[0-9a-fA-F]{6}$/.test(env.DEFAULT_ACCENT ?? '') ? env.DEFAULT_ACCENT!.toLowerCase() : null,
       templateId: (env.DEFAULT_TEMPLATE ?? '').trim() || 'went-well',
-      votesPerUser: intIn(env.DEFAULT_VOTES, 0, 100, 6),
-      maxVotesPerCard: intIn(env.DEFAULT_MAX_VOTES_PER_CARD, 1, 100, 3),
       allowAnonymous: (env.DEFAULT_ANONYMOUS ?? 'true') !== 'false',
     },
     adminEmails: list(env.ADMIN_EMAILS),

@@ -47,7 +47,7 @@ merge. Missed events are harmless: on reconnect the board reloads.
 
 ### Per-viewer shaping
 
-Some fields differ per person: `mine`, `myVotes`, the author of an anonymous card (hidden from everyone,
+Some fields differ per person: `mine`, `liked`, the author of an anonymous card (hidden from everyone,
 including admins, but the author still sees "You (anonymous)"), and reaction `mine` flags. So card events are
 shaped **per socket**: `loadCards()` loads the data once and returns a function that builds the DTO for a viewer;
 `hub.emitBoard()` calls it for each connected person.
@@ -71,7 +71,7 @@ Instance admins count as team admins everywhere. On a board, the rules live in
 |---|---|
 | read | any team role |
 | write (cards, replies, uploads) | admin or member, board open, and not locked unless you facilitate |
-| vote / react / mark | admin or member, board open (works while locked) |
+| vote (like) / react / mark | admin or member, board open (works while locked) |
 | facilitate (columns, settings, lock, close) | team admin, or the member who created the board |
 | delete board | team admin |
 
@@ -88,7 +88,7 @@ users ─┬─< identities           (provider, subject) per external login
                                   └─< boards ─┬─< columns          position (fractional key), color
                                               ├─< cards            parent_id (grouping), status, carried_from_id
                                               │    ├─< replies     parent_id (one level of threading)
-                                              │    └─< votes       (card, user) → count
+                                              │    └─< votes       likes: one row per (card, user), count always 1
                                               ├─< attachments      card or reply; storage key or external GIF URL
                                               └─< reactions        target_type + target_id, emoji
 ```
@@ -99,16 +99,16 @@ Notes:
   moves never renumber each other
 - **Grouping** is one level: a card's `parent_id` points at the group head. Dropping a group onto another card
   moves the whole group under the new head. The head holds the group's name (`group_title`)
-- **Vote budget** is checked inside a transaction holding a Postgres advisory lock per (board, person), so fast
-  double-clicks can't overspend
+- **Likes** are one per person per card: `POST /vote` inserts the `(card, user)` row if it isn't there,
+  `DELETE /vote` removes it. There is no budget or per-card cap. The table is still called `votes`
 - **Carry over**: creating a board copies every team card marked `carry_over` whose `carried_to_board_id` is
   still empty into a new "Carried over" column, copies their attachments (sharing the stored file), then sets
   `carried_to_board_id` on the originals so each is carried once
-- **Instance settings** (site name, default theme, columns, vote defaults, sign-up rule) are the launch values from
+- **Instance settings** (site name, default theme, columns, anonymous cards, sign-up rule) are the launch values from
   the environment with admin overrides from the one-row `instance_settings` table on top (`lib/instance.ts`). New
-  boards take built-in defaults, then the instance's, then the team's. Templates with no team are instance templates
+  boards take built-in defaults, then the instance's; a team's default template wins over the instance's. Templates with no team are instance templates
 - **Board settings** and **team settings** are `jsonb`, merged over defaults on read, so adding a setting needs
-  no migration
+  no migration. Keys that are gone (like the old vote limits) are dropped when they're read
 
 ## Auth flow
 
@@ -141,7 +141,7 @@ cross-origin without a CORS preflight, and CORS is off, so other sites can't for
 - **Demo mode**: `AuthService` checks `/api/auth/config` at startup. If nothing answers (or `?demo` / a
   `#demo=` share link is in the address), `DemoService` loads `demo/demo-backend.ts` (a lazy chunk) and `Api`
   sends every request to it instead of `fetch`. It answers the same URLs with the same DTOs, reuses the shared
-  rules (vote budget, permissions, ordering), plays `BoardEvent`s to `BoardStore` in place of the socket, and
+  rules (permissions, ordering), plays `BoardEvent`s to `BoardStore` in place of the socket, and
   saves its state in `localStorage`. Share links are that state, deflated and base64url-encoded, after `#demo=`
 - Markdown is rendered with `marked` and sanitized with DOMPurify using a strict allowlist (no images, no raw
   HTML, no `javascript:` links)

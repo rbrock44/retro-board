@@ -77,8 +77,6 @@ export const COLOR_PRESETS = [
 
 export const DEFAULT_BOARD_SETTINGS = {
   allowAnonymous: true,
-  votesPerUser: 6,
-  maxVotesPerCard: 3,
   locked: false,
   theme: null,
 };

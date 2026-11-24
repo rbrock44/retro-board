@@ -295,8 +295,6 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem;
   h1 { font-size: 1.35rem; cursor: default; } }
 .title-edit { font-size: 1.2rem; font-weight: 600; }
 .presence { display: flex; .avatar { margin-left: -6px; border: 2px solid var(--bg); } .more { font-size: 0.8rem; color: var(--muted); margin-left: 0.3rem; align-self: center; } }
-.votes-left { font-weight: 600; background: var(--surface); border: 1px solid var(--border); padding: 0.2rem 0.65rem; border-radius: 999px;
-  &.none { color: var(--muted); } }
 .board-tools { display: flex; align-items: center; gap: 0.75rem; padding: 0.25rem 1rem 0.5rem; flex-wrap: wrap;
   label { flex-direction: row; align-items: center; gap: 0.4rem; font-weight: 400; color: var(--muted); }
   select { padding: 0.25rem 0.4rem; } }
@@ -382,14 +380,11 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem;
   &[data-status='discussed'] { background: color-mix(in srgb, #3b82f6 18%, var(--surface)); }
   &[data-status='resolved'] { background: color-mix(in srgb, #22c55e 18%, var(--surface)); }
   &[data-status='carry_over'] { background: color-mix(in srgb, #a855f7 18%, var(--surface)); } }
-.votes { display: inline-flex; align-items: center; gap: 0.15rem; background: var(--surface-2); border-radius: 999px; padding: 0.05rem 0.2rem;
-  &.has-mine { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); } }
-.vote-count { font-weight: 700; color: var(--text); padding: 0 0.25rem; display: inline-flex; align-items: center; gap: 2px;
-  .dot.mine { width: 6px; height: 6px; background: var(--accent); } }
-.vote-btn { border: 0; background: none; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; color: var(--text); font-weight: 700;
-  &:hover:not(:disabled) { background: var(--surface); }
-  &.plus:hover:not(:disabled) { background: var(--accent); color: var(--accent-text); }
-  &:disabled { opacity: 0.35; cursor: not-allowed; } }
+.likes { display: inline-flex; align-items: center; gap: 0.25rem; background: var(--surface-2); border: 1px solid transparent; border-radius: 999px;
+  padding: 0.05rem 0.5rem; font: inherit; font-size: 0.85rem; font-weight: 700; color: var(--text); line-height: 1.6;
+  &.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); } }
+button.likes { cursor: pointer;
+  &:hover { border-color: var(--accent); } }
 .card-actions { display: flex; align-items: center; gap: 0.3rem; }
 
 .reactions { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
@@ -438,7 +433,7 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem;
 /* ---------- print: a clean, stacked summary ---------- */
 
 @media print {
-  .topbar, .no-print, .board-tools, .composer, .card-actions .reactions .add, .vote-btn, .icon-btn, .sidebar, .toasts, .banner { display: none !important; }
+  .topbar, .no-print, .board-tools, .composer, .card-actions .reactions .add, .icon-btn, .sidebar, .toasts, .banner { display: none !important; }
   body, .board-root { background: #fff !important; color: #000 !important; }
   .columns { display: block; overflow: visible; padding: 0; }
   .column { break-inside: avoid; max-width: none; margin-bottom: 1rem; background: #fff !important; }

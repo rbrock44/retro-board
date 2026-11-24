@@ -1,7 +1,7 @@
-import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CARD_STATUSES, byPosition, positionAfter, voteBlockedReason, type CardStatus } from '@retro/shared';
+import { CARD_STATUSES, byPosition, positionAfter, type CardStatus } from '@retro/shared';
 import type { Ctx } from '../context';
 import type { Db } from '../db';
 import { attachments, cards, columns, reactions, replies, votes, type User } from '../db/schema';
@@ -149,48 +149,24 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     return noContent(reply);
   });
 
-  // ---- votes ----
-
-  async function votesUsed(boardId: string, userId: string): Promise<number> {
-    const [r] = await db.select({ n: sql<number>`coalesce(sum(${votes.count}), 0)` }).from(votes)
-      .where(and(eq(votes.boardId, boardId), eq(votes.userId, userId)));
-    return Number(r.n);
-  }
+  // ---- likes: one per person per card (stored in `votes` with count 1) ----
 
   app.post('/api/cards/:cardId/vote', async req => {
     const user = requireUser(req);
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     const { board } = await requireBoard(db, user, card.boardId, 'vote');
-    await db.transaction(async tx => {
-      // Serialize votes per user+board so two fast clicks cannot both slip under the budget.
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${board.id}:${user.id}`}))`);
-      const [used] = await tx.select({ n: sql<number>`coalesce(sum(${votes.count}), 0)` }).from(votes)
-        .where(and(eq(votes.boardId, board.id), eq(votes.userId, user.id)));
-      const [mine] = await tx.select().from(votes).where(and(eq(votes.cardId, card.id), eq(votes.userId, user.id)));
-      const reason = voteBlockedReason({ usedOnBoard: Number(used.n), usedOnCard: mine?.count ?? 0, settings: board.settings });
-      if (reason) throw badRequest(reason);
-      await tx.insert(votes).values({ boardId: board.id, cardId: card.id, userId: user.id, count: 1 })
-        .onConflictDoUpdate({ target: [votes.cardId, votes.userId], set: { count: sql`${votes.count} + 1` } });
-    });
-    const used = await votesUsed(board.id, user.id);
+    await db.insert(votes).values({ boardId: board.id, cardId: card.id, userId: user.id, count: 1 }).onConflictDoNothing();
     await emit(board.id, [card.id]);
-    ctx.hub.emitUser(board.id, user.id, { type: 'votes.used', used });
-    return { used };
+    return { ok: true };
   });
 
   app.delete('/api/cards/:cardId/vote', async req => {
     const user = requireUser(req);
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     const { board } = await requireBoard(db, user, card.boardId, 'vote');
-    const [mine] = await db.select().from(votes).where(and(eq(votes.cardId, card.id), eq(votes.userId, user.id)));
-    if (mine) {
-      if (mine.count <= 1) await db.delete(votes).where(and(eq(votes.cardId, card.id), eq(votes.userId, user.id)));
-      else await db.update(votes).set({ count: mine.count - 1 }).where(and(eq(votes.cardId, card.id), eq(votes.userId, user.id)));
-    }
-    const used = await votesUsed(board.id, user.id);
+    await db.delete(votes).where(and(eq(votes.cardId, card.id), eq(votes.userId, user.id)));
     await emit(board.id, [card.id]);
-    ctx.hub.emitUser(board.id, user.id, { type: 'votes.used', used });
-    return { used };
+    return { ok: true };
   });
 
   // ---- reactions (toggle) ----

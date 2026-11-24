@@ -2,24 +2,22 @@ import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, DEFAULT_BOARD_SETTINGS, byPosition, positionAfter,
+  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, byPosition, positionAfter,
   sanitizeTokens, type BoardSettings, type BoardStateDto, type CardDto, type ColumnSpec,
 } from '@retro/shared';
 import { toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
 import {
-  actionItems, attachments, boards, cards, columns, teamMembers, teams, templates, users, votes,
+  actionItems, attachments, boards, cards, columns, teamMembers, teams, templates, users,
 } from '../db/schema';
 import { requireBoard, requireTeam } from '../lib/access';
 import { getSettings, newBoardSettings, templateFor } from '../lib/instance';
 import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
 import { newId } from '../lib/ids';
-import { boardDto, columnDto, loadActions, loadCards } from '../lib/serialize';
+import { boardDto, boardSettings, columnDto, loadActions, loadCards } from '../lib/serialize';
 
 const zSettings = z.object({
   allowAnonymous: z.boolean().optional(),
-  votesPerUser: z.number().int().min(0).max(100).optional(),
-  maxVotesPerCard: z.number().int().min(1).max(100).optional(),
   locked: z.boolean().optional(),
   theme: z.record(z.string(), z.string()).nullable().optional(),
 });
@@ -27,8 +25,6 @@ const zSettings = z.object({
 function mergeSettings(base: BoardSettings, patch: z.infer<typeof zSettings>): BoardSettings {
   const next: BoardSettings = { ...base };
   if (patch.allowAnonymous !== undefined) next.allowAnonymous = patch.allowAnonymous;
-  if (patch.votesPerUser !== undefined) next.votesPerUser = patch.votesPerUser;
-  if (patch.maxVotesPerCard !== undefined) next.maxVotesPerCard = patch.maxVotesPerCard;
   if (patch.locked !== undefined) next.locked = patch.locked;
   if (patch.theme !== undefined) next.theme = patch.theme ? sanitizeTokens(patch.theme) : null;
   return next;
@@ -136,7 +132,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       }
     }
 
-    const settings = mergeSettings(newBoardSettings(site, team.settings), body.settings ?? {});
+    const settings = mergeSettings(newBoardSettings(site), body.settings ?? {});
 
     const boardId = newId();
     await db.transaction(async tx => {
@@ -159,12 +155,11 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/boards/:boardId', async (req): Promise<BoardStateDto> => {
     const user = requireUser(req);
     const { board, permissions } = await requireBoard(db, user, (req.params as { boardId: string }).boardId);
-    const [cols, shape, actions, memberRows, used] = await Promise.all([
+    const [cols, shape, actions, memberRows] = await Promise.all([
       db.select().from(columns).where(eq(columns.boardId, board.id)),
       loadCards(db, board.id),
       loadActions(db, and(eq(actionItems.teamId, board.teamId), or(eq(actionItems.status, 'open'), eq(actionItems.boardId, board.id)))),
       db.select({ u: users }).from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, board.teamId)),
-      db.select({ n: sql<number>`coalesce(sum(${votes.count}), 0)` }).from(votes).where(and(eq(votes.boardId, board.id), eq(votes.userId, user.id))),
     ]);
     const [team] = await db.select({ id: teams.id, name: teams.name }).from(teams).where(eq(teams.id, board.teamId));
     return {
@@ -175,7 +170,6 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       actions,
       members: memberRows.map(r => toUserDto(r.u)).sort((a, b) => a.name.localeCompare(b.name)),
       permissions,
-      myVotesUsed: Number(used[0]?.n ?? 0),
     };
   });
 
@@ -191,7 +185,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const [updated] = await db.update(boards).set({
       title: body.title ?? board.title,
       status,
-      settings: body.settings ? mergeSettings({ ...DEFAULT_BOARD_SETTINGS, ...board.settings }, body.settings) : board.settings,
+      settings: body.settings ? mergeSettings(boardSettings(board.settings), body.settings) : board.settings,
       closedAt: status === 'open' ? null : board.closedAt ?? new Date(),
     }).where(eq(boards.id, board.id)).returning();
     const dto = await boardDto(db, updated);
@@ -221,7 +215,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       await tx.update(boards).set({ title: savedTitle, status: 'closed', closedAt: new Date() }).where(eq(boards.id, board.id));
       await tx.insert(boards).values({
         id: nextId, teamId: board.teamId, title: CURRENT_BOARD_TITLE, createdBy: user.id,
-        settings: { ...DEFAULT_BOARD_SETTINGS, ...board.settings, locked: false },
+        settings: { ...boardSettings(board.settings), locked: false },
       });
       const carriedPos = positionAfter(null);
       let pos = carriedPos;
@@ -263,7 +257,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     await db.transaction(async tx => {
       await tx.insert(boards).values({
         id: boardId, teamId: team.id, title: CURRENT_BOARD_TITLE, createdBy: user.id,
-        settings: newBoardSettings(site, team.settings),
+        settings: newBoardSettings(site),
       });
       const carriedPos = positionAfter(null);
       let pos = carriedPos;
@@ -355,14 +349,15 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const actions = await loadActions(db, eq(actionItems.boardId, board.id));
     const slug = board.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'board';
     const who = (c: CardDto) => (c.anonymous ? 'Anonymous' : c.author?.name ?? 'Someone');
+    const likes = (n: number) => `${n} ${n === 1 ? 'like' : 'likes'}`;
 
     if (format === 'csv') {
       const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const lines = [['column', 'group', 'card', 'author', 'votes', 'status', 'replies', 'created'].join(',')];
+      const lines = [['column', 'group', 'card', 'author', 'likes', 'status', 'replies', 'created'].join(',')];
       for (const col of cols) {
         for (const c of all.filter(x => x.columnId === col.id)) {
           const head = c.parentId ? all.find(x => x.id === c.parentId) : null;
-          lines.push([col.title, head ? head.groupTitle ?? head.body.slice(0, 40) : c.groupTitle ?? '', c.body, who(c), c.votes,
+          lines.push([col.title, head ? head.groupTitle ?? head.body.slice(0, 40) : c.groupTitle ?? '', c.body, who(c), c.likes,
             CARD_STATUS_LABELS[c.status], c.replies.length, c.createdAt].map(esc).join(','));
         }
       }
@@ -375,17 +370,17 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const md: string[] = [`# ${board.title}`, '', `_${new Date(board.createdAt).toDateString()} · ${board.status}_`, ''];
     for (const col of cols) {
       md.push(`## ${col.title}`, '');
-      const heads = all.filter(c => c.columnId === col.id && !c.parentId).sort((a, b) => b.votes - a.votes);
+      const heads = all.filter(c => c.columnId === col.id && !c.parentId).sort((a, b) => b.likes - a.likes);
       if (!heads.length) md.push('_No cards_', '');
       for (const h of heads) {
         const kids = all.filter(c => c.parentId === h.id);
-        const total = h.votes + kids.reduce((n, k) => n + k.votes, 0);
+        const total = h.likes + kids.reduce((n, k) => n + k.likes, 0);
         const tag = h.status !== 'none' ? ` \`${CARD_STATUS_LABELS[h.status]}\`` : '';
         if (kids.length) {
-          md.push(`- **${h.groupTitle ?? 'Group'}** (${total} votes)${tag}`);
-          for (const c of [h, ...kids]) md.push(`  - ${c.body.replace(/\n+/g, ' ')} — ${who(c)} (${c.votes})`);
+          md.push(`- **${h.groupTitle ?? 'Group'}** (${likes(total)})${tag}`);
+          for (const c of [h, ...kids]) md.push(`  - ${c.body.replace(/\n+/g, ' ')} — ${who(c)} (${c.likes})`);
         } else {
-          md.push(`- ${h.body.replace(/\n+/g, ' ')} — ${who(h)} (${h.votes} votes)${tag}`);
+          md.push(`- ${h.body.replace(/\n+/g, ' ')} — ${who(h)} (${likes(h.likes)})${tag}`);
         }
         for (const r of [h, ...kids].flatMap(c => c.replies)) md.push(`  - ↳ ${r.author?.name ?? 'Someone'}: ${r.body.replace(/\n+/g, ' ')}`);
       }

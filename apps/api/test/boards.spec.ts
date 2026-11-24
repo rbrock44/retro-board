@@ -116,26 +116,26 @@ describe('boards, columns and cards', () => {
     expect(st.cards.find(x => x.id === b.id)!.parentId).toBeNull();
   });
 
-  it('enforces the vote budget and per-card cap', async () => {
-    const { owner, team } = await teamWithBoard(t.app);
-    const b = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Votes', settings: { votesPerUser: 3, maxVotesPerCard: 2 } })).body;
-    const s = await state(owner.client, b.id);
-    const x = (await owner.client.post(`/api/boards/${b.id}/cards`, { columnId: s.columns[0].id, body: 'x' })).body;
-    const y = (await owner.client.post(`/api/boards/${b.id}/cards`, { columnId: s.columns[0].id, body: 'y' })).body;
-    expect((await owner.client.post(`/api/cards/${x.id}/vote`)).body.used).toBe(1);
+  it('lets each person like a card once, and unlike it', async () => {
+    const { owner, team, board, state: s } = await teamWithBoard(t.app);
+    const member = await addMember(t.app, owner.client, team.id);
+    const x = (await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'x' })).body;
+    const likesOf = async (c: typeof owner.client) => (await state(c, board.id)).cards.find(card => card.id === x.id)!;
+
     expect((await owner.client.post(`/api/cards/${x.id}/vote`)).status).toBe(200);
-    const capped = await owner.client.post(`/api/cards/${x.id}/vote`);
-    expect(capped.status).toBe(400);
-    expect(capped.body.error).toMatch(/per card/);
-    expect((await owner.client.post(`/api/cards/${y.id}/vote`)).body.used).toBe(3);
-    expect((await owner.client.post(`/api/cards/${y.id}/vote`)).body.error).toMatch(/all 3 votes/);
-    expect((await owner.client.del(`/api/cards/${x.id}/vote`)).body.used).toBe(2);
-    const st = await state(owner.client, b.id);
-    expect(st.myVotesUsed).toBe(2);
-    expect(st.cards.find(c => c.id === x.id)).toMatchObject({ votes: 1, myVotes: 1 });
+    expect((await owner.client.post(`/api/cards/${x.id}/vote`)).status).toBe(200);
+    expect(await likesOf(owner.client)).toMatchObject({ likes: 1, liked: true });
+    expect(await likesOf(member.client)).toMatchObject({ likes: 1, liked: false });
+
+    await member.client.post(`/api/cards/${x.id}/vote`);
+    expect(await likesOf(member.client)).toMatchObject({ likes: 2, liked: true });
+
+    expect((await owner.client.del(`/api/cards/${x.id}/vote`)).status).toBe(200);
+    expect((await owner.client.del(`/api/cards/${x.id}/vote`)).status).toBe(200);
+    expect(await likesOf(owner.client)).toMatchObject({ likes: 1, liked: false });
   });
 
-  it('locks writing but keeps voting, and closes boards fully', async () => {
+  it('locks writing but keeps likes, and closes boards fully', async () => {
     const { owner, team, board, state: s } = await teamWithBoard(t.app);
     const member = await addMember(t.app, owner.client, team.id);
     const card = (await member.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'x' })).body;
@@ -214,7 +214,7 @@ describe('carry over, actions and history', () => {
     const md = await owner.client.get(`/api/boards/${board.id}/export?format=md`);
     expect(md.raw.headers['content-type']).toMatch(/markdown/);
     expect(md.raw.body).toContain('## Start');
-    expect(md.raw.body).toContain('- Pair more, "really" — Owner (0 votes)');
+    expect(md.raw.body).toContain('- Pair more, "really" — Owner (0 likes)');
     const csv = await owner.client.get(`/api/boards/${board.id}/export?format=csv`);
     expect(csv.raw.body.split('\n')[1]).toBe('"Start","","Pair more, ""really""","Owner","0","Unmarked","0","' + (await state(owner.client, board.id)).cards[0].createdAt + '"');
   });

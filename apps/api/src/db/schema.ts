@@ -153,11 +153,12 @@ export const attachments = pgTable('attachments', {
   createdAt: createdAt(),
 }, t => [index('attachments_board_idx').on(t.boardId)]);
 
+/** Likes: one row per person per card, `count` is always 1 (the table predates likes and kept its name). */
 export const votes = pgTable('votes', {
   boardId: text('board_id').notNull().references(() => boards.id, { onDelete: 'cascade' }),
   cardId: text('card_id').notNull().references(() => cards.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  count: integer('count').notNull().default(0),
+  count: integer('count').notNull().default(1),
 }, t => [primaryKey({ columns: [t.cardId, t.userId] }), index('votes_board_user_idx').on(t.boardId, t.userId)]);
 
 export const reactions = pgTable('reactions', {

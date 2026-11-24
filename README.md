@@ -13,7 +13,7 @@
   - [Teams and Roles](#teams-and-roles)
   - [Running a Retro](#running-a-retro)
   - [Cards, Media and Replies](#cards-media-and-replies)
-  - [Voting, Grouping and Marking](#voting-grouping-and-marking)
+  - [Likes, Grouping and Marking](#likes-grouping-and-marking)
   - [Carry Over and Action Items](#carry-over-and-action-items)
   - [Demo Mode](#demo-mode)
   - [History, Search and Export](#history-search-and-export)
@@ -53,7 +53,7 @@ plain email and password).
   accounts by email
 - `Team roles`
   - `admin` - Manages members, invites, templates and team defaults; closes, archives and deletes boards
-  - `member` - Starts retros, adds cards, replies and media, votes, reacts, manages action items. Facilitates
+  - `member` - Starts retros, adds cards, replies and media, likes cards, reacts, manages action items. Facilitates
     the boards they start
   - `viewer` - Read-only, for stakeholders who want to follow along
 - `Instance admin` - The first account created, plus anyone in `ADMIN_EMAILS`. Manages every account from the
@@ -69,11 +69,11 @@ its default template), so people always land in the right place.
   place with the same columns and settings. Cards marked `Carry over` move to the fresh board, back in the column
   they came from. Everyone on the board is moved over automatically
 - `New board` (on the History page) - Pick a template (Went Well / To Improve / Actions, Start / Stop / Continue, Mad / Sad / Glad,
-  4Ls, Sailboat, Blank, or one your team saved), a vote budget and whether anonymous cards are allowed
+  4Ls, Sailboat, Blank, or one your team saved) and whether anonymous cards are allowed
 - `Columns` - Facilitators add, rename, recolor (color picker with presets), describe, reorder and delete columns.
   `Save columns as template` keeps a layout for the team
-- `Board settings` - Votes per person, max votes per card, anonymous cards, `Lock` (no new or edited cards, voting
-  stays open), a board-wide color theme, and `Close` / `Reopen` / `Archive`
+- `Board settings` - Anonymous cards, `Lock` (no new or edited cards, likes and reactions stay open), a board-wide
+  color theme, and `Close` / `Reopen` / `Archive`
 - `Live` - Every change appears for everyone instantly. Avatars in the header show who is on the board, and a
   "typing…" hint shows under columns where someone is writing
 
@@ -84,14 +84,14 @@ its default template), so people always land in the right place.
   the composer. With a Tenor key configured, the `GIF` button searches GIFs. Click an image for a full-size view
 - `Replies` - 💬 opens a thread on any card. Replies support markdown, media and reactions, and can be answered
   one level deep
-- `Reactions` - Emoji reactions on cards and replies, separate from votes
+- `Reactions` - Emoji reactions on cards and replies, separate from likes
 
-### Voting, Grouping and Marking
+### Likes, Grouping and Marking
 
-- `Vote` - `+` spends one of your votes, `−` takes one back. The header shows how many you have left
+- `Like` - 👍 on a card likes it, click again to unlike. Everyone can like every card, once. No budget, no limits
 - `Group` - Turn on `Group mode` (or press `G`) and drag a card onto another card, or use a card's `⋯` →
-  `Group with…` and click the target. Name the group by clicking its title. Groups show their combined votes
-- `Sort` - `Manual` (drag to reorder, including across columns) or `Most votes`
+  `Group with…` and click the target. Name the group by clicking its title. Groups show their combined likes
+- `Sort` - `Manual` (drag to reorder, including across columns) or `Most liked`
 - `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry over`. Filter the board by mark with `Show`
 
 ### Carry Over and Action Items
@@ -105,11 +105,11 @@ its default template), so people always land in the right place.
 ### Demo Mode
 
 If the app can't reach its server when it starts, it runs as a **demo** instead: sample teams, a finished retro
-and a live one with votes, groups, replies and images, plus pretend teammates who vote and add cards while you
+and a live one with likes, groups, replies and images, plus pretend teammates who like and add cards while you
 watch. A banner says it's a demo. This is what [retro.ryan-brock.com](https://retro.ryan-brock.com) is: the web app
 on GitHub Pages with no server behind it.
 
-- **Everything works and is saved in your browser**: add teams, start retros, write cards, vote, mark, carry over
+- **Everything works and is saved in your browser**: add teams, start retros, write cards, like, mark, carry over
 - **Demos** keeps several setups side by side; open, rename, delete, or start a new one from the sample data.
   **Reset** puts the current one back
 - **Share** copies a link that carries the whole demo. Whoever opens it gets their own copy to play with. Big
@@ -192,7 +192,7 @@ It asks a few questions, each with a sensible default already filled in (press E
 2. **Who will open it**: just you, people on your network, or a real web address
 3. **How people get in**: accounts, or no sign-in at all ([No Sign-in Mode](#no-sign-in-mode)), plus
    Google / GitHub / Microsoft / Okta if you want them
-4. **Look and defaults** (optional): site name, theme and accent color, default columns, votes per person
+4. **Look and defaults** (optional): site name, theme and accent color, default columns
 5. **GIF search** (optional)
 
 Then it builds, starts, waits until everything is healthy, and opens your browser. **In accounts mode, the first
@@ -255,10 +255,10 @@ Almost everything can be changed, at three levels:
 
 | Who | Where | What |
 |---|---|---|
-| The person setting it up | `./launch.sh` questions or options | Site name, theme, accent color, default columns, votes per person, sign-in, providers |
+| The person setting it up | `./launch.sh` questions or options | Site name, theme, accent color, default columns, sign-in, providers |
 | Instance admins | **Admin → Customize** | The same look and defaults, plus templates every team can use and who can sign up. Starts from the launch settings; **Reset** goes back to them |
-| Team admins | Team **History → Settings** | The team's default columns and votes, and saved column templates |
-| Facilitators | **⚙ Board settings** on a board | Columns (add, rename, recolor, reorder), votes, anonymous cards, lock, and a theme just for that board |
+| Team admins | Team **History → Settings** | The team's default columns and saved column templates |
+| Facilitators | **⚙ Board settings** on a board | Columns (add, rename, recolor, reorder), anonymous cards, lock, and a theme just for that board |
 | Everyone | **Profile & theme** | Their own theme: 7 presets or any colors, with a readability check |
 
 ### Share on Your Network

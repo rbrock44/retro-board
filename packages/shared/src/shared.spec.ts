@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   THEME_PRESETS, canVoteBoard, canWriteBoard, contrastRatio, positionAfter, positionBetween,
-  readableTextOn, sanitizeTokens, voteBlockedReason,
+  readableTextOn, sanitizeTokens,
 } from './index';
 
 describe('positions', () => {
@@ -19,27 +19,14 @@ describe('positions', () => {
   });
 });
 
-describe('votes', () => {
-  const settings = { votesPerUser: 3, maxVotesPerCard: 2 };
-  it('allows votes under both limits', () => {
-    expect(voteBlockedReason({ usedOnBoard: 1, usedOnCard: 1, settings })).toBeNull();
-  });
-  it('blocks past the board budget', () => {
-    expect(voteBlockedReason({ usedOnBoard: 3, usedOnCard: 0, settings })).toMatch(/all 3 votes/);
-  });
-  it('blocks past the per-card cap', () => {
-    expect(voteBlockedReason({ usedOnBoard: 2, usedOnCard: 2, settings })).toMatch(/per card/);
-  });
-});
-
 describe('board access', () => {
   const base = { role: 'member' as const, isCreator: false, status: 'open' as const, locked: false };
   it('lets members write an open board', () => expect(canWriteBoard(base)).toBe(true));
-  it('never lets viewers write or vote', () => {
+  it('never lets viewers write or like cards', () => {
     expect(canWriteBoard({ ...base, role: 'viewer' })).toBe(false);
     expect(canVoteBoard({ ...base, role: 'viewer' })).toBe(false);
   });
-  it('locks members out of writing but not voting', () => {
+  it('locks members out of writing but not liking', () => {
     expect(canWriteBoard({ ...base, locked: true })).toBe(false);
     expect(canVoteBoard({ ...base, locked: true })).toBe(true);
   });

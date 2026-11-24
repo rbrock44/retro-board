@@ -33,7 +33,7 @@ Run one side at a time with `npm run dev -w @retro/api` or `npm start -w @retro/
 
 ## Conventions
 
-- **Shared first.** Types that cross the wire, and any rule both sides need (permissions, vote limits, ordering,
+- **Shared first.** Types that cross the wire, and any rule both sides need (permissions, ordering,
   theme validation), go in `packages/shared`. Keep it free of Node and Angular imports
 - **Every mutation broadcasts.** After writing, a route calls `broadcastCards()`, `broadcastAction()` or
   `ctx.hub.emitBoard()`. A change that isn't broadcast only shows up for others on reload

@@ -51,7 +51,6 @@ Look and defaults (admins can change these later in the app: Admin > Customize)
   --theme NAME              auto (light/dark per device), light, dark, midnight, forest, sunset, grape, high-contrast
   --accent #RRGGBB          accent color on top of the theme
   --columns TEMPLATE        went-well, start-stop-continue, mad-sad-glad, 4ls, sailboat, blank
-  --votes N                 votes per person on a new board (default 6)
 
 Other
   --tenor-key KEY           turns on GIF search (searches go to Tenor)
@@ -124,7 +123,7 @@ $optionKeys = [ordered]@{
   '--port' = 'PORT'; '--url' = 'PUBLIC_URL'; '--tenor-key' = 'TENOR_API_KEY'
   '--auth' = 'AUTH_MODE'; '--signup' = 'LOCAL_SIGNUP'; '--access' = 'ACCESS'
   '--data' = 'DATA_STORAGE'; '--site-name' = 'SITE_NAME'; '--theme' = 'DEFAULT_THEME'; '--accent' = 'DEFAULT_ACCENT'
-  '--columns' = 'DEFAULT_TEMPLATE'; '--votes' = 'DEFAULT_VOTES'
+  '--columns' = 'DEFAULT_TEMPLATE'
 }
 $choices = @{
   '--auth' = @('accounts', 'none'); '--signup' = @('open', 'invite', 'closed'); '--access' = @('local', 'network', 'domain')
@@ -143,7 +142,7 @@ for ($i = 0; $i -lt $argList.Count; $i++) {
   if ($i + 1 -ge $argList.Count) { Fail "$opt needs a value (see launch.cmd --help)" 2 }
   $val = [string]$argList[++$i]
   if ($choices.ContainsKey($opt) -and $choices[$opt] -notcontains $val) { Fail "$opt is one of: $($choices[$opt] -join ', ')" 2 }
-  if (@('--port', '--votes') -contains $opt -and $val -notmatch '^\d+$') { Fail "$opt is a number" 2 }
+  if ($opt -eq '--port' -and $val -notmatch '^\d+$') { Fail "$opt is a number" 2 }
   if ($opt -eq '--accent' -and $val -notmatch '^#[0-9a-fA-F]{6}$') { Fail '--accent is a color like #3b82f6' 2 }
   if ($opt -eq '--url') { $val = $val.TrimEnd('/'); $sets['ACCESS'] = 'domain' }
   $sets[$optionKeys[$opt]] = $val
@@ -391,12 +390,6 @@ if ($ask) {
     Write-Host '   Columns for new boards: went-well (Went well / To improve / Action ideas), start-stop-continue,'
     Write-Host '   mad-sad-glad, 4ls (Liked / Learned / Lacked / Longed for), sailboat, blank'
     Set-EnvValue 'DEFAULT_TEMPLATE' (Ask-Choice '   Columns' (Or (Get-EnvValue 'DEFAULT_TEMPLATE') 'went-well') $choices['--columns'])
-    while ($true) {
-      $votes = Ask '   Votes per person' (Or (Get-EnvValue 'DEFAULT_VOTES') '6')
-      if ($votes -match '^\d+$') { break }
-      Write-Host '   a number, please'
-    }
-    Set-EnvValue 'DEFAULT_VOTES' $votes
   }
 
   Write-Host ''

@@ -25,6 +25,7 @@ export interface DemoState {
     attachmentIds: string[]; createdAt: string; editedAt: string | null;
   }[];
   attachments: Record<string, AttachmentDto>;
+  /** Likes, one row per person per card (`count` is always 1, as on the server) */
   votes: { boardId: string; cardId: string; userId: string; count: number }[];
   reactions: { boardId: string; targetType: 'card' | 'reply'; targetId: string; userId: string; emoji: string }[];
   actions: {
@@ -183,13 +184,14 @@ export function seedDemo(now = Date.now()): DemoState {
     'a-burndown': attachment('a-burndown', 'image', BURNDOWN, 480, 280, 'burndown.svg'),
   };
 
+  // Likes: one per person per card (kept under `votes`, like the server's table)
   const votes: DemoState['votes'] = [];
-  const vote = (c: DemoCard, userId: string, count = 1) => votes.push({ boardId: c.boardId, cardId: c.id, userId, count });
-  vote(ship, 'u-sam', 2); vote(ship, 'u-priya'); vote(ship, 'u-jordan');
-  vote(burndown, 'u-alex');
-  vote(reviews, 'u-jordan', 2); vote(reviews, DEMO_ME);
-  vote(flaky, 'u-alex', 2); vote(flaky2, 'u-jordan', 2); vote(flaky3, 'u-priya', 3); vote(flaky, DEMO_ME, 2);
-  vote(scope, 'u-sam'); vote(idea1, 'u-sam', 2); vote(idea1, 'u-priya');
+  const like = (c: DemoCard, ...userIds: string[]) => { for (const userId of userIds) votes.push({ boardId: c.boardId, cardId: c.id, userId, count: 1 }); };
+  like(ship, 'u-sam', 'u-priya', 'u-jordan', 'u-alex');
+  like(burndown, 'u-alex');
+  like(reviews, 'u-jordan', 'u-sam', DEMO_ME);
+  like(flaky, 'u-alex', 'u-jordan', DEMO_ME); like(flaky2, 'u-jordan', 'u-sam'); like(flaky3, 'u-priya', 'u-sam', 'u-jordan');
+  like(scope, 'u-sam'); like(idea1, 'u-sam', 'u-priya', 'u-jordan');
 
   const reactions: DemoState['reactions'] = [
     { boardId: live.id, targetType: 'card', targetId: ship.id, userId: 'u-sam', emoji: '🎉' },

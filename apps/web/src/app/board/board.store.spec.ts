@@ -1,22 +1,21 @@
 import type { BoardStateDto, CardDto } from '@retro/shared';
-import { applyEvent, groupVotes } from './board.store';
+import { applyEvent, groupLikes } from './board.store';
 
 const card = (id: string, extra: Partial<CardDto> = {}): CardDto => ({
   id, boardId: 'b', columnId: 'c1', parentId: null, groupTitle: null, position: 'a0', body: id, anonymous: false,
-  author: null, mine: false, status: 'none', votes: 0, myVotes: 0, attachments: [], reactions: [], replies: [],
+  author: null, mine: false, status: 'none', likes: 0, liked: false, attachments: [], reactions: [], replies: [],
   carriedFrom: null, createdAt: '', editedAt: null, ...extra,
 });
 
 const state = (): BoardStateDto => ({
   board: { id: 'b', teamId: 't', title: 'B', status: 'open', createdAt: '', closedAt: null, createdBy: null, cardCount: 0, actionCount: 0,
-    settings: { allowAnonymous: true, votesPerUser: 5, maxVotesPerCard: 3, locked: false } },
+    settings: { allowAnonymous: true, locked: false } },
   team: { id: 't', name: 'T' },
   columns: [{ id: 'c1', boardId: 'b', title: 'One', description: '', color: '#000000', position: 'a0' }],
   cards: [card('x')],
   actions: [],
   members: [],
   permissions: { role: 'member', canWrite: true, canVote: true, canFacilitate: false },
-  myVotesUsed: 0,
 });
 
 describe('applyEvent', () => {
@@ -39,8 +38,9 @@ describe('applyEvent', () => {
     expect(s.columns.map(c => c.id)).toEqual(['c0', 'c1']);
   });
 
-  it('tracks my vote budget', () => {
-    expect(applyEvent(state(), { type: 'votes.used', used: 4 }).myVotesUsed).toBe(4);
+  it('shows a like as soon as the card comes back', () => {
+    const s = applyEvent(state(), { type: 'card.upsert', card: card('x', { likes: 1, liked: true }) });
+    expect(s.cards.find(c => c.id === 'x')).toMatchObject({ likes: 1, liked: true });
   });
 
   it('does not mutate the previous state', () => {
@@ -50,8 +50,8 @@ describe('applyEvent', () => {
   });
 });
 
-describe('groupVotes', () => {
+describe('groupLikes', () => {
   it('adds up a group head and its cards', () => {
-    expect(groupVotes(card('h', { votes: 2 }), [card('a', { votes: 3 }), card('b', { votes: 1 })])).toBe(6);
+    expect(groupLikes(card('h', { likes: 2 }), [card('a', { likes: 3 }), card('b', { likes: 1 })])).toBe(6);
   });
 });

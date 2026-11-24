@@ -67,6 +67,8 @@ export interface AuthProviderInfo {
 
 export interface AuthConfigDto {
   mode: AuthMode;
+  /** PUBLIC_URL: the address people are meant to use (links that get shared are built from it) */
+  publicUrl: string;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };
   providers: AuthProviderInfo[];
   gifSearch: boolean;

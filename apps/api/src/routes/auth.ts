@@ -56,6 +56,7 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.get('/api/auth/config', async (): Promise<AuthConfigDto> => ({
     mode: config.authMode,
+    publicUrl: config.publicUrl,
     local: open ? { ...ctx.auth.local, enabled: false } : ctx.auth.local,
     providers: open ? [] : ctx.auth.list(),
     gifSearch: !!config.tenorApiKey,

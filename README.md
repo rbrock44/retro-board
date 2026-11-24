@@ -19,6 +19,7 @@
 - [Technologies](#-technologies)
 - [Getting Started (Local Setup)](#-getting-started-local-setup)
   - [Launch (One Command)](#launch-one-command)
+  - [Share on Your Network](#share-on-your-network)
   - [No Sign-in Mode](#no-sign-in-mode)
   - [Sign-in Providers](#sign-in-providers)
   - [Configuration](#configuration)
@@ -144,7 +145,7 @@ Run on its own, it asks a few questions, each showing the current value (Enter k
 
 - **Sign-in**: `accounts` (people sign in) or `none` (no sign-in; see [No Sign-in Mode](#no-sign-in-mode))
 - who can create an account, admin emails, and which of Google, GitHub, Microsoft and Okta to turn on
-- port, the address people open, and an optional GIF search key
+- port, **who will open it** (just you, people on your network, or a real domain), and an optional GIF search key
 
 Then it saves the answers in `.env` (creating it with a random session secret the first time), builds the image,
 starts the app and Postgres, waits until the app is healthy, and opens the browser. **In accounts mode the first
@@ -153,6 +154,7 @@ account you create becomes the admin.**
 Pass options instead to skip the questions, which suits scripts and servers:
 
 ```bash
+./launch.sh --network --auth none      # share it on your office network
 ./launch.sh --auth none --port 3000
 ./launch.sh --auth accounts --signup invite --google-id … --google-secret …
 ./launch.sh -y          # no questions, current settings
@@ -168,6 +170,25 @@ Pass options instead to skip the questions, which suits scripts and servers:
 | `./launch.sh stop` | Stop everything (data is kept in Docker volumes) |
 
 `launch.cmd` takes the same commands and options on Windows. Plain `docker compose up -d --build` works too.
+
+### Share on Your Network
+
+To let coworkers use it from their own computers, run it on one machine with network access on:
+
+```bash
+./launch.sh --network          # or answer "network" when it asks who will open it
+```
+
+When it's up, it prints the address to send people, such as `http://192.168.1.20:8080`. That address uses this
+computer's network IP, which it looks up again on every launch, so if the IP changes, run it again and send the new
+one. On Windows, `launch.cmd` offers to open the port in Windows Firewall (it asks for admin).
+
+- Everyone has to be on the same network (office LAN or VPN), and this computer has to stay on with Docker running.
+  Docker restarts the app by itself after a reboot once Docker Desktop starts
+- It's plain `http`, so on a network you don't trust, sign-in details travel unencrypted. Pair it with
+  `--auth none` on a trusted network, or put it behind HTTPS ([docs/deployment.md](docs/deployment.md))
+- Google, Microsoft and Okta won't sign people in at a bare IP address; use email and password, GitHub, or no
+  sign-in
 
 ### No Sign-in Mode
 

@@ -4,6 +4,7 @@
 #   ./launch.sh                 asks how to set it up (current values are the defaults), then builds and starts
 #   ./launch.sh [options]       sets what you pass, no questions, then builds and starts
 #   ./launch.sh -y              starts with the current settings, no questions
+#   ./launch.sh --network       share it on your network (prints the address to give people)
 #   ./launch.sh update          rebuild after pulling new code (no questions)
 #   ./launch.sh stop            stop it
 #   ./launch.sh logs            follow the logs
@@ -32,9 +33,17 @@ Sign-in providers (accounts mode; each appears on the login page once set)
   --ms-id ID       --ms-secret SECRET      --ms-tenant TENANT   (default: common)
   --okta-issuer URL  --okta-id ID          --okta-secret SECRET
 
+Who opens it
+  --access local|network|domain
+                            local:   only this computer (http://localhost:PORT)
+                            network: people on your network, at http://<this computer's IP>:PORT.
+                                     The IP is looked up again on every launch
+                            domain:  a real address you set up, given with --url
+  --network                 same as --access network
+  --url URL                 address people open, e.g. https://retro.example.com (sets --access domain)
+
 Server
   --port N                  port on this machine (default 8080)
-  --url URL                 address people open, e.g. https://retro.example.com
   --tenor-key KEY           turns on GIF search
 
   -y, --yes                 don't ask anything
@@ -55,6 +64,21 @@ set_env() {
   fi
 }
 
+# This computer's address on the local network (the interface with the default route), or nothing.
+lan_ip() {
+  case "$(uname -s)" in
+    Linux)
+      found=$(ip route get 1.1.1.1 2>/dev/null | awk '{ for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit } }')
+      [ -n "$found" ] || found=$(hostname -I 2>/dev/null | awk '{ print $1 }') ;;
+    Darwin)
+      iface=$(route -n get default 2>/dev/null | awk '/interface:/ { print $2 }')
+      found=$(ipconfig getifaddr "${iface:-en0}" 2>/dev/null) ;;
+    MINGW*|MSYS*|CYGWIN*)
+      found=$(powershell.exe -NoProfile -Command "(Get-NetIPConfiguration | Where-Object { \$_.IPv4DefaultGateway -and \$_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1).IPv4Address.IPAddress" 2>/dev/null | tr -d '\r') ;;
+  esac
+  case "$found" in *.*.*.*) printf '%s' "$found" ;; esac
+}
+
 # ---- arguments ---------------------------------------------------------------
 
 cmd=up
@@ -73,7 +97,8 @@ while [ $# -gt 0 ]; do
   case "$opt" in
     -h|--help) usage; exit 0 ;;
     -y|--yes) ask=0; shift; continue ;;
-    --auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--tenor-key) ;;
+    --network) add_set ACCESS network; shift; continue ;;
+    --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--tenor-key) ;;
     *) echo "Unknown option $opt (see ./launch.sh --help)" >&2; exit 2 ;;
   esac
   [ $# -ge 2 ] || { echo "$opt needs a value (see ./launch.sh --help)" >&2; exit 2; }
@@ -97,7 +122,10 @@ while [ $# -gt 0 ]; do
     --okta-id) add_set OKTA_CLIENT_ID "$val" ;;
     --okta-secret) add_set OKTA_CLIENT_SECRET "$val" ;;
     --port) add_set PORT "$val" ;;
-    --url) add_set PUBLIC_URL "${val%/}" ;;
+    --url) add_set PUBLIC_URL "${val%/}"; add_set ACCESS domain ;;
+    --access)
+      case "$val" in local|network|domain) ;; *) echo "--access is local, network or domain" >&2; exit 2 ;; esac
+      add_set ACCESS "$val" ;;
     --tenor-key) add_set TENOR_API_KEY "$val" ;;
     *) echo "Unknown option $opt (see ./launch.sh --help)" >&2; exit 2 ;;
   esac
@@ -132,12 +160,6 @@ fi
 printf '%s' "$SETS" | while IFS= read -r line; do
   [ -n "$line" ] && set_env "${line%%=*}" "${line#*=}"
 done
-
-# a new --port also moves a localhost address, unless --url was given
-new_port=$(printf '%s' "$SETS" | grep '^PORT=' | tail -1 | cut -d= -f2-)
-if [ -n "$new_port" ] && ! printf '%s' "$SETS" | grep -q '^PUBLIC_URL='; then
-  case "$(get_env PUBLIC_URL)" in ''|http://localhost:*) set_env PUBLIC_URL "http://localhost:$new_port" ;; esac
-fi
 
 # questions, only for a bare ./launch.sh in a terminal
 [ -t 0 ] || ask=0
@@ -219,17 +241,52 @@ if [ "$ask" = 1 ]; then
 
   echo
   port=$(get_env PORT); prompt port "Port" "${port:-8080}"; set_env PORT "$port"
-  url=$(get_env PUBLIC_URL); [ -n "$url" ] || url="http://localhost:$port"
-  case "$url" in http://localhost:*) url="http://localhost:$port" ;; esac
-  prompt url "Address people open" "$url"; set_env PUBLIC_URL "${url%/}"
+  echo
+  echo "Who will open it?"
+  echo "  local    just this computer"
+  echo "  network  people on your network (office, VPN): you get an address to send them"
+  echo "  domain   a real web address you've set up (https://retro.example.com)"
+  access=$(get_env ACCESS); access=${access:-local}
+  while :; do
+    prompt picked "Access" "$access"
+    case "$picked" in local|network|domain) access=$picked; break ;; *) echo "  type local, network or domain" ;; esac
+  done
+  set_env ACCESS "$access"
+  if [ "$access" = domain ]; then
+    url=$(get_env PUBLIC_URL)
+    case "$url" in http://localhost:*|http://[0-9]*) url="" ;; esac
+    prompt url "Address people open" "$url"; set_env PUBLIC_URL "${url%/}"
+  fi
   prompt_secret tenor "Tenor API key for GIF search (optional)" "$(get_env TENOR_API_KEY)"
   set_env TENOR_API_KEY "$tenor"
   echo
 fi
 
-port=$(get_env PORT)
+# ---- address -----------------------------------------------------------------
+
+port=$(get_env PORT); port=${port:-8080}
 url=$(get_env PUBLIC_URL)
-url=${url:-http://localhost:${port:-8080}}
+access=$(get_env ACCESS)
+if [ -z "$access" ]; then # .env from before ACCESS existed: work it out from the address
+  case "$url" in ''|http://localhost:*) access=local ;; http://10.*|http://192.168.*|http://172.*) access=network ;; *) access=domain ;; esac
+  set_env ACCESS "$access"
+fi
+case "$access" in
+  local) url="http://localhost:$port" ;;
+  network)
+    ip=$(lan_ip)
+    if [ -n "$ip" ]; then
+      new="http://$ip:$port"
+      case "$url" in "$new"|'') ;; http://localhost:*) ;; *) echo "Network address changed: $url -> $new" ;; esac
+      url=$new
+    else
+      echo "Couldn't find this computer's network address; keeping ${url:-http://localhost:$port}." >&2
+      echo "Set it yourself with ./launch.sh --url http://<ip>:$port" >&2
+      url=${url:-http://localhost:$port}
+    fi ;;
+  domain) url=${url:-http://localhost:$port} ;;
+esac
+set_env PUBLIC_URL "$url"
 mode=$(get_env AUTH_MODE)
 
 # ---- start -------------------------------------------------------------------
@@ -249,6 +306,18 @@ until docker compose exec -T app node -e "fetch('http://localhost:8080/api/healt
 done
 echo
 echo "Retro Board is running at $url"
+if [ "$access" = network ]; then
+  echo
+  echo "  Send people this address: $url"
+  echo "  They need to be on the same network. This computer has to stay on with Docker running."
+  echo "  If they can't connect, allow port $port through this computer's firewall"
+  case "$(uname -s)" in
+    Linux) echo "  (e.g. sudo ufw allow $port/tcp)." ;;
+    MINGW*|MSYS*|CYGWIN*) echo "  (launch.cmd offers to do this for you)." ;;
+    *) echo "  (System Settings > Network > Firewall)." ;;
+  esac
+  echo
+fi
 if [ "$mode" = none ]; then
   echo "No sign-in: anyone who can open that address can see and change everything."
 else
@@ -256,5 +325,9 @@ else
   for p in google:GOOGLE_CLIENT_ID github:GITHUB_CLIENT_ID microsoft:MS_CLIENT_ID okta:OKTA_CLIENT_ID; do
     [ -n "$(get_env "${p#*:}")" ] && echo "  ${p%%:*} redirect URL: $url/api/auth/${p%%:*}/callback"
   done
+  if [ "$access" = network ] && [ -n "$(get_env GOOGLE_CLIENT_ID)$(get_env MS_CLIENT_ID)$(get_env OKTA_CLIENT_ID)" ]; then
+    echo "  Note: Google, Microsoft and Okta won't redirect back to a plain network IP address."
+    echo "  On a network, use email/password, GitHub, or no sign-in (--auth none)."
+  fi
 fi
 ( command -v open >/dev/null && open "$url" ) || ( command -v xdg-open >/dev/null && xdg-open "$url" ) >/dev/null 2>&1 || true

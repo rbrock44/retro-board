@@ -388,7 +388,16 @@ export class TeamPage {
     }
   }
 
-  inviteUrl(i: InviteDto) { return `${location.origin}/invite/${i.token}`; }
+  /**
+   * Built from PUBLIC_URL when you're on localhost but the site is shared at another address (launch --network),
+   * so the link you copy works for the people you send it to.
+   */
+  inviteUrl(i: InviteDto) {
+    const shared = this.auth.config()?.publicUrl;
+    const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+    const base = local && shared && !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]?/.test(shared) ? shared : location.origin;
+    return `${base}/invite/${i.token}`;
+  }
 
   async createInvite() {
     try {

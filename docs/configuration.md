@@ -14,6 +14,7 @@ Google, GitHub, Microsoft and Okta credentials from the `GOOGLE_*`, `GITHUB_*`, 
 |---|---|---|
 | `PORT` | `8080` | Port to listen on. With Docker, the port on the host |
 | `HOST` | `0.0.0.0` | Interface to bind (outside Docker) |
+| `ACCESS` | `local` | Read only by the launch scripts: `local`, `network` (sets `PUBLIC_URL` to this computer's network address on every launch) or `domain` (keeps your `PUBLIC_URL`) |
 | `PUBLIC_URL` | `http://localhost:<PORT>` | The address people type. Used for OAuth redirect URLs and secure-cookie detection |
 | `SESSION_SECRET` | random per start | Signs cookies. **Set it**: without one, everyone is signed out on every restart. Launch scripts generate one |
 | `SESSION_DAYS` | `30` | How long a sign-in lasts |

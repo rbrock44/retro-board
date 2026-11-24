@@ -3,6 +3,7 @@
 The Docker setup is production-shaped already: Postgres with a persistent volume, uploads in a volume, health
 checks, restarts. This page covers putting it on a real server.
 
+- [On your office network](#on-your-office-network)
 - [On a server](#on-a-server)
 - [HTTPS with a reverse proxy](#https-with-a-reverse-proxy)
 - [S3 storage for uploads](#s3-storage-for-uploads)
@@ -11,6 +12,22 @@ checks, restarts. This page covers putting it on a real server.
 - [Upgrades](#upgrades)
 - [Running without Docker](#running-without-docker)
 - [Scaling notes](#scaling-notes)
+
+## On your office network
+
+The simplest setup: one computer runs Docker and everyone else opens it in a browser.
+
+```bash
+./launch.sh --network
+```
+
+The launcher finds the computer's network IP, sets `PUBLIC_URL=http://<ip>:<port>` (again on every launch, in case
+the IP changed), and prints the address to share. On Windows it offers to add an inbound firewall rule for the
+port (`Retro Board (8080)`, Private and Domain networks), and Windows needs the network set to Private for it to
+apply. On Linux, open the port yourself (`sudo ufw allow 8080/tcp`).
+
+For an address that doesn't change, give the computer a reserved IP in your router, or a DNS name, and use
+`./launch.sh --url http://retro.office.lan:8080` instead.
 
 ## On a server
 

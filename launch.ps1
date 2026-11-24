@@ -3,6 +3,7 @@
 #   launch.cmd                 asks how to set it up (current values are the defaults), then builds and starts
 #   launch.cmd [options]       sets what you pass, no questions, then builds and starts
 #   launch.cmd -y              starts with the current settings, no questions
+#   launch.cmd --network       share it on your network (prints the address to give people)
 #   launch.cmd update | stop | logs
 #
 # launch.cmd --help lists the options.
@@ -28,9 +29,17 @@ Sign-in providers (accounts mode; each appears on the login page once set)
   --ms-id ID       --ms-secret SECRET      --ms-tenant TENANT   (default: common)
   --okta-issuer URL  --okta-id ID          --okta-secret SECRET
 
+Who opens it
+  --access local|network|domain
+                            local:   only this computer (http://localhost:PORT)
+                            network: people on your network, at http://<this computer's IP>:PORT.
+                                     The IP is looked up again on every launch
+                            domain:  a real address you set up, given with --url
+  --network                 same as --access network
+  --url URL                 address people open, e.g. https://retro.example.com (sets --access domain)
+
 Server
   --port N                  port on this machine (default 8080)
-  --url URL                 address people open, e.g. https://retro.example.com
   --tenor-key KEY           turns on GIF search
 
   -y, --yes                 don't ask anything
@@ -75,7 +84,7 @@ $optionKeys = [ordered]@{
   '--ms-id' = 'MS_CLIENT_ID'; '--ms-secret' = 'MS_CLIENT_SECRET'; '--ms-tenant' = 'MS_TENANT'
   '--okta-issuer' = 'OKTA_ISSUER'; '--okta-id' = 'OKTA_CLIENT_ID'; '--okta-secret' = 'OKTA_CLIENT_SECRET'
   '--port' = 'PORT'; '--url' = 'PUBLIC_URL'; '--tenor-key' = 'TENOR_API_KEY'
-  '--auth' = 'AUTH_MODE'; '--signup' = 'LOCAL_SIGNUP'
+  '--auth' = 'AUTH_MODE'; '--signup' = 'LOCAL_SIGNUP'; '--access' = 'ACCESS'
 }
 $sets = [ordered]@{}
 
@@ -83,12 +92,14 @@ for ($i = 0; $i -lt $argList.Count; $i++) {
   $opt = [string]$argList[$i]
   if (@('-h', '--help', '/?') -contains $opt) { Write-Host $usage; exit 0 }
   if (@('-y', '--yes') -contains $opt) { $ask = $false; continue }
+  if ($opt -eq '--network') { $sets['ACCESS'] = 'network'; $ask = $false; continue }
   if (-not $optionKeys.Contains($opt)) { [Console]::Error.WriteLine("Unknown option $opt (see launch.cmd --help)"); exit 2 }
   if ($i + 1 -ge $argList.Count) { [Console]::Error.WriteLine("$opt needs a value (see launch.cmd --help)"); exit 2 }
   $val = [string]$argList[++$i]
   if ($opt -eq '--auth' -and @('accounts', 'none') -notcontains $val) { [Console]::Error.WriteLine('--auth is accounts or none'); exit 2 }
   if ($opt -eq '--signup' -and @('open', 'invite', 'closed') -notcontains $val) { [Console]::Error.WriteLine('--signup is open, invite or closed'); exit 2 }
-  if ($opt -eq '--url') { $val = $val.TrimEnd('/') }
+  if ($opt -eq '--access' -and @('local', 'network', 'domain') -notcontains $val) { [Console]::Error.WriteLine('--access is local, network or domain'); exit 2 }
+  if ($opt -eq '--url') { $val = $val.TrimEnd('/'); $sets['ACCESS'] = 'domain' }
   $sets[$optionKeys[$opt]] = $val
   $ask = $false
 }
@@ -116,12 +127,6 @@ if (-not (Test-Path .env)) {
 }
 
 foreach ($k in $sets.Keys) { Set-EnvValue $k $sets[$k] }
-# a new --port also moves a localhost address, unless --url was given
-if ($sets.Contains('PORT') -and -not $sets.Contains('PUBLIC_URL')) {
-  $current = Get-EnvValue 'PUBLIC_URL'
-  if (-not $current -or $current -like 'http://localhost:*') { Set-EnvValue 'PUBLIC_URL' "http://localhost:$($sets['PORT'])" }
-}
-
 if ([Console]::IsInputRedirected) { $ask = $false }
 
 function Ask([string]$question, [string]$default) {
@@ -198,16 +203,82 @@ if ($ask) {
   $port = Get-EnvValue 'PORT'; if (-not $port) { $port = '8080' }
   $port = Ask 'Port' $port
   Set-EnvValue 'PORT' $port
-  $url = Get-EnvValue 'PUBLIC_URL'
-  if (-not $url -or $url -like 'http://localhost:*') { $url = "http://localhost:$port" }
-  Set-EnvValue 'PUBLIC_URL' ((Ask 'Address people open' $url).TrimEnd('/'))
+  Write-Host ''
+  Write-Host 'Who will open it?'
+  Write-Host '  local    just this computer'
+  Write-Host '  network  people on your network (office, VPN): you get an address to send them'
+  Write-Host "  domain   a real web address you've set up (https://retro.example.com)"
+  $access = Get-EnvValue 'ACCESS'; if (-not $access) { $access = 'local' }
+  $access = Ask-Choice 'Access' $access @('local', 'network', 'domain')
+  Set-EnvValue 'ACCESS' $access
+  if ($access -eq 'domain') {
+    $url = Get-EnvValue 'PUBLIC_URL'
+    if ($url -match '^http://(localhost|\d)') { $url = '' }
+    Set-EnvValue 'PUBLIC_URL' ((Ask 'Address people open' $url).TrimEnd('/'))
+  }
   Set-EnvValue 'TENOR_API_KEY' (Ask-Secret 'Tenor API key for GIF search (optional)' (Get-EnvValue 'TENOR_API_KEY'))
   Write-Host ''
 }
 
+# ---- address -----------------------------------------------------------------
+
+# This computer's address on the local network (the adapter with the default route), or nothing.
+function Get-LanIp {
+  try {
+    $cfg = Get-NetIPConfiguration -ErrorAction Stop |
+      Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1
+    if ($cfg) { return @($cfg.IPv4Address)[0].IPAddress }
+  } catch {}
+  return ''
+}
+
 $port = Get-EnvValue 'PORT'; if (-not $port) { $port = '8080' }
-$url = Get-EnvValue 'PUBLIC_URL'; if (-not $url) { $url = "http://localhost:$port" }
+$url = Get-EnvValue 'PUBLIC_URL'
+$access = Get-EnvValue 'ACCESS'
+if (-not $access) {
+  # .env from before ACCESS existed: work it out from the address
+  $access = if (-not $url -or $url -like 'http://localhost:*') { 'local' } elseif ($url -match '^http://(10|192\.168|172)\.') { 'network' } else { 'domain' }
+  Set-EnvValue 'ACCESS' $access
+}
+switch ($access) {
+  'local' { $url = "http://localhost:$port" }
+  'network' {
+    $ip = Get-LanIp
+    if ($ip) {
+      $new = "http://${ip}:$port"
+      if ($url -and $url -ne $new -and $url -notlike 'http://localhost:*') { Write-Host "Network address changed: $url -> $new" }
+      $url = $new
+    } else {
+      if (-not $url) { $url = "http://localhost:$port" }
+      Write-Host "Couldn't find this computer's network address; keeping $url."
+      Write-Host "Set it yourself with launch.cmd --url http://<ip>:$port"
+    }
+  }
+  default { if (-not $url) { $url = "http://localhost:$port" } }
+}
+Set-EnvValue 'PUBLIC_URL' $url
 $mode = Get-EnvValue 'AUTH_MODE'
+
+# Windows Firewall: let other computers reach the port.
+$ruleName = "Retro Board ($port)"
+$firewallOk = $true
+if ($access -eq 'network') {
+  $rule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
+  if (-not $rule) {
+    $firewallOk = $false
+    $addRule = "New-NetFirewallRule -DisplayName '$ruleName' -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow -Profile Private,Domain"
+    if (-not [Console]::IsInputRedirected -and (Ask-YesNo "Allow port $port through Windows Firewall so others can connect? (asks for admin)" $true)) {
+      try {
+        Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile', '-Command', $addRule
+        $firewallOk = [bool](Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue)
+      } catch { Write-Host '  Skipped (admin permission was not given).' }
+    }
+    if (-not $firewallOk) {
+      Write-Host '  To allow it later, run this in an admin PowerShell:'
+      Write-Host "  $addRule"
+    }
+  }
+}
 
 # ---- start -------------------------------------------------------------------
 
@@ -229,12 +300,24 @@ while ($true) {
 }
 Write-Host ''
 Write-Host "Retro Board is running at $url"
+if ($access -eq 'network') {
+  Write-Host ''
+  Write-Host "  Send people this address: $url"
+  Write-Host '  They need to be on the same network. This computer has to stay on with Docker running.'
+  if (-not $firewallOk) { Write-Host "  Windows Firewall may block them until port $port is allowed (see above)." }
+  Write-Host '  If Windows has this network set to Public, switch it to Private so the firewall rule applies.'
+  Write-Host ''
+}
 if ($mode -eq 'none') {
   Write-Host 'No sign-in: anyone who can open that address can see and change everything.'
 } else {
   Write-Host 'The first account you create becomes the admin.'
   foreach ($p in @(@('google', 'GOOGLE_CLIENT_ID'), @('github', 'GITHUB_CLIENT_ID'), @('microsoft', 'MS_CLIENT_ID'), @('okta', 'OKTA_CLIENT_ID'))) {
     if (Get-EnvValue $p[1]) { Write-Host "  $($p[0]) redirect URL: $url/api/auth/$($p[0])/callback" }
+  }
+  if ($access -eq 'network' -and ((Get-EnvValue 'GOOGLE_CLIENT_ID') + (Get-EnvValue 'MS_CLIENT_ID') + (Get-EnvValue 'OKTA_CLIENT_ID'))) {
+    Write-Host "  Note: Google, Microsoft and Okta won't redirect back to a plain network IP address."
+    Write-Host '  On a network, use email/password, GitHub, or no sign-in (--auth none).'
   }
 }
 Start-Process $url

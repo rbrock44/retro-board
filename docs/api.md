@@ -49,6 +49,7 @@ curl -b jar http://localhost:8080/api/teams
 | POST | `/api/invites/by-token/:token/accept` | | signed in |
 | GET / POST | `/api/teams/:teamId/templates` | POST: `name, description?, columns[{title,color,description?}]` | viewer / admin |
 | DELETE | `/api/templates/:templateId` | | admin |
+| POST | `/api/teams/:teamId/current` | | viewer. The team's current (newest open) board as `{ boardId }`, created from the default template if there is none and you're a member or admin; `null` for viewers |
 | GET | `/api/teams/:teamId/boards` | `?status=open\|closed\|archived` | viewer |
 | POST | `/api/teams/:teamId/boards` | `title, templateId? \| columns?, settings?, carryOver?` | member |
 | GET | `/api/teams/:teamId/actions` | `?status=open\|done` | viewer |
@@ -62,6 +63,7 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards, actions, members, your permissions and votes used |
 | PATCH | `/api/boards/:boardId` | `title?, status?, settings?{allowAnonymous, votesPerUser, maxVotesPerCard, locked, theme}` | facilitate |
+| POST | `/api/boards/:boardId/save` | `name?, date? (YYYY-MM-DD)` | facilitate. Files the board in the history as `date · name` (closed) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
 | DELETE | `/api/boards/:boardId` | | team admin |
 | POST | `/api/boards/:boardId/save-template` | `name, description?` | team admin |
 | GET | `/api/boards/:boardId/export` | `?format=md\|csv` | read |
@@ -135,5 +137,6 @@ type BoardEvent =
   | { type: 'card.upsert'; card }     | { type: 'card.delete'; id }
   | { type: 'action.upsert'; action } | { type: 'action.delete'; id }
   | { type: 'votes.used'; used }        // only to the person who voted
-  | { type: 'presence'; users };        // everyone currently on the board
+  | { type: 'presence'; users }         // everyone currently on the board
+  | { type: 'board.next'; boardId; savedTitle };  // board was saved; move to the fresh one
 ```

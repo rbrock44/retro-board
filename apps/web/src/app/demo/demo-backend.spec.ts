@@ -17,7 +17,7 @@ describe('demo backend', () => {
     const state = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
     expect(state.columns.map(c => c.title)).toEqual(['Carried over', 'Went well', 'To improve', 'Action ideas']);
     expect(state.permissions.canFacilitate).toBe(true);
-    expect(state.cards.some(c => c.carriedFrom?.boardTitle === 'Sprint 41 retro')).toBe(true);
+    expect(state.cards.some(c => c.carriedFrom?.boardTitle.endsWith(' · Sprint 41'))).toBe(true);
     expect(state.cards.find(c => c.groupTitle === 'Test reliability')).toBeTruthy();
   });
 
@@ -55,6 +55,27 @@ describe('demo backend', () => {
     expect(((await b.handle('GET', `/api/boards/${again.id}`)) as BoardStateDto).cards).toEqual([]);
   });
 
+  it('saves the board to history and starts a fresh one with the carried cards', async () => {
+    const { b } = backend();
+    const events: BoardEvent[] = [];
+    b.subscribe('b-s42', { onEvent: e => events.push(e), onTyping: () => {} });
+    const live = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
+    const target = live.cards.find(c => !c.carriedFrom && !c.parentId && live.columns.find(col => col.id === c.columnId)?.title === 'To improve')!;
+    await b.handle('PATCH', `/api/cards/${target.id}`, { status: 'carry_over' });
+
+    const r = (await b.handle('POST', '/api/boards/b-s42/save', { name: 'Sprint 42', date: '2026-11-24' })) as { saved: BoardDto; board: BoardDto };
+    expect(r.saved).toMatchObject({ title: '2026-11-24 · Sprint 42', status: 'closed' });
+    expect(events.some(e => e.type === 'board.next' && e.boardId === r.board.id)).toBe(true);
+
+    const next = (await b.handle('GET', `/api/boards/${r.board.id}`)) as BoardStateDto;
+    expect(next.columns.map(c => c.title)).toEqual(['Went well', 'To improve', 'Action ideas']);
+    expect(next.cards.map(c => c.body)).toEqual([target.body]);
+    expect(next.columns.find(c => c.id === next.cards[0].columnId)?.title).toBe('To improve');
+
+    // opening the team now lands on the fresh board
+    expect(await b.handle('POST', '/api/teams/t-platform/current')).toEqual({ boardId: r.board.id });
+  });
+
   it('refuses writes on a closed board', async () => {
     const { b } = backend();
     const past = (await b.handle('GET', '/api/boards/b-s41')) as BoardStateDto;
@@ -71,7 +92,7 @@ describe('demo backend', () => {
   it('exports markdown without a server', () => {
     const { b } = backend();
     const file = b.exportBoard('b-s42', 'md');
-    expect(file.name).toBe('sprint-42-retro.md');
+    expect(file.name).toBe('current-retro.md');
     expect(file.text).toContain('## Went well');
   });
 });

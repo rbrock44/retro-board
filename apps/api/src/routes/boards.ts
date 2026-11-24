@@ -55,6 +55,59 @@ export async function broadcastAction(ctx: Ctx, teamId: string, actionId: string
   }
 }
 
+type Tx = Parameters<Parameters<Ctx['db']['transaction']>[0]>[0];
+
+/** The title a fresh board gets when a team's current board is saved, or a team is opened with no board */
+export const CURRENT_BOARD_TITLE = 'Current retro';
+
+/**
+ * Copies every card in the team marked "carry over" (and not carried yet) onto a new board, linked back to the
+ * original, then marks the originals as carried so each moves once. With `matchColumns`, a card lands in the
+ * column with the same title as the one it came from; otherwise, and for cards with no match, in a
+ * "Carried over" column placed at `carriedPos`.
+ */
+async function carryPending(tx: Tx, teamId: string, boardId: string, carriedPos: string, matchColumns: boolean) {
+  const teamBoards = tx.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, teamId), sql`${boards.id} <> ${boardId}`));
+  const pending = await tx.select({ card: cards, columnTitle: columns.title }).from(cards)
+    .innerJoin(columns, eq(columns.id, cards.columnId))
+    .where(and(inArray(cards.boardId, teamBoards), eq(cards.status, 'carry_over'), isNull(cards.carriedToBoardId)))
+    .orderBy(asc(cards.createdAt));
+  if (!pending.length) return;
+
+  const targets = matchColumns
+    ? new Map((await tx.select().from(columns).where(eq(columns.boardId, boardId))).map(c => [c.title, c.id]))
+    : new Map<string, string>();
+  let carriedColumnId: string | null = null;
+  const lastPos = new Map<string, string | null>();
+  for (const { card: orig, columnTitle } of pending) {
+    let columnId = columnTitle !== CARRIED_OVER_COLUMN.title ? targets.get(columnTitle) : undefined;
+    if (!columnId) {
+      if (!carriedColumnId) {
+        carriedColumnId = newId();
+        await tx.insert(columns).values({ id: carriedColumnId, boardId, ...CARRIED_OVER_COLUMN, description: 'Marked to carry over from earlier retros', position: carriedPos });
+      }
+      columnId = carriedColumnId;
+    }
+    const position = positionAfter(lastPos.get(columnId) ?? null);
+    lastPos.set(columnId, position);
+    const id = newId();
+    await tx.insert(cards).values({
+      id, boardId, columnId, position, body: orig.body, anonymous: orig.anonymous, authorId: orig.authorId, carriedFromId: orig.id,
+    });
+    const files = await tx.select().from(attachments).where(eq(attachments.cardId, orig.id));
+    for (const f of files) {
+      await tx.insert(attachments).values({ ...f, id: newId(), boardId, cardId: id, replyId: null, createdAt: new Date() });
+    }
+  }
+  await tx.update(cards).set({ carriedToBoardId: boardId }).where(inArray(cards.id, pending.map(p => p.card.id)));
+}
+
+/** "2026-11-24" or "2026-11-24 · Sprint 42": what a saved board is called in the team's history */
+export function savedBoardTitle(date: string, name?: string | null): string {
+  const n = name?.trim();
+  return n ? `${date} · ${n}` : date;
+}
+
 export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db } = ctx;
 
@@ -98,29 +151,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
       }
 
-      if (!body.carryOver) return;
-      const teamBoards = tx.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, team.id), sql`${boards.id} <> ${boardId}`));
-      const pending = await tx.select().from(cards).where(and(
-        inArray(cards.boardId, teamBoards), eq(cards.status, 'carry_over'), isNull(cards.carriedToBoardId),
-      )).orderBy(asc(cards.createdAt));
-      if (!pending.length) return;
-
-      const columnId = newId();
-      await tx.insert(columns).values({ id: columnId, boardId, ...CARRIED_OVER_COLUMN, description: 'Marked to carry over from earlier retros', position: carriedColumnPos });
-      let cardPos: string | null = null;
-      for (const orig of pending) {
-        cardPos = positionAfter(cardPos);
-        const id = newId();
-        await tx.insert(cards).values({
-          id, boardId, columnId, position: cardPos, body: orig.body, anonymous: orig.anonymous, authorId: orig.authorId,
-          carriedFromId: orig.id,
-        });
-        const files = await tx.select().from(attachments).where(eq(attachments.cardId, orig.id));
-        for (const f of files) {
-          await tx.insert(attachments).values({ ...f, id: newId(), boardId, cardId: id, replyId: null, createdAt: new Date() });
-        }
-      }
-      await tx.update(cards).set({ carriedToBoardId: boardId }).where(inArray(cards.id, pending.map(p => p.id)));
+      if (body.carryOver) await carryPending(tx, team.id, boardId, carriedColumnPos, false);
     });
 
     const [b] = await db.select().from(boards).where(eq(boards.id, boardId));
@@ -168,6 +199,86 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const dto = await boardDto(db, updated);
     ctx.hub.emitBoard(board.id, { type: 'board.update', board: dto });
     return dto;
+  });
+
+  /**
+   * "Save board": the board as it stands goes into the team's history (closed, titled with the date and an
+   * optional name) and a fresh current board takes its place with the same columns and settings. Cards marked
+   * "carry over" move to the fresh board, in the column of the same name. Everyone on the old board is sent to
+   * the new one.
+   */
+  app.post('/api/boards/:boardId/save', async req => {
+    const user = requireUser(req);
+    const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'facilitate');
+    if (board.status !== 'open') throw badRequest('This board is already in the history');
+    const body = parse(z.object({
+      name: z.string().trim().max(80).optional(),
+      /** The facilitator's local date, so a retro at 11pm isn't filed under tomorrow */
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }), req.body);
+    const savedTitle = savedBoardTitle(body.date ?? new Date().toISOString().slice(0, 10), body.name);
+
+    const nextId = newId();
+    await db.transaction(async tx => {
+      await tx.update(boards).set({ title: savedTitle, status: 'closed', closedAt: new Date() }).where(eq(boards.id, board.id));
+      await tx.insert(boards).values({
+        id: nextId, teamId: board.teamId, title: CURRENT_BOARD_TITLE, createdBy: user.id,
+        settings: { ...DEFAULT_BOARD_SETTINGS, ...board.settings, locked: false },
+      });
+      const carriedPos = positionAfter(null);
+      let pos = carriedPos;
+      const old = (await tx.select().from(columns).where(eq(columns.boardId, board.id))).sort(byPosition);
+      for (const c of old.filter(c => c.title !== CARRIED_OVER_COLUMN.title)) {
+        pos = positionAfter(pos);
+        await tx.insert(columns).values({ id: newId(), boardId: nextId, title: c.title, color: c.color, description: c.description, position: pos });
+      }
+      await carryPending(tx, board.teamId, nextId, carriedPos, true);
+    });
+
+    const [saved] = await db.select().from(boards).where(eq(boards.id, board.id));
+    const [next] = await db.select().from(boards).where(eq(boards.id, nextId));
+    ctx.hub.emitBoard(board.id, { type: 'board.update', board: await boardDto(db, saved) });
+    ctx.hub.emitBoard(board.id, { type: 'board.next', boardId: nextId, savedTitle });
+    return { saved: await boardDto(db, saved), board: await boardDto(db, next) };
+  });
+
+  /**
+   * Opening a team lands on its current board: the newest open one. A team with none gets one (from its default
+   * template) if the person may create boards; otherwise `boardId` is null and the team page shows instead.
+   */
+  app.post('/api/teams/:teamId/current', async req => {
+    const user = requireUser(req);
+    const { team, role } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
+    const [open] = await db.select({ id: boards.id }).from(boards)
+      .where(and(eq(boards.teamId, team.id), eq(boards.status, 'open'))).orderBy(sql`${boards.createdAt} desc`).limit(1);
+    if (open) return { boardId: open.id };
+    if (role === 'viewer') return { boardId: null };
+
+    const templateId = team.settings.defaultTemplateId ?? 'went-well';
+    let specs: ColumnSpec[] = BUILT_IN_TEMPLATES.find(t => t.id === templateId)?.columns ?? [];
+    if (!specs.length) {
+      const [t] = await db.select().from(templates).where(and(eq(templates.id, templateId), eq(templates.teamId, team.id)));
+      specs = t?.columns ?? BUILT_IN_TEMPLATES[0].columns;
+    }
+    const boardId = newId();
+    await db.transaction(async tx => {
+      await tx.insert(boards).values({
+        id: boardId, teamId: team.id, title: CURRENT_BOARD_TITLE, createdBy: user.id,
+        settings: {
+          ...DEFAULT_BOARD_SETTINGS,
+          ...(team.settings.votesPerUser ? { votesPerUser: team.settings.votesPerUser } : {}),
+          ...(team.settings.maxVotesPerCard ? { maxVotesPerCard: team.settings.maxVotesPerCard } : {}),
+        },
+      });
+      const carriedPos = positionAfter(null);
+      let pos = carriedPos;
+      for (const spec of specs) {
+        pos = positionAfter(pos);
+        await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
+      }
+      await carryPending(tx, team.id, boardId, carriedPos, true);
+    });
+    return { boardId };
   });
 
   app.delete('/api/boards/:boardId', async (req, reply) => {

@@ -24,12 +24,13 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
       <div class="page">
         <div class="page-head">
           <div>
-            <p class="crumbs"><a routerLink="/">Teams</a> /</p>
-            <h1>{{ t.name }}</h1>
+            <p class="crumbs"><a routerLink="/">Teams</a> / {{ t.name }}</p>
+            <h1>History</h1>
             @if (t.description) { <p class="muted">{{ t.description }}</p> }
           </div>
           <div class="spacer"></div>
-          @if (canCreate()) { <button class="btn primary" type="button" (click)="openNewBoard()">New retro</button> }
+          <a class="btn primary" [routerLink]="['/teams', t.id]">Current board</a>
+          @if (canCreate()) { <button class="btn" type="button" (click)="openNewBoard()">New board</button> }
         </div>
 
         <form class="search" role="search" (ngSubmit)="search()">
@@ -275,7 +276,7 @@ export class TeamPage {
   protected isAdmin = computed(() => this.team()?.myRole === 'admin');
   protected canCreate = computed(() => this.team()?.myRole === 'admin' || this.team()?.myRole === 'member');
   protected tabs = computed(() => [
-    { id: 'boards' as Tab, label: 'Retros' },
+    { id: 'boards' as Tab, label: 'Past boards' },
     { id: 'actions' as Tab, label: 'Action items' },
     { id: 'members' as Tab, label: `Members (${this.members().length})` },
     ...(this.isAdmin() ? [{ id: 'settings' as Tab, label: 'Settings' }] : []),

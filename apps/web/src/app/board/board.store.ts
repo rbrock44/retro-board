@@ -30,6 +30,7 @@ export function applyEvent(s: BoardStateDto, e: BoardEvent): BoardStateDto {
     case 'votes.used':
       return { ...s, myVotesUsed: e.used };
     case 'presence':
+    case 'board.next':
       return s;
   }
 }
@@ -61,6 +62,8 @@ export class BoardStore {
   readonly typing = signal<Record<string, { name: string; at: number }>>({});
   readonly connected = signal(false);
   readonly error = signal<string | null>(null);
+  /** Set when the board is saved to history and a fresh one started; the page moves everyone there */
+  readonly next = signal<{ boardId: string; savedTitle: string } | null>(null);
 
   readonly sort = signal<SortMode>('position');
   readonly statusFilter = signal<CardStatus | 'all'>('all');
@@ -120,6 +123,7 @@ export class BoardStore {
     this.close();
     this.boardId = boardId;
     this.error.set(null);
+    this.next.set(null);
     try {
       this.state.set(await this.api.get<BoardStateDto>(`/api/boards/${boardId}`));
     } catch (err) {
@@ -174,6 +178,10 @@ export class BoardStore {
   handle(e: BoardEvent) {
     if (e.type === 'presence') {
       this.presence.set(e.users);
+      return;
+    }
+    if (e.type === 'board.next') {
+      this.next.set({ boardId: e.boardId, savedTitle: e.savedTitle });
       return;
     }
     const s = this.state();

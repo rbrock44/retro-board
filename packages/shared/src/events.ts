@@ -10,7 +10,9 @@ export type BoardEvent =
   | { type: 'action.upsert'; action: ActionItemDto }
   | { type: 'action.delete'; id: string }
   | { type: 'votes.used'; used: number }
-  | { type: 'presence'; users: UserDto[] };
+  | { type: 'presence'; users: UserDto[] }
+  /** The board was saved to history and a fresh one started; everyone on it moves to the new one */
+  | { type: 'board.next'; boardId: string; savedTitle: string };
 
 export const SOCKET_EVENTS = {
   join: 'board:join',

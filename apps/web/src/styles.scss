@@ -469,3 +469,10 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem;
   &:hover:not(:disabled) { border-color: var(--accent); }
   .chip { margin-left: auto; }
 }
+
+/* ---- a board from the history ---- */
+.history-note {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0 0 0.75rem; padding: 0.6rem 0.8rem;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  span { flex: 1 1 16rem; }
+}

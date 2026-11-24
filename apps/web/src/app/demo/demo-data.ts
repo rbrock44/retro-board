@@ -101,8 +101,8 @@ export function seedDemo(now = Date.now()): DemoState {
   ];
 
   const s = (o: Partial<BoardSettings> = {}): BoardSettings => ({ ...DEFAULT_BOARD_SETTINGS, ...o });
-  const past = { id: 'b-s41', teamId: team.id, title: 'Sprint 41 retro', status: 'closed' as BoardStatus, settings: s(), createdAt: ago(15), closedAt: ago(15, -2), createdBy: DEMO_ME };
-  const live = { id: 'b-s42', teamId: team.id, title: 'Sprint 42 retro', status: 'open' as BoardStatus, settings: s(), createdAt: ago(0, 1), closedAt: null, createdBy: DEMO_ME };
+  const past = { id: 'b-s41', teamId: team.id, title: `${ago(15).slice(0, 10)} · Sprint 41`, status: 'closed' as BoardStatus, settings: s(), createdAt: ago(15), closedAt: ago(15, -2), createdBy: DEMO_ME };
+  const live = { id: 'b-s42', teamId: team.id, title: 'Current retro', status: 'open' as BoardStatus, settings: s(), createdAt: ago(0, 1), closedAt: null, createdBy: DEMO_ME };
   const kickoff = { id: 'b-kick', teamId: team2.id, title: 'Research kickoff', status: 'open' as BoardStatus, settings: s(), createdAt: ago(3), closedAt: null, createdBy: 'u-morgan' };
 
   const columns: ColumnDto[] = [];

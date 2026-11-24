@@ -499,6 +499,8 @@ export class DemoBackend {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(b => this.summary(b));
     }],
     ['POST', /^\/api\/teams\/([^/]+)\/boards$/, ([id], b) => this.createBoard(id, b)],
+    ['POST', /^\/api\/teams\/([^/]+)\/current$/, ([id]) => this.currentBoard(id)],
+    ['POST', /^\/api\/boards\/([^/]+)\/save$/, ([id], b) => this.saveBoard(id, b)],
     ['GET', /^\/api\/teams\/([^/]+)\/actions$/, ([id], _b, q) => {
       this.requireTeam(id);
       const status = q.get('status');
@@ -813,26 +815,76 @@ export class DemoBackend {
       pos = positionAfter(pos);
       this.state.columns.push({ id: newId(), boardId: board.id, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
     }
-    if (b.carryOver !== false) {
-      const boardIds = new Set(this.state.boards.filter(x => x.teamId === teamId && x.id !== board.id).map(x => x.id));
-      const pending = this.state.cards.filter(c => boardIds.has(c.boardId) && c.status === 'carry_over' && !c.carriedToBoardId)
-        .sort((a, b2) => a.createdAt.localeCompare(b2.createdAt));
-      if (pending.length) {
-        const columnId = newId();
-        this.state.columns.push({ id: columnId, boardId: board.id, ...CARRIED_OVER_COLUMN, description: 'Marked to carry over from earlier retros', position: carriedPos });
-        let cardPos: string | null = null;
-        for (const orig of pending) {
-          cardPos = positionAfter(cardPos);
-          this.state.cards.push({
-            id: newId(), boardId: board.id, columnId, parentId: null, groupTitle: null, position: cardPos, body: orig.body,
-            anonymous: orig.anonymous, authorId: orig.authorId, status: 'none', carriedFromId: orig.id, carriedToBoardId: null,
-            attachmentIds: [...orig.attachmentIds], createdAt: nowIso(), editedAt: null,
-          });
-          orig.carriedToBoardId = board.id;
-        }
-      }
-    }
+    if (b.carryOver !== false) this.carryPending(teamId, board.id, carriedPos, false);
     return this.boardDto(board);
+  }
+
+  /** Same as the server: marked cards move once, into the same-named column when `matchColumns`. */
+  private carryPending(teamId: string, boardId: string, carriedPos: string, matchColumns: boolean) {
+    const boardIds = new Set(this.state.boards.filter(x => x.teamId === teamId && x.id !== boardId).map(x => x.id));
+    const pending = this.state.cards.filter(c => boardIds.has(c.boardId) && c.status === 'carry_over' && !c.carriedToBoardId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (!pending.length) return;
+    const targets = new Map(matchColumns ? this.state.columns.filter(c => c.boardId === boardId).map(c => [c.title, c.id]) : []);
+    let carriedColumnId: string | null = null;
+    const lastPos = new Map<string, string | null>();
+    for (const orig of pending) {
+      const fromTitle = this.state.columns.find(c => c.id === orig.columnId)?.title ?? '';
+      let columnId = fromTitle !== CARRIED_OVER_COLUMN.title ? targets.get(fromTitle) : undefined;
+      if (!columnId) {
+        if (!carriedColumnId) {
+          carriedColumnId = newId();
+          this.state.columns.push({ id: carriedColumnId, boardId, ...CARRIED_OVER_COLUMN, description: 'Marked to carry over from earlier retros', position: carriedPos });
+        }
+        columnId = carriedColumnId;
+      }
+      const position = positionAfter(lastPos.get(columnId) ?? null);
+      lastPos.set(columnId, position);
+      this.state.cards.push({
+        id: newId(), boardId, columnId, parentId: null, groupTitle: null, position, body: orig.body,
+        anonymous: orig.anonymous, authorId: orig.authorId, status: 'none', carriedFromId: orig.id, carriedToBoardId: null,
+        attachmentIds: [...orig.attachmentIds], createdAt: nowIso(), editedAt: null,
+      });
+      orig.carriedToBoardId = boardId;
+    }
+  }
+
+  /** "Save board": file it in the history under the date (and name), start a fresh one with the same columns. */
+  private saveBoard(boardId: string, b: any) {
+    const { board } = this.requireBoard(boardId, 'facilitate');
+    if (board.status !== 'open') fail(400, 'This board is already in the history');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date ?? '') ? b.date : nowIso().slice(0, 10);
+    const name = String(b.name ?? '').trim().slice(0, 80);
+    board.title = name ? `${date} · ${name}` : date;
+    board.status = 'closed';
+    board.closedAt = nowIso();
+    const next = {
+      id: newId(), teamId: board.teamId, title: 'Current retro', status: 'open' as const, createdAt: nowIso(), closedAt: null,
+      createdBy: this.state.meId, settings: { ...board.settings, locked: false },
+    };
+    this.state.boards.push(next);
+    const carriedPos = positionAfter(null);
+    let pos = carriedPos;
+    for (const c of this.state.columns.filter(c => c.boardId === boardId && c.title !== CARRIED_OVER_COLUMN.title).sort(byPosition)) {
+      pos = positionAfter(pos);
+      this.state.columns.push({ id: newId(), boardId: next.id, title: c.title, color: c.color, description: c.description, position: pos });
+    }
+    this.carryPending(board.teamId, next.id, carriedPos, true);
+    this.emitBoard(boardId);
+    this.emit(boardId, { type: 'board.next', boardId: next.id, savedTitle: board.title });
+    return { saved: this.boardDto(board), board: this.boardDto(next) };
+  }
+
+  /** Opening a team: its newest open board, or a new one from the default template. */
+  private currentBoard(teamId: string) {
+    const { team, role } = this.requireTeam(teamId);
+    const open = this.state.boards.filter(b => b.teamId === teamId && b.status === 'open').sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (open) return { boardId: open.id };
+    if (role === 'viewer') return { boardId: null };
+    const created = this.createBoard(teamId, { title: 'Current retro', templateId: team.settings.defaultTemplateId, carryOver: false });
+    const carriedPos = positionAfter(null);
+    this.carryPending(teamId, created.id, carriedPos, true);
+    return { boardId: created.id };
   }
 }
 

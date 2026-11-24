@@ -59,7 +59,14 @@ plain email and password).
 
 ### Running a Retro
 
-- `New retro` - Pick a template (Went Well / To Improve / Actions, Start / Stop / Continue, Mad / Sad / Glad,
+Each team has one **current board**. Clicking a team opens it straight away (a team with no board gets one from
+its default template), so people always land in the right place.
+
+- `💾 Save board` - When the retro is done, a facilitator saves it. The board goes into the team's history as it
+  is, titled with the date and an optional name (`2026-11-24 · Sprint 42`), and a fresh current board takes its
+  place with the same columns and settings. Cards marked `Carry over` move to the fresh board, back in the column
+  they came from. Everyone on the board is moved over automatically
+- `New board` (on the History page) - Pick a template (Went Well / To Improve / Actions, Start / Stop / Continue, Mad / Sad / Glad,
   4Ls, Sailboat, Blank, or one your team saved), a vote budget and whether anonymous cards are allowed
 - `Columns` - Facilitators add, rename, recolor (color picker with presets), describe, reorder and delete columns.
   `Save columns as template` keeps a layout for the team
@@ -87,8 +94,9 @@ plain email and password).
 
 ### Carry Over and Action Items
 
-- `Carry over` - Cards marked `Carry over` move into the team's next retro, in a `Carried over` column that links
-  back to where they came from. Each card is carried once
+- `Carry over` - Cards marked `Carry over` move to the fresh board when the current one is saved, into the column
+  with the same name, linked back to where they came from. Boards started by hand from `New board` put them in a
+  `Carried over` column instead. Each card is carried once
 - `Action items` - Create them from a card (`⋯` → `Create action item`), from the board's `Actions` panel, or on
   the team page. Each has an owner and due date. Open items from every retro show on every new board until done
 
@@ -112,7 +120,9 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 
 ### History, Search and Export
 
-- `Retros tab` - Every board the team has run, filterable by open, closed and archived
+- `History` - The link next to the team name on a board. `Past boards` lists every board the team has saved,
+  filterable by open, closed and archived; open any of them to read it. Saved boards are read-only, with a button
+  back to the current board
 - `Search` - Searches every card, group name and action item the team has ever written
 - `Export` - Markdown, CSV, or `Print / PDF` for a clean printed summary
 

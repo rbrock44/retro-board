@@ -306,7 +306,7 @@ export class TeamPage {
     try {
       const team = await this.api.get<TeamDto>(`/api/teams/${id}`);
       this.team.set(team);
-      document.title = `${team.name} · Retro Board`;
+      document.title = `${team.name} · ${this.auth.siteName()}`;
       this.edit = {
         name: team.name, description: team.description,
         defaultTemplateId: team.settings.defaultTemplateId ?? 'went-well',

@@ -15,6 +15,18 @@ export interface AppConfig {
   authConfigPath: string;
   /** accounts (default) or none: no sign-in, every visitor gets a guest identity that can do everything */
   authMode: 'accounts' | 'none';
+  /** Where the data is on the host, as the launch scripts describe it (shown to admins) */
+  dataLocation: string | null;
+  /** Starting values for the instance settings (admins can change them in the app) */
+  defaults: {
+    siteName: string;
+    themePreset: string | null;
+    accent: string | null;
+    templateId: string;
+    votesPerUser: number;
+    maxVotesPerCard: number;
+    allowAnonymous: boolean;
+  };
   adminEmails: string[];
   storage: StorageConfig;
   maxUploadBytes: number;
@@ -53,6 +65,11 @@ function defaultWebDist(): string | null {
     if (existsSync(resolve(p, 'index.html'))) return resolve(p);
   }
   return null;
+}
+
+function intIn(value: string | undefined, min: number, max: number, fallback: number): number {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= min && n <= max && value !== '' && value !== undefined ? n : fallback;
 }
 
 function list(value: string | undefined): string[] {
@@ -94,6 +111,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     cookieSecure: secureSetting === 'auto' ? publicUrl.startsWith('https://') : secureSetting === 'true',
     authConfigPath: env.AUTH_CONFIG || defaultAuthConfig(),
     authMode: env.AUTH_MODE === 'none' ? 'none' : 'accounts',
+    dataLocation: env.DATA_LOCATION?.trim() || null,
+    defaults: {
+      siteName: (env.SITE_NAME ?? '').trim() || 'Retro Board',
+      themePreset: env.DEFAULT_THEME && env.DEFAULT_THEME !== 'auto' ? env.DEFAULT_THEME : null,
+      accent: /^#[0-9a-fA-F]{6}$/.test(env.DEFAULT_ACCENT ?? '') ? env.DEFAULT_ACCENT!.toLowerCase() : null,
+      templateId: (env.DEFAULT_TEMPLATE ?? '').trim() || 'went-well',
+      votesPerUser: intIn(env.DEFAULT_VOTES, 0, 100, 6),
+      maxVotesPerCard: intIn(env.DEFAULT_MAX_VOTES_PER_CARD, 1, 100, 3),
+      allowAnonymous: (env.DEFAULT_ANONYMOUS ?? 'true') !== 'false',
+    },
     adminEmails: list(env.ADMIN_EMAILS),
     storage,
     maxUploadBytes: Number(env.MAX_UPLOAD_MB ?? 25) * 1024 * 1024,

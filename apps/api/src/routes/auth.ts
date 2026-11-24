@@ -10,6 +10,7 @@ import { createGuest, createUser, findUserByEmail, resolveExternalLogin, toMeDto
 import type { Ctx } from '../context';
 import { identities, users, type User } from '../db/schema';
 import { badRequest, forbidden, noContent, notFound, parse, requireUser, unauthorized } from '../lib/http';
+import { getSettings } from '../lib/instance';
 import { acceptInvite, findValidInvite } from '../lib/invites';
 
 const email = z.string().trim().toLowerCase().email('enter a valid email').max(200);
@@ -54,14 +55,19 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     if (blocked) return reply.code(404).send({ error: 'Sign-in is turned off on this site' });
   });
 
-  app.get('/api/auth/config', async (): Promise<AuthConfigDto> => ({
+  app.get('/api/auth/config', async (): Promise<AuthConfigDto> => {
+    const site = await getSettings(ctx);
+    const local = { enabled: ctx.auth.local.enabled, signup: site.signup };
+    return {
     mode: config.authMode,
+    site: { name: site.siteName, theme: site.theme },
     publicUrl: config.publicUrl,
-    local: open ? { ...ctx.auth.local, enabled: false } : ctx.auth.local,
+    local: open ? { ...local, enabled: false } : local,
     providers: open ? [] : ctx.auth.list(),
     gifSearch: !!config.tenorApiKey,
     needsSetup: (await userCount(db)) === 0,
-  }));
+    };
+  });
 
   app.get('/api/auth/me', async req => {
     if (!req.user) throw unauthorized();
@@ -105,7 +111,7 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(z.object({
       email, password, name: z.string().trim().min(1, 'enter your name').max(100), inviteToken: z.string().optional(),
     }), req.body);
-    const local = ctx.auth.local;
+    const local = { enabled: ctx.auth.local.enabled, signup: (await getSettings(ctx)).signup };
     const firstUser = (await userCount(db)) === 0;
     if (!local.enabled && !firstUser) throw forbidden('Email sign-up is turned off');
     if (!firstUser && local.signup !== 'open') {

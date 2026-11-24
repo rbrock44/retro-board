@@ -3,7 +3,7 @@ import {
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens, voteBlockedReason,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
-  type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
+  type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
 } from '@retro/shared';
 import { ApiError } from '../core/api.service';
 import { DEMO_ME, newId, seedDemo, type DemoCard, type DemoState } from './demo-data';
@@ -173,7 +173,34 @@ export class DemoBackend {
   }
 
   private templates(teamId: string): TemplateDto[] {
-    return [...BUILT_IN_TEMPLATES, ...this.state.templates.filter(t => t.teamId === teamId).map(({ teamId: _t, ...t }) => t)];
+    return [
+      ...this.state.templates.filter(t => t.teamId === teamId).map(({ teamId: _t, ...t }) => t),
+      ...this.instanceTemplates(),
+      ...BUILT_IN_TEMPLATES,
+    ];
+  }
+
+  private instanceTemplates(): TemplateDto[] {
+    return this.state.templates.filter(t => t.teamId === '*').map(({ teamId: _t, ...t }) => ({ ...t, instance: true }));
+  }
+
+  private static readonly SITE_DEFAULTS: InstanceSettings = {
+    siteName: 'Retro Board', theme: null, defaultTemplateId: 'went-well', votesPerUser: 6, maxVotesPerCard: 3,
+    allowAnonymous: true, signup: 'open',
+  };
+
+  private site(): InstanceSettings {
+    return { ...DemoBackend.SITE_DEFAULTS, ...(this.state.site ?? {}) };
+  }
+
+  private siteAdminDto(): InstanceSettingsAdminDto {
+    return {
+      settings: this.site(),
+      launchDefaults: DemoBackend.SITE_DEFAULTS,
+      overridden: Object.keys(this.state.site ?? {}) as (keyof InstanceSettings)[],
+      templates: [...this.instanceTemplates(), ...BUILT_IN_TEMPLATES],
+      storage: { location: 'this browser (the demo has no server)', database: 'this browser', uploads: 'this browser' },
+    };
   }
 
   // ---------------------------------------------------------------- realtime
@@ -378,7 +405,7 @@ export class DemoBackend {
   private routes: [string, RegExp, (p: string[], body: any, q: URLSearchParams) => unknown][] = [
     // ---- auth ----
     ['GET', /^\/api\/auth\/config$/, (): AuthConfigDto => ({
-      mode: 'none', publicUrl: location.origin, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: false, needsSetup: false,
+      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: false, needsSetup: false,
     })],
     ['GET', /^\/api\/auth\/me$/, () => this.meDto()],
     ['POST', /^\/api\/auth\/guest$/, () => this.meDto()],
@@ -493,6 +520,20 @@ export class DemoBackend {
       return dto;
     }],
     ['DELETE', /^\/api\/templates\/([^/]+)$/, ([id]) => { this.state.templates = this.state.templates.filter(t => t.id !== id); return undefined; }],
+    // Admin → Customize works in the demo too, saved with the rest of the demo
+    ['GET', /^\/api\/admin\/settings$/, () => this.siteAdminDto()],
+    ['PATCH', /^\/api\/admin\/settings$/, (_p, b) => {
+      const { reset = [], ...set } = b as Partial<InstanceSettings> & { reset?: (keyof InstanceSettings)[] };
+      const next: Record<string, unknown> = { ...(this.state.site ?? {}), ...set };
+      for (const k of reset) delete next[k];
+      this.state.site = next as Partial<InstanceSettings>;
+      return this.siteAdminDto();
+    }],
+    ['POST', /^\/api\/admin\/templates$/, (_p, b) => {
+      const t = { id: newId(), teamId: '*', name: String(b.name), description: String(b.description ?? ''), columns: b.columns ?? [], builtIn: false };
+      this.state.templates.push(t);
+      return { ...t, instance: true };
+    }],
     ['GET', /^\/api\/teams\/([^/]+)\/boards$/, ([id], _b, q) => {
       this.requireTeam(id);
       const status = q.get('status');
@@ -798,14 +839,16 @@ export class DemoBackend {
   private createBoard(teamId: string, b: any): BoardDto {
     const { team } = this.requireTeam(teamId, 'member');
     const title = String(b.title ?? '').trim() || fail(400, 'Give the retro a title');
-    const templateId = b.templateId ?? team.settings.defaultTemplateId ?? 'went-well';
+    const site = this.site();
+    const templateId = b.templateId ?? team.settings.defaultTemplateId ?? site.defaultTemplateId;
     const specs = b.columns?.length ? b.columns : this.templates(teamId).find(t => t.id === templateId)?.columns ?? fail(400, 'Unknown template');
     const board = {
       id: newId(), teamId, title: title.slice(0, 120), status: 'open' as const, createdAt: nowIso(), closedAt: null, createdBy: this.state.meId,
       settings: {
         ...DEFAULT_BOARD_SETTINGS,
-        ...(team.settings.votesPerUser ? { votesPerUser: team.settings.votesPerUser } : {}),
-        ...(team.settings.maxVotesPerCard ? { maxVotesPerCard: team.settings.maxVotesPerCard } : {}),
+        votesPerUser: team.settings.votesPerUser ?? site.votesPerUser,
+        maxVotesPerCard: team.settings.maxVotesPerCard ?? site.maxVotesPerCard,
+        allowAnonymous: site.allowAnonymous,
         ...(b.settings ?? {}),
       },
     };

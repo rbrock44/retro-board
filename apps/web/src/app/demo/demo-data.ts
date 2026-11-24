@@ -1,7 +1,7 @@
 import {
   BUILT_IN_TEMPLATES, CARRIED_OVER_COLUMN, DEFAULT_BOARD_SETTINGS, positionAfter,
   type ActionStatus, type AttachmentDto, type BoardSettings, type BoardStatus, type CardStatus, type ColumnDto,
-  type InviteDto, type TeamRole, type TeamSettings, type TemplateDto, type UserDto, type UserPrefs,
+  type InstanceSettings, type InviteDto, type TeamRole, type TeamSettings, type TemplateDto, type UserDto, type UserPrefs,
 } from '@retro/shared';
 
 /** Everything the demo backend knows. Kept flat and JSON-safe so it can live in localStorage and in a share link. */
@@ -33,6 +33,8 @@ export interface DemoState {
   }[];
   /** How many cards the pretend teammates have added, so the live demo doesn't fill up forever */
   botCards: number;
+  /** Admin → Customize changes made in this demo (templates with teamId '*' are instance templates) */
+  site?: Partial<InstanceSettings>;
 }
 
 export interface DemoCard {

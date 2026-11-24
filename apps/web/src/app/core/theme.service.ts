@@ -4,6 +4,8 @@ import {
 } from '@retro/shared';
 
 export const THEME_STORAGE_KEY = 'retro-board-theme';
+/** The site's default theme, cached so the next load paints it before the app starts (see index.html) */
+export const SITE_THEME_STORAGE_KEY = 'retro-board-site-theme';
 
 const CSS_VARS: Record<keyof ThemeTokens, string> = {
   bg: '--bg',
@@ -39,7 +41,9 @@ function systemPreset(): ThemePreference {
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   readonly presets = THEME_PRESETS;
-  readonly current = signal<ThemePreference>(this.stored() ?? systemPreset());
+  readonly current = signal<ThemePreference>(this.stored() ?? this.cachedSite() ?? systemPreset());
+  /** The admin's site theme, for anyone who hasn't picked their own. null: follow light/dark */
+  private site: ThemePreference | null = null;
   readonly isDark = computed(() => isDarkTheme(this.current().tokens));
 
   constructor() {
@@ -71,15 +75,44 @@ export class ThemeService {
     this.set({ preset: 'custom', tokens: { ...this.current().tokens, [key]: value } });
   }
 
+  /** "Use the site's look": drops the personal theme and goes back to the site default (or light/dark). */
   resetToSystem() {
     try {
       localStorage.removeItem(THEME_STORAGE_KEY);
     } catch {
       // ignore
     }
-    const p = systemPreset();
+    const p = this.site ?? systemPreset();
     this.current.set(p);
     this.apply(p);
+  }
+
+  /** Called once the site settings load. Applies only if this person hasn't chosen a theme of their own. */
+  useSiteDefault(site: ThemePreference | null) {
+    this.site = site ? { preset: site.preset, tokens: sanitizeTokens(site.tokens) } : null;
+    try {
+      if (this.site) localStorage.setItem(SITE_THEME_STORAGE_KEY, JSON.stringify(this.site));
+      else localStorage.removeItem(SITE_THEME_STORAGE_KEY);
+    } catch {
+      // private mode
+    }
+    if (this.stored()) return;
+    const p = this.site ?? systemPreset();
+    this.current.set(p);
+    this.apply(p);
+  }
+
+  get hasSiteTheme() {
+    return !!this.site;
+  }
+
+  private cachedSite(): ThemePreference | null {
+    try {
+      const t = JSON.parse(localStorage.getItem(SITE_THEME_STORAGE_KEY) ?? 'null');
+      return t?.tokens ? { preset: String(t.preset), tokens: sanitizeTokens(t.tokens) } : null;
+    } catch {
+      return null;
+    }
   }
 
   private apply(pref: ThemePreference) {

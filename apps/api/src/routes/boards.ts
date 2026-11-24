@@ -11,6 +11,7 @@ import {
   actionItems, attachments, boards, cards, columns, teamMembers, teams, templates, users, votes,
 } from '../db/schema';
 import { requireBoard, requireTeam } from '../lib/access';
+import { getSettings, newBoardSettings, templateFor } from '../lib/instance';
 import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
 import { newId } from '../lib/ids';
 import { boardDto, columnDto, loadActions, loadCards } from '../lib/serialize';
@@ -123,22 +124,19 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     }), req.body);
 
     let specs: ColumnSpec[] | undefined = body.columns;
-    const templateId = body.templateId ?? team.settings.defaultTemplateId ?? 'went-well';
+    const site = await getSettings(ctx);
+    const templateId = body.templateId ?? templateFor(site, team.settings);
     if (!specs?.length) {
       const builtIn = BUILT_IN_TEMPLATES.find(t => t.id === templateId);
       if (builtIn) specs = builtIn.columns;
       else {
-        const [t] = await db.select().from(templates).where(and(eq(templates.id, templateId), eq(templates.teamId, team.id)));
+        const [t] = await db.select().from(templates).where(and(eq(templates.id, templateId), or(eq(templates.teamId, team.id), isNull(templates.teamId))));
         if (!t) throw badRequest('Unknown template');
         specs = t.columns;
       }
     }
 
-    const settings = mergeSettings({
-      ...DEFAULT_BOARD_SETTINGS,
-      ...(team.settings.votesPerUser ? { votesPerUser: team.settings.votesPerUser } : {}),
-      ...(team.settings.maxVotesPerCard ? { maxVotesPerCard: team.settings.maxVotesPerCard } : {}),
-    }, body.settings ?? {});
+    const settings = mergeSettings(newBoardSettings(site, team.settings), body.settings ?? {});
 
     const boardId = newId();
     await db.transaction(async tx => {
@@ -254,21 +252,18 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     if (open) return { boardId: open.id };
     if (role === 'viewer') return { boardId: null };
 
-    const templateId = team.settings.defaultTemplateId ?? 'went-well';
+    const site = await getSettings(ctx);
+    const templateId = templateFor(site, team.settings);
     let specs: ColumnSpec[] = BUILT_IN_TEMPLATES.find(t => t.id === templateId)?.columns ?? [];
     if (!specs.length) {
-      const [t] = await db.select().from(templates).where(and(eq(templates.id, templateId), eq(templates.teamId, team.id)));
+      const [t] = await db.select().from(templates).where(and(eq(templates.id, templateId), or(eq(templates.teamId, team.id), isNull(templates.teamId))));
       specs = t?.columns ?? BUILT_IN_TEMPLATES[0].columns;
     }
     const boardId = newId();
     await db.transaction(async tx => {
       await tx.insert(boards).values({
         id: boardId, teamId: team.id, title: CURRENT_BOARD_TITLE, createdBy: user.id,
-        settings: {
-          ...DEFAULT_BOARD_SETTINGS,
-          ...(team.settings.votesPerUser ? { votesPerUser: team.settings.votesPerUser } : {}),
-          ...(team.settings.maxVotesPerCard ? { maxVotesPerCard: team.settings.maxVotesPerCard } : {}),
-        },
+        settings: newBoardSettings(site, team.settings),
       });
       const carriedPos = positionAfter(null);
       let pos = carriedPos;

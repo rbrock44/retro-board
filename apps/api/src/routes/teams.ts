@@ -11,7 +11,7 @@ import {
   actionItems, boards, cards, invites, teamMembers, teams, templates, users, type Team, type User,
 } from '../db/schema';
 import { requireTeam, teamRole } from '../lib/access';
-import { badRequest, noContent, notFound, parse, requireUser, zColor } from '../lib/http';
+import { badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
 import { newId, newToken } from '../lib/ids';
 import { acceptInvite, findValidInvite } from '../lib/invites';
 import { boardDtos, loadActions } from '../lib/serialize';
@@ -205,9 +205,10 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/teams/:teamId/templates', async (req): Promise<TemplateDto[]> => {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
-    const rows = await db.select().from(templates).where(eq(templates.teamId, team.id)).orderBy(templates.name);
+    const rows = await db.select().from(templates).where(or(eq(templates.teamId, team.id), isNull(templates.teamId))).orderBy(templates.name);
     return [
-      ...rows.map(t => ({ id: t.id, name: t.name, description: t.description, columns: t.columns, builtIn: false })),
+      ...rows.filter(t => t.teamId).map(t => ({ id: t.id, name: t.name, description: t.description, columns: t.columns, builtIn: false })),
+      ...rows.filter(t => !t.teamId).map(t => ({ id: t.id, name: t.name, description: t.description, columns: t.columns, builtIn: false, instance: true })),
       ...BUILT_IN_TEMPLATES,
     ];
   });
@@ -228,7 +229,8 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
     const user = requireUser(req);
     const [t] = await db.select().from(templates).where(eq(templates.id, (req.params as { templateId: string }).templateId));
     if (!t) throw notFound('Template');
-    await requireTeam(db, user, t.teamId, 'admin');
+    if (t.teamId) await requireTeam(db, user, t.teamId, 'admin');
+    else requireAdmin(req);
     await db.delete(templates).where(eq(templates.id, t.id));
     return noContent(reply);
   });

@@ -75,7 +75,8 @@ export const invites = pgTable('invites', {
 
 export const templates = pgTable('templates', {
   id: id(),
-  teamId: text('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  /** null: an instance template, offered to every team */
+  teamId: text('team_id').references(() => teams.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
   columns: jsonb('columns').$type<ColumnSpec[]>().notNull(),
@@ -194,3 +195,10 @@ export type Reply = typeof replies.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type ActionItem = typeof actionItems.$inferSelect;
 export type Team = typeof teams.$inferSelect;
+
+/** Admin overrides of the instance settings (one row). Launch defaults come from the environment. */
+export const instanceSettings = pgTable('instance_settings', {
+  id: text('id').primaryKey(),
+  value: jsonb('value').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

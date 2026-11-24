@@ -1,5 +1,6 @@
 import { type ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { TitleStrategy, provideRouter, withComponentInputBinding } from '@angular/router';
+import { SiteTitleStrategy } from './core/title.strategy';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -7,5 +8,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
+    { provide: TitleStrategy, useClass: SiteTitleStrategy },
   ],
 };

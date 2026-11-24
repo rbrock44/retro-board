@@ -34,9 +34,12 @@ export async function toMeDto(db: Db, u: User): Promise<MeDto> {
   };
 }
 
-/** AUTH_MODE=none: a visitor with no account. Name stays empty until they enter one. */
+/**
+ * AUTH_MODE=none: a visitor with no account. Name stays empty until they enter one. Everyone can do everything in
+ * this mode, Admin > Customize included, so guests are instance admins.
+ */
 export async function createGuest(db: Db): Promise<User> {
-  const [u] = await db.insert(users).values({ id: newId(), email: null, name: '', guest: true }).returning();
+  const [u] = await db.insert(users).values({ id: newId(), email: null, name: '', guest: true, role: 'admin' }).returning();
   return u;
 }
 

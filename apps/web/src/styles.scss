@@ -476,3 +476,12 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem;
   border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
   span { flex: 1 1 16rem; }
 }
+
+/* ---- admin: Customize ---- */
+.col-chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 6px; border: 2px solid var(--border);
+  font-size: 0.8rem; background: var(--surface); }
+.swatch-row:has(.col-chip) { flex-wrap: wrap; gap: 0.35rem; }
+.new-template { border: 1px dashed var(--border); border-radius: 10px; padding: 0.5rem 0.75rem;
+  summary { cursor: pointer; font-weight: 600; } > .stack { margin-top: 0.6rem; } }
+.sticky-save { position: sticky; bottom: 0.75rem; z-index: 5; }
+.self-hosted { text-align: center; margin: 1rem 0 0; }

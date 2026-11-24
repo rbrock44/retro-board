@@ -16,8 +16,8 @@ import { DemoService } from './demo/demo.service';
     @if (demo.active()) { <app-demo-banner /> }
     @if (auth.me(); as me) {
       <header class="topbar">
-        <a routerLink="/" class="brand" aria-label="Retro Board home">
-          <span class="brand-mark" aria-hidden="true">◧</span> Retro Board
+        <a routerLink="/" class="brand" [attr.aria-label]="auth.siteName() + ' home'">
+          <span class="brand-mark" aria-hidden="true">◧</span> {{ auth.siteName() }}
         </a>
         <nav class="topnav" aria-label="Main">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Teams</a>

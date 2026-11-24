@@ -6,14 +6,20 @@ import { AuthService } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
 import { Avatar } from '../shared/avatar';
 import { RelativeTimePipe } from '../shared/relative-time.pipe';
+import { Customize } from './customize';
 
 @Component({
   selector: 'app-admin-page',
-  imports: [FormsModule, Avatar, RelativeTimePipe],
+  imports: [FormsModule, Avatar, RelativeTimePipe, Customize],
   template: `
     <div class="page stack">
       <h1>Instance admin</h1>
-      <p class="muted">Instance admins manage accounts and act as admin on every team. Sign-in providers are set in <code>config/auth.yaml</code>.</p>
+      <div class="tabs" role="tablist">
+        <button role="tab" type="button" [class.active]="tab() === 'customize'" [attr.aria-selected]="tab() === 'customize'" (click)="tab.set('customize')">Customize</button>
+        <button role="tab" type="button" [class.active]="tab() === 'users'" [attr.aria-selected]="tab() === 'users'" (click)="tab.set('users')">People ({{ users().length }})</button>
+      </div>
+      @if (tab() === 'customize') { <app-customize /> } @else {
+      <p class="muted">Instance admins manage accounts and act as admin on every team.</p>
       <section class="card-surface stack">
         <div class="row">
           <h2>Users ({{ users().length }})</h2><div class="spacer"></div>
@@ -44,6 +50,7 @@ import { RelativeTimePipe } from '../shared/relative-time.pipe';
           </table>
         </div>
       </section>
+      }
     </div>
   `,
 })
@@ -53,6 +60,7 @@ export class AdminPage {
   private toast = inject(ToastService);
   protected users = signal<UserDto[]>([]);
   protected filter = signal('');
+  protected tab = signal<'customize' | 'users'>('customize');
   protected shown = computed(() => {
     const f = this.filter().toLowerCase();
     return this.users().filter(u => !f || u.name.toLowerCase().includes(f) || (u.email ?? '').includes(f));

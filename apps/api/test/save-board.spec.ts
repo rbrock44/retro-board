@@ -21,7 +21,7 @@ describe('saving a board and the current board', () => {
 
     const next = (await owner.client.get(`/api/boards/${res.body.board.id}`)).body as BoardStateDto;
     // same columns, no "Carried over" column needed: the card goes back into the column it came from
-    expect(next.columns.map(c => c.title)).toEqual(state.columns.map(c => c.title));
+    expect(next.columns.map(c => c.title)).toEqual(state.columns.map((c: { title: string }) => c.title));
     expect(next.cards).toHaveLength(1);
     expect(next.cards[0]).toMatchObject({ body: 'stop late deploys', columnId: next.columns[1].id, status: 'none' });
     expect(next.cards[0].carriedFrom).toMatchObject({ boardId: board.id, boardTitle: '2026-11-24 · Sprint 1' });

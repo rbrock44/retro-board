@@ -324,7 +324,7 @@ export class BoardPage implements OnDestroy {
       const id = this.boardId();
       void this.store.open(id).then(() => {
         const b = this.store.board();
-        if (b) document.title = `${b.title} · Retro Board`;
+        if (b) document.title = `${b.title} · ${this.auth.siteName()}`;
         if (b) void this.auth.welcome(b.teamId);
       });
     });

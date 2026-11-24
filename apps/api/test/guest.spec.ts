@@ -24,7 +24,7 @@ describe('no-sign-in mode (AUTH_MODE=none)', () => {
     expect((await anon.get('/api/teams')).status).toBe(401);
 
     const { c, me } = await guest(t.app);
-    expect(me).toMatchObject({ guest: true, needsName: true, name: 'Guest', role: 'user' });
+    expect(me).toMatchObject({ guest: true, needsName: true, name: 'Guest', role: 'admin' });
     // calling again keeps the same identity
     expect((await c.post('/api/auth/guest')).body.id).toBe(me.id);
     expect((await c.get('/api/auth/me')).body.id).toBe(me.id);

@@ -46,6 +46,7 @@ export class AuthService {
       }),
     ]);
     this.config.set(config);
+    this.theme.useSiteDefault(config?.site?.theme ?? null);
     // No sign-in: give this browser a guest identity instead of showing a login page.
     this.setMe(!me && config?.mode === 'none' ? await this.api.post<MeDto>('/api/auth/guest') : me);
     this.loaded.set(true);
@@ -71,6 +72,13 @@ export class AuthService {
   ensureName(): Promise<boolean> {
     if (!this.me()?.needsName) return Promise.resolve(true);
     return this.ask('name');
+  }
+
+  readonly siteName = computed(() => this.config()?.site?.name || 'Retro Board');
+
+  /** "Board · Retro Board" -> "Board · <site name>" */
+  withSiteName(title: string): string {
+    return title.replace(/Retro Board$/, this.siteName());
   }
 
   /** "Switch person" in the menu */

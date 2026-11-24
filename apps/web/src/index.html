@@ -11,7 +11,8 @@
     // Paint the saved theme before Angular boots so there is no flash of the wrong colors.
     (function () {
       try {
-        var t = JSON.parse(localStorage.getItem('retro-board-theme') || 'null');
+        // your own theme, else the site's default theme
+        var t = JSON.parse(localStorage.getItem('retro-board-theme') || localStorage.getItem('retro-board-site-theme') || 'null');
         if (!t || !t.tokens) return;
         var map = { bg: '--bg', surface: '--surface', surface2: '--surface-2', text: '--text', muted: '--muted',
           border: '--border', accent: '--accent', accentText: '--accent-text', danger: '--danger' };

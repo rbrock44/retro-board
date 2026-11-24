@@ -9,7 +9,9 @@ import { createRegistry, loadAuthFile, type AuthFileConfig } from './auth/provid
 import { SESSION_COOKIE, pruneSessions, userForToken } from './auth/sessions';
 import type { AppConfig } from './config';
 import type { Ctx } from './context';
+import { eq } from 'drizzle-orm';
 import { openDatabase } from './db';
+import { users } from './db/schema';
 import { HttpError } from './lib/http';
 import { createStorage, type Storage } from './lib/storage';
 import { createHub, noopHub, type Hub } from './realtime';
@@ -58,6 +60,8 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
   }, 'sign-in providers');
   if (config.authMode === 'none') {
     app.log.warn('AUTH_MODE=none: no sign-in. Anyone who can reach this site can see and change everything');
+    // Guests from before this release were plain users; in this mode everyone is an admin.
+    await database.db.update(users).set({ role: 'admin' }).where(eq(users.guest, true));
   }
 
   await app.register(cookie, { secret: config.sessionSecret });

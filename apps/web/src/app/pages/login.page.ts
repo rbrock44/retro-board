@@ -10,7 +10,7 @@ import { AuthService } from '../core/auth.service';
   template: `
     <div class="auth-page">
       <div class="auth-card card-surface">
-        <h1 class="brand-big"><span class="brand-mark" aria-hidden="true">◧</span> Retro Board</h1>
+        <h1 class="brand-big"><span class="brand-mark" aria-hidden="true">◧</span> {{ auth.siteName() }}</h1>
         @if (cfg()?.needsSetup) {
           <p class="notice">Welcome! Create the first account. It becomes the instance admin.</p>
         }
@@ -47,8 +47,9 @@ import { AuthService } from '../core/auth.service';
           </div>
         }
         @if (!localEnabled() && !cfg()?.providers?.length && cfg()) {
-          <p class="muted">No sign-in methods are enabled. Check <code>config/auth.yaml</code>.</p>
+          <p class="muted">No sign-in methods are enabled. Run <code>./launch.sh</code> again to set one up.</p>
         }
+        <p class="muted small self-hosted">🔒 Self-hosted. Everything you add stays on this server.</p>
       </div>
     </div>
   `,

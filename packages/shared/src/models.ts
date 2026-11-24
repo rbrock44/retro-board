@@ -67,8 +67,37 @@ export interface AuthProviderInfo {
   type: 'oidc' | 'github';
 }
 
+/** Instance-wide settings. Launch defaults come from .env; admins override them on the Customize page. */
+export interface InstanceSettings {
+  /** Shown in the top bar and the browser tab */
+  siteName: string;
+  /** The look for anyone who hasn't picked their own. null: light or dark, following each device */
+  theme: ThemePreference | null;
+  /** Columns a new board starts with when nobody picks a template (team setting wins) */
+  defaultTemplateId: string;
+  votesPerUser: number;
+  maxVotesPerCard: number;
+  allowAnonymous: boolean;
+  /** Who can create an email/password account */
+  signup: 'open' | 'invite' | 'closed';
+}
+
+export interface InstanceSettingsAdminDto {
+  /** What's in effect */
+  settings: InstanceSettings;
+  /** What the launch settings (.env) say, i.e. what "Reset" goes back to */
+  launchDefaults: InstanceSettings;
+  /** Keys an admin has changed from the launch defaults */
+  overridden: (keyof InstanceSettings)[];
+  templates: TemplateDto[];
+  /** Where this install keeps its data, for the "your data stays here" note */
+  storage: { location: string | null; database: string; uploads: string };
+}
+
 export interface AuthConfigDto {
   mode: AuthMode;
+  /** Public bits of the instance settings */
+  site: { name: string; theme: ThemePreference | null };
   /** PUBLIC_URL: the address people are meant to use (links that get shared are built from it) */
   publicUrl: string;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };
@@ -125,6 +154,8 @@ export interface TemplateDto {
   description: string;
   columns: ColumnSpec[];
   builtIn: boolean;
+  /** Made by an instance admin, offered to every team */
+  instance?: boolean;
 }
 
 export interface BoardSettings {

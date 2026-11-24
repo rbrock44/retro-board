@@ -6,7 +6,7 @@ import { RelativeTimePipe } from '../shared/relative-time.pipe';
 import { DemoService } from './demo.service';
 import { TourService } from './tour.service';
 
-/** The strip across the top in demo mode, and the "Your demos" panel behind it. */
+/** The strip across the top in demo mode, and the "Your Demos" panel behind it. */
 @Component({
   selector: 'app-demo-banner',
   imports: [FormsModule, Modal, RelativeTimePipe],
@@ -32,13 +32,13 @@ import { TourService } from './tour.service';
     @if (offerTour()) {
       <div class="tour-offer" role="status">
         <span>👋 New here? A one-minute tour shows you around.</span>
-        <button type="button" class="btn small primary" (click)="tour.start(); offerTour.set(false)">Take the tour</button>
-        <button type="button" class="btn small ghost" (click)="tour.markSeen(); offerTour.set(false)">No thanks</button>
+        <button type="button" class="btn small primary" (click)="tour.start(); offerTour.set(false)">Take the Tour</button>
+        <button type="button" class="btn small ghost" (click)="tour.markSeen(); offerTour.set(false)">No Thanks</button>
       </div>
     }
 
     @if (panelOpen()) {
-      <app-modal heading="Your demos" [wide]="true" (closed)="panelOpen.set(false)">
+      <app-modal heading="Your Demos" [wide]="true" (closed)="panelOpen.set(false)">
         <div class="stack">
           <p class="muted">Each demo is its own set of teams and retros, saved in this browser. Share one as a link and
             whoever opens it gets their own copy to play with.</p>
@@ -55,7 +55,7 @@ import { TourService } from './tour.service';
           </ul>
           <form class="row" (ngSubmit)="create()">
             <input name="newName" [(ngModel)]="newName" placeholder="New demo name" maxlength="60" class="grow">
-            <button type="submit" class="btn">New demo</button>
+            <button type="submit" class="btn">New Demo</button>
           </form>
           @if (link()) {
             <label>Share link <input [value]="link()" readonly (focus)="$any($event.target).select()"></label>

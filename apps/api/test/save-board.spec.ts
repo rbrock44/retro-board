@@ -33,6 +33,15 @@ describe('saving a board and the current board', () => {
     expect((await owner.client.post(`/api/boards/${board.id}/save`, {})).status).toBe(400);
   });
 
+  it('recognises an older lowercase "Carried over" column when saving', async () => {
+    t = await makeApp();
+    const { owner, board } = await teamWithBoard(t.app);
+    await owner.client.post(`/api/boards/${board.id}/columns`, { title: 'Carried over', color: '#a855f7' });
+    const res = await owner.client.post(`/api/boards/${board.id}/save`, {});
+    const next = (await owner.client.get(`/api/boards/${res.body.board.id}`)).body as BoardStateDto;
+    expect(next.columns.map(c => c.title.toLowerCase())).not.toContain('carried over');
+  });
+
   it('only lets facilitators save', async () => {
     t = await makeApp();
     const { owner, team, board } = await teamWithBoard(t.app);

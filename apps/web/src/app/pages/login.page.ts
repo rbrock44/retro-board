@@ -18,9 +18,9 @@ import { AuthService } from '../core/auth.service';
 
         @if (localEnabled()) {
           <div class="tabs" role="tablist">
-            <button role="tab" type="button" [class.active]="mode() === 'login'" [attr.aria-selected]="mode() === 'login'" (click)="mode.set('login')">Sign in</button>
+            <button role="tab" type="button" [class.active]="mode() === 'login'" [attr.aria-selected]="mode() === 'login'" (click)="mode.set('login')">Sign In</button>
             @if (canSignUp()) {
-              <button role="tab" type="button" [class.active]="mode() === 'signup'" [attr.aria-selected]="mode() === 'signup'" (click)="mode.set('signup')">Create account</button>
+              <button role="tab" type="button" [class.active]="mode() === 'signup'" [attr.aria-selected]="mode() === 'signup'" (click)="mode.set('signup')">Create Account</button>
             }
           </div>
           <form class="stack" (ngSubmit)="submit()">
@@ -32,7 +32,7 @@ import { AuthService } from '../core/auth.service';
               <input name="password" type="password" [(ngModel)]="password" required minlength="8"
                      [autocomplete]="mode() === 'signup' ? 'new-password' : 'current-password'">
             </label>
-            <button class="btn primary" type="submit" [disabled]="busy()">{{ mode() === 'login' ? 'Sign in' : 'Create account' }}</button>
+            <button class="btn primary" type="submit" [disabled]="busy()">{{ mode() === 'login' ? 'Sign In' : 'Create Account' }}</button>
           </form>
         }
 

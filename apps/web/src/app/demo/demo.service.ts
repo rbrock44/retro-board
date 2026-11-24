@@ -154,7 +154,7 @@ export class DemoService {
   create(name: string) {
     this.flush();
     const id = makeId();
-    this.addEntry({ id, name: name.trim() || 'New demo', updatedAt: new Date().toISOString() });
+    this.addEntry({ id, name: name.trim() || 'New Demo', updatedAt: new Date().toISOString() });
     this.writeLibrary(id);
     location.assign('/');
   }

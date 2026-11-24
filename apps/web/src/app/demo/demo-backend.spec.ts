@@ -15,7 +15,7 @@ describe('demo backend', () => {
     const teams = (await b.handle('GET', '/api/teams')) as TeamDto[];
     expect(teams.map(t => t.name)).toEqual(['Corn Belt Platform', 'Des Moines Design Crew']);
     const state = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
-    expect(state.columns.map(c => c.title)).toEqual(['Carried over', 'Went well', 'To improve', 'Action ideas']);
+    expect(state.columns.map(c => c.title)).toEqual(['Carried Over', 'Went Well', 'To Improve', 'Action Ideas']);
     expect(state.permissions.canFacilitate).toBe(true);
     expect(state.cards.some(c => c.carriedFrom?.boardTitle.endsWith(' · Sprint 41'))).toBe(true);
     expect(state.cards.find(c => c.groupTitle === 'Test reliability')).toBeTruthy();
@@ -53,7 +53,7 @@ describe('demo backend', () => {
     await b.handle('PATCH', `/api/cards/${target.id}`, { status: 'carry_over' });
     const next = (await b.handle('POST', '/api/teams/t-platform/boards', { title: 'Sprint 43 retro' })) as BoardDto;
     const s = (await b.handle('GET', `/api/boards/${next.id}`)) as BoardStateDto;
-    expect(s.columns[0].title).toBe('Carried over');
+    expect(s.columns[0].title).toBe('Carried Over');
     expect(s.cards.map(c => c.body)).toEqual([target.body]);
     const again = (await b.handle('POST', '/api/teams/t-platform/boards', { title: 'Sprint 44 retro' })) as BoardDto;
     expect(((await b.handle('GET', `/api/boards/${again.id}`)) as BoardStateDto).cards).toEqual([]);
@@ -64,7 +64,7 @@ describe('demo backend', () => {
     const events: BoardEvent[] = [];
     b.subscribe('b-s42', { onEvent: e => events.push(e), onTyping: () => {} });
     const live = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
-    const target = live.cards.find(c => !c.carriedFrom && !c.parentId && live.columns.find(col => col.id === c.columnId)?.title === 'To improve')!;
+    const target = live.cards.find(c => !c.carriedFrom && !c.parentId && live.columns.find(col => col.id === c.columnId)?.title === 'To Improve')!;
     await b.handle('PATCH', `/api/cards/${target.id}`, { status: 'carry_over' });
 
     const r = (await b.handle('POST', '/api/boards/b-s42/save', { name: 'Sprint 42', date: '2026-11-24' })) as { saved: BoardDto; board: BoardDto };
@@ -72,9 +72,9 @@ describe('demo backend', () => {
     expect(events.some(e => e.type === 'board.next' && e.boardId === r.board.id)).toBe(true);
 
     const next = (await b.handle('GET', `/api/boards/${r.board.id}`)) as BoardStateDto;
-    expect(next.columns.map(c => c.title)).toEqual(['Went well', 'To improve', 'Action ideas']);
+    expect(next.columns.map(c => c.title)).toEqual(['Went Well', 'To Improve', 'Action Ideas']);
     expect(next.cards.map(c => c.body)).toEqual([target.body]);
-    expect(next.columns.find(c => c.id === next.cards[0].columnId)?.title).toBe('To improve');
+    expect(next.columns.find(c => c.id === next.cards[0].columnId)?.title).toBe('To Improve');
 
     // opening the team now lands on the fresh board
     expect(await b.handle('POST', '/api/teams/t-platform/current')).toEqual({ boardId: r.board.id });
@@ -97,6 +97,6 @@ describe('demo backend', () => {
     const { b } = backend();
     const file = b.exportBoard('b-s42', 'md');
     expect(file.name).toBe('current-retro.md');
-    expect(file.text).toContain('## Went well');
+    expect(file.text).toContain('## Went Well');
   });
 });

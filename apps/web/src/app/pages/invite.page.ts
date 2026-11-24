@@ -10,16 +10,16 @@ import { AuthService } from '../core/auth.service';
     <div class="auth-page">
       <div class="auth-card card-surface stack">
         @if (error()) {
-          <h1>Invite problem</h1>
+          <h1>Invite Problem</h1>
           <p class="error" role="alert">{{ error() }}</p>
-          <a class="btn" routerLink="/">Go home</a>
+          <a class="btn" routerLink="/">Go Home</a>
         } @else if (info(); as i) {
           <h1>Join {{ i.teamName }}</h1>
           <p>You've been invited as a <strong>{{ i.role }}</strong>.</p>
           @if (auth.me()) {
-            <button class="btn primary" type="button" (click)="accept()" [disabled]="busy()">Join team</button>
+            <button class="btn primary" type="button" (click)="accept()" [disabled]="busy()">Join Team</button>
           } @else {
-            <a class="btn primary" routerLink="/login" [queryParams]="{ invite: token(), next: '/invite/' + token() }">Sign in or create an account</a>
+            <a class="btn primary" routerLink="/login" [queryParams]="{ invite: token(), next: '/invite/' + token() }">Sign In or Create an Account</a>
           }
         } @else {
           <p class="muted">Loading invite…</p>

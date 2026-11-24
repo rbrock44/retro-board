@@ -13,7 +13,7 @@ import { Customize } from './customize';
   imports: [FormsModule, Avatar, RelativeTimePipe, Customize],
   template: `
     <div class="page stack">
-      <h1>Instance admin</h1>
+      <h1>Instance Admin</h1>
       <div class="tabs" role="tablist">
         <button role="tab" type="button" [class.active]="tab() === 'customize'" [attr.aria-selected]="tab() === 'customize'" (click)="tab.set('customize')">Customize</button>
         <button role="tab" type="button" [class.active]="tab() === 'users'" [attr.aria-selected]="tab() === 'users'" (click)="tab.set('users')">People ({{ users().length }})</button>

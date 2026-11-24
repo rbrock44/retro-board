@@ -8,7 +8,7 @@ import { Modal } from './modal';
 /**
  * No-sign-in mode: "Who are you?". Offers the people this device has been and the team's other guests
  * ("Are you one of these?"), or a new name. Shown before a guest's first card or reply, when a nameless
- * guest opens a team that has people, and from "Switch person" in the menu.
+ * guest opens a team that has people, and from "Switch Person" in the menu.
  */
 @Component({
   selector: 'app-name-prompt',
@@ -43,7 +43,7 @@ import { Modal } from './modal';
         </form>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
         @if (mode() === 'welcome') {
-          <div class="row end"><button type="button" class="btn ghost small" (click)="finish(false)">Just looking</button></div>
+          <div class="row end"><button type="button" class="btn ghost small" (click)="finish(false)">Just Looking</button></div>
         }
       </div>
     </app-modal>
@@ -56,7 +56,7 @@ export class NamePrompt {
   protected busy = signal(false);
   protected error = signal('');
   protected candidates = signal<KnownGuest[]>([]);
-  protected heading = computed(() => (this.mode() === 'switch' ? 'Switch person' : this.mode() === 'welcome' ? 'Welcome! Who are you?' : "What's your name?"));
+  protected heading = computed(() => (this.mode() === 'switch' ? 'Switch Person' : this.mode() === 'welcome' ? 'Welcome! Who are you?' : "What's your name?"));
   private done = false;
 
   constructor() {

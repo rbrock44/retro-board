@@ -11,7 +11,7 @@ export const CARD_STATUS_LABELS: Record<CardStatus, string> = {
   none: 'Unmarked',
   discussed: 'Discussed',
   resolved: 'Resolved',
-  carry_over: 'Carry over',
+  carry_over: 'Carry Over',
 };
 
 export interface ThemeTokens {

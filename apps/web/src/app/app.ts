@@ -34,10 +34,10 @@ import { DemoService } from './demo/demo.service';
           </button>
           @if (menuOpen()) {
             <div class="menu" role="menu" (click)="menuOpen.set(false)">
-              <a role="menuitem" routerLink="/settings">Profile &amp; theme</a>
-              @if (auth.isAdmin()) { <a role="menuitem" routerLink="/admin">Instance admin</a> }
-              @if (me.guest) { <button role="menuitem" type="button" (click)="auth.switchPerson()">Switch person</button> }
-              @else { <button role="menuitem" type="button" (click)="logout()">Sign out</button> }
+              <a role="menuitem" routerLink="/settings">Profile &amp; Theme</a>
+              @if (auth.isAdmin()) { <a role="menuitem" routerLink="/admin">Instance Admin</a> }
+              @if (me.guest) { <button role="menuitem" type="button" (click)="auth.switchPerson()">Switch Person</button> }
+              @else { <button role="menuitem" type="button" (click)="logout()">Sign Out</button> }
             </div>
           }
         </div>

@@ -29,8 +29,8 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
             @if (t.description) { <p class="muted">{{ t.description }}</p> }
           </div>
           <div class="spacer"></div>
-          <a class="btn primary" [routerLink]="['/teams', t.id]">Current board</a>
-          @if (canCreate()) { <button class="btn" type="button" (click)="openNewBoard()">New board</button> }
+          <a class="btn primary" [routerLink]="['/teams', t.id]">Current Board</a>
+          @if (canCreate()) { <button class="btn" type="button" (click)="openNewBoard()">New Board</button> }
         </div>
 
         <form class="search" role="search" (ngSubmit)="search()">
@@ -117,13 +117,13 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               </details>
 
               @if (isAdmin()) {
-                <h2>Invite people</h2>
+                <h2>Invite People</h2>
                 <form class="row wrap" (ngSubmit)="createInvite()">
                   <input name="email" type="email" [(ngModel)]="inviteEmail" placeholder="Email (optional, locks the link to one person)" class="grow">
                   <select name="role" [(ngModel)]="inviteRole" aria-label="Role">
                     @for (r of roles; track r) { <option [value]="r">{{ r }}</option> }
                   </select>
-                  <button class="btn primary" type="submit">Create invite link</button>
+                  <button class="btn primary" type="submit">Create Invite Link</button>
                 </form>
                 <form class="row wrap" (ngSubmit)="addExisting()">
                   <input name="existing" type="email" [(ngModel)]="existingEmail" placeholder="Add someone who already has an account, by email" class="grow">
@@ -150,7 +150,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               <h2>Team</h2>
               <label>Name <input [(ngModel)]="edit.name" maxlength="80"></label>
               <label>Description <textarea [(ngModel)]="edit.description" rows="2" maxlength="500"></textarea></label>
-              <h2>Defaults for new retros</h2>
+              <h2>Defaults for New Retros</h2>
               <label>Template
                 <select [(ngModel)]="edit.defaultTemplateId">
                   @for (tpl of templates(); track tpl.id) { <option [value]="tpl.id">{{ tpl.name }}</option> }
@@ -158,7 +158,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               </label>
               <div class="row"><button class="btn primary" type="button" (click)="saveTeam()">Save</button></div>
 
-              <h2>Custom templates</h2>
+              <h2>Custom Templates</h2>
               <ul class="template-list">
                 @for (tpl of customTemplates(); track tpl.id) {
                   <li><span class="grow"><strong>{{ tpl.name }}</strong> <span class="muted">{{ columnNames(tpl) }}</span></span>
@@ -166,7 +166,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
                 } @empty { <li class="muted">None yet. Build one below, or use “Save columns as template” on any board.</li> }
               </ul>
               <details>
-                <summary>New template</summary>
+                <summary>New Template</summary>
                 <div class="stack">
                   <label>Name <input [(ngModel)]="tplName" maxlength="80"></label>
                   @for (c of tplColumns(); track $index; let i = $index) {
@@ -177,22 +177,22 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
                     </div>
                   }
                   <div class="row">
-                    <button class="btn" type="button" (click)="addTplColumn()">Add column</button>
+                    <button class="btn" type="button" (click)="addTplColumn()">Add Column</button>
                     <div class="spacer"></div>
-                    <button class="btn primary" type="button" (click)="saveTemplate()" [disabled]="!tplName.trim() || !tplColumns().length">Save template</button>
+                    <button class="btn primary" type="button" (click)="saveTemplate()" [disabled]="!tplName.trim() || !tplColumns().length">Save Template</button>
                   </div>
                 </div>
               </details>
 
-              <h2 class="danger-text">Danger zone</h2>
-              <button class="btn danger" type="button" (click)="deleteTeam()">Delete team and all its boards</button>
+              <h2 class="danger-text">Danger Zone</h2>
+              <button class="btn danger" type="button" (click)="deleteTeam()">Delete Team and All Its Boards</button>
             </section>
           }
         }
       </div>
 
       @if (newBoardOpen()) {
-        <app-modal heading="Start a retro" [wide]="true" (closed)="newBoardOpen.set(false)">
+        <app-modal heading="Start a Retro" [wide]="true" (closed)="newBoardOpen.set(false)">
           <form class="stack" (ngSubmit)="createBoard()">
             <label>Title <input name="title" [(ngModel)]="boardTitle" required maxlength="120"></label>
             <fieldset class="template-picker">
@@ -214,7 +214,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               Carry over {{ carry().cards }} marked {{ carry().cards === 1 ? 'card' : 'cards' }} from earlier retros
             </label>
             @if (carry().openActions) { <p class="muted small">{{ carry().openActions }} open action items will show on the board too.</p> }
-            <div class="row end"><button class="btn primary" type="submit" [disabled]="!boardTitle.trim()">Start retro</button></div>
+            <div class="row end"><button class="btn primary" type="submit" [disabled]="!boardTitle.trim()">Start Retro</button></div>
           </form>
         </app-modal>
       }
@@ -259,7 +259,7 @@ export class TeamPage {
   protected existingEmail = '';
   protected edit = { name: '', description: '', defaultTemplateId: 'went-well' };
   protected tplName = '';
-  protected tplColumns = signal<ColumnSpec[]>([{ title: 'Went well', color: '#22c55e' }]);
+  protected tplColumns = signal<ColumnSpec[]>([{ title: 'Went Well', color: '#22c55e' }]);
   protected boardTitle = '';
   protected boardTemplate = 'went-well';
   protected boardAnon = true;
@@ -268,8 +268,8 @@ export class TeamPage {
   protected isAdmin = computed(() => this.team()?.myRole === 'admin');
   protected canCreate = computed(() => this.team()?.myRole === 'admin' || this.team()?.myRole === 'member');
   protected tabs = computed(() => [
-    { id: 'boards' as Tab, label: 'Past boards' },
-    { id: 'actions' as Tab, label: 'Action items' },
+    { id: 'boards' as Tab, label: 'Past Boards' },
+    { id: 'actions' as Tab, label: 'Action Items' },
     { id: 'members' as Tab, label: `Members (${this.members().length})` },
     ...(this.isAdmin() ? [{ id: 'settings' as Tab, label: 'Settings' }] : []),
   ]);

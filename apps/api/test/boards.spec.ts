@@ -184,13 +184,13 @@ describe('carry over, actions and history', () => {
     await owner.client.patch(`/api/boards/${board.id}`, { status: 'closed' });
     const next = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Sprint 2' })).body;
     const ns = await state(owner.client, next.id);
-    expect(ns.columns[0].title).toBe('Carried over');
+    expect(ns.columns[0].title).toBe('Carried Over');
     expect(ns.cards).toHaveLength(1);
     expect(ns.cards[0]).toMatchObject({ body: 'Flaky tests', status: 'none', carriedFrom: { cardId: keep.id, boardTitle: 'Sprint 1' } });
     expect(ns.actions.map(a => a.title)).toEqual(['Fix CI']);
 
     const third = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Sprint 3' })).body;
-    expect((await state(owner.client, third.id)).columns[0].title).not.toBe('Carried over');
+    expect((await state(owner.client, third.id)).columns[0].title).not.toBe('Carried Over');
 
     await owner.client.patch(`/api/actions/${action.id}`, { status: 'done' });
     expect((await state(owner.client, third.id)).actions).toEqual([]);

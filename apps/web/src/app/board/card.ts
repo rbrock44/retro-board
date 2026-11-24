@@ -90,12 +90,12 @@ import { ClickOutside } from '../shared/click-outside';
                     </button>
                   }
                   <hr>
-                  <button type="button" role="menuitem" (click)="makeAction()">Create action item</button>
+                  <button type="button" role="menuitem" (click)="makeAction()">Create Action Item</button>
                 }
                 @if (canWrite()) {
-                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ inGroup() ? 'Add to group' : 'Create group' }}</button>
+                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ inGroup() ? 'Add to Group' : 'Create Group' }}</button>
                   @if (inGroup()) {
-                    <button type="button" role="menuitem" (click)="store.ungroup(card().id)">{{ card().parentId ? 'Remove from group' : 'Break up group' }}</button>
+                    <button type="button" role="menuitem" (click)="store.ungroup(card().id)">{{ card().parentId ? 'Remove from Group' : 'Break Up Group' }}</button>
                   }
                 }
                 @if (canEdit()) {

@@ -30,7 +30,7 @@ const CARD_WIDTH = 340;
             @for (x of tour.steps; track $index) { <span [class.on]="$index === i()"></span> }
           </div>
           <div class="tour-actions">
-            <button type="button" class="btn ghost small" (click)="tour.end()">{{ last() ? 'Close' : 'Skip tour' }}</button>
+            <button type="button" class="btn ghost small" (click)="tour.end()">{{ last() ? 'Close' : 'Skip Tour' }}</button>
             <div class="spacer"></div>
             @if (i() > 0) { <button type="button" class="btn small" (click)="tour.back()">Back</button> }
             <button type="button" class="btn primary small" (click)="tour.next()" autofocus>{{ last() ? 'Done' : 'Next' }}</button>

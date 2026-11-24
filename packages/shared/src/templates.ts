@@ -7,9 +7,9 @@ export const BUILT_IN_TEMPLATES: TemplateDto[] = [
     description: 'The classic three-column retro',
     builtIn: true,
     columns: [
-      { title: 'Went well', color: '#22c55e' },
-      { title: 'To improve', color: '#f97316' },
-      { title: 'Action ideas', color: '#3b82f6' },
+      { title: 'Went Well', color: '#22c55e' },
+      { title: 'To Improve', color: '#f97316' },
+      { title: 'Action Ideas', color: '#3b82f6' },
     ],
   },
   {
@@ -43,7 +43,7 @@ export const BUILT_IN_TEMPLATES: TemplateDto[] = [
       { title: 'Liked', color: '#22c55e' },
       { title: 'Learned', color: '#06b6d4' },
       { title: 'Lacked', color: '#f97316' },
-      { title: 'Longed for', color: '#a855f7' },
+      { title: 'Longed For', color: '#a855f7' },
     ],
   },
   {
@@ -67,7 +67,22 @@ export const BUILT_IN_TEMPLATES: TemplateDto[] = [
   },
 ];
 
-export const CARRIED_OVER_COLUMN = { title: 'Carried over', color: '#a855f7' };
+export const CARRIED_OVER_COLUMN = { title: 'Carried Over', color: '#a855f7' };
+
+/** Column titles match regardless of case, so boards from before the Title Case change still line up. */
+export function sameColumnTitle(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+export function isCarriedOverColumn(title: string): boolean {
+  return sameColumnTitle(title, CARRIED_OVER_COLUMN.title);
+}
+
+/** Built-in column titles from before they were Title Case, and what they are now (for older saved data). */
+export const RENAMED_COLUMN_TITLES: Record<string, string> = {
+  'Went well': 'Went Well', 'To improve': 'To Improve', 'Action ideas': 'Action Ideas', 'Longed for': 'Longed For',
+  'Carried over': 'Carried Over',
+};
 
 /** Swatches offered next to every color picker. */
 export const COLOR_PRESETS = [

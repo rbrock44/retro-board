@@ -21,12 +21,12 @@ import { ThemeEditor } from '../shared/theme-editor';
           <div class="row"><app-avatar [user]="me" [size]="48" /><div><strong>{{ me.name }}</strong><br><span class="muted">{{ me.email }}</span></div></div>
           <label>Display name <input [(ngModel)]="name" maxlength="100"></label>
           <label>Avatar URL <input [(ngModel)]="avatarUrl" type="url" placeholder="https://…"></label>
-          <div class="row"><button class="btn primary" type="button" (click)="saveProfile()">Save profile</button></div>
+          <div class="row"><button class="btn primary" type="button" (click)="saveProfile()">Save Profile</button></div>
         </section>
 
         <section class="card-surface stack">
           <div class="row"><h2>Theme</h2><div class="spacer"></div>
-            <button class="btn ghost" type="button" (click)="followSystem()">Follow system light/dark</button></div>
+            <button class="btn ghost" type="button" (click)="followSystem()">Follow System Light/Dark</button></div>
           <p class="muted">Changes apply right away and follow you to any device you sign in on.</p>
           <app-theme-editor [value]="theme.current()" (valueChange)="setTheme($event)" />
         </section>
@@ -37,13 +37,13 @@ import { ThemeEditor } from '../shared/theme-editor';
             @if (me.hasPassword) { <label>Current password <input type="password" [(ngModel)]="current" autocomplete="current-password"></label> }
             @else { <p class="muted">You sign in with an external provider. Set a password to also sign in with email.</p> }
             <label>New password <input type="password" [(ngModel)]="next" minlength="8" autocomplete="new-password"></label>
-            <div class="row"><button class="btn" type="button" (click)="changePassword()" [disabled]="next.length < 8">{{ me.hasPassword ? 'Change password' : 'Set password' }}</button></div>
+            <div class="row"><button class="btn" type="button" (click)="changePassword()" [disabled]="next.length < 8">{{ me.hasPassword ? 'Change Password' : 'Set Password' }}</button></div>
           </section>
         }
 
         @if (providers().length || me.identities.length) {
           <section class="card-surface stack">
-            <h2>Linked sign-ins</h2>
+            <h2>Linked Sign-Ins</h2>
             <ul class="member-list">
               @for (p of providers(); track p.id) {
                 <li>

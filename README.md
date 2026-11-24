@@ -56,7 +56,7 @@ plain email and password).
   - `member` - Starts retros, adds cards, replies and media, likes cards, reacts, manages action items. Facilitates
     the boards they start
   - `viewer` - Read-only, for stakeholders who want to follow along
-- `Instance admin` - The first account created, plus anyone in `ADMIN_EMAILS`. Manages every account from the
+- `Instance Admin` - The first account created, plus anyone in `ADMIN_EMAILS`. Manages every account from the
   `Admin` page and acts as admin on every team
 
 ### Running a Retro
@@ -64,15 +64,15 @@ plain email and password).
 Each team has one **current board**. Clicking a team opens it straight away (a team with no board gets one from
 its default template), so people always land in the right place.
 
-- `💾 Save board` - When the retro is done, a facilitator saves it. The board goes into the team's history as it
+- `💾 Save Board` - When the retro is done, a facilitator saves it. The board goes into the team's history as it
   is, titled with the date and an optional name (`2026-11-24 · Sprint 42`), and a fresh current board takes its
-  place with the same columns and settings. Cards marked `Carry over` move to the fresh board, back in the column
+  place with the same columns and settings. Cards marked `Carry Over` move to the fresh board, back in the column
   they came from. Everyone on the board is moved over automatically
-- `New board` (on the History page) - Pick a template (Went Well / To Improve / Actions, Start / Stop / Continue, Mad / Sad / Glad,
+- `New Board` (on the History page) - Pick a template (Went Well / To Improve / Actions, Start / Stop / Continue, Mad / Sad / Glad,
   4Ls, Sailboat, Blank, or one your team saved) and whether anonymous cards are allowed
 - `Columns` - Facilitators add, rename, recolor (color picker with presets), describe, reorder and delete columns.
-  `Save columns as template` keeps a layout for the team
-- `Board settings` - Anonymous cards, `Lock` (no new or edited cards, likes and reactions stay open), a board-wide
+  `Save Columns as Template` keeps a layout for the team
+- `Board Settings` - Anonymous cards, `Lock` (no new or edited cards, likes and reactions stay open), a board-wide
   color theme, and `Close` / `Reopen` / `Archive`
 - `Live` - Every change appears for everyone instantly. Avatars in the header show who is on the board, and a
   "typing…" hint shows under columns where someone is writing
@@ -89,17 +89,17 @@ its default template), so people always land in the right place.
 ### Likes, Grouping and Marking
 
 - `Like` - 👍 on a card likes it, click again to unlike. Everyone can like every card, once. No budget, no limits
-- `Group` - Turn on `Group mode` (or press `G`) and drag a card onto another card, or use a card's `⋯` →
-  `Create group` (or `Add to group` on a grouped card) and click the target. A group shows as a box with its name, then every card in it at full size; click the name to rename it. The box shows how many cards are in it and their combined likes
-- `Sort` - `Manual` (drag to reorder, including across columns) or `Most liked`
-- `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry over`. Filter the board by mark with `Show`
+- `Group` - Turn on `Group Mode` (or press `G`) and drag a card onto another card, or use a card's `⋯` →
+  `Create Group` (or `Add to Group` on a grouped card) and click the target. A group shows as a box with its name, then every card in it at full size; click the name to rename it. The box shows how many cards are in it and their combined likes
+- `Sort` - `Manual` (drag to reorder, including across columns) or `Most Liked`
+- `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`. Filter the board by mark with `Show`
 
 ### Carry Over and Action Items
 
-- `Carry over` - Cards marked `Carry over` move to the fresh board when the current one is saved, into the column
-  with the same name, linked back to where they came from. Boards started by hand from `New board` put them in a
-  `Carried over` column instead. Each card is carried once
-- `Action items` - Create them from a card (`⋯` → `Create action item`), from the board's `Actions` panel, or on
+- `Carry Over` - Cards marked `Carry Over` move to the fresh board when the current one is saved, into the column
+  with the same name, linked back to where they came from. Boards started by hand from `New Board` put them in a
+  `Carried Over` column instead. Each card is carried once
+- `Action Items` - Create them from a card (`⋯` → `Create Action Item`), from the board's `Actions` panel, or on
   the team page. Each has an owner and due date. Open items from every retro show on every new board until done
 
 ### Demo Mode
@@ -125,7 +125,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 
 ### History, Search and Export
 
-- `History` - The link next to the team name on a board. `Past boards` lists every board the team has saved,
+- `History` - The link next to the team name on a board. `Past Boards` lists every board the team has saved,
   filterable by open, closed and archived; open any of them to read it. Saved boards are read-only, with a button
   back to the current board
 - `Search` - Searches every card, group name and action item the team has ever written
@@ -133,7 +133,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 
 ### Themes
 
-- `Profile & theme` - Pick a preset (Light, Dark, Midnight, Forest, Sunset, Grape, High contrast), then fine-tune
+- `Profile & Theme` - Pick a preset (Light, Dark, Midnight, Forest, Sunset, Grape, High contrast), then fine-tune
   any of the nine colors with a color picker. Contrast warnings tell you when text gets hard to read. Your theme
   follows you to any device
 - `☀ / ☾` - Quick switch between light and dark in the top bar

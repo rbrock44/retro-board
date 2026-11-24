@@ -81,7 +81,7 @@ export class AuthService {
     return title.replace(/Retro Board$/, this.siteName());
   }
 
-  /** "Switch person" in the menu */
+  /** "Switch Person" in the menu */
   switchPerson(): Promise<boolean> {
     return this.ask('switch');
   }
@@ -128,7 +128,7 @@ export class AuthService {
     this.saveKnown(this.knownGuests().filter(g => g.id !== id));
   }
 
-  /** Guest names used in this browser, so "Switch person" can offer them. Kept apart for the demo. */
+  /** Guest names used in this browser, so "Switch Person" can offer them. Kept apart for the demo. */
   knownGuests(): KnownGuest[] {
     try {
       return JSON.parse(localStorage.getItem(this.knownKey()) ?? '[]') as KnownGuest[];

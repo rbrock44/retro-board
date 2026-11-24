@@ -1,5 +1,5 @@
 import {
-  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
+  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
@@ -16,12 +16,12 @@ const nowIso = () => new Date().toISOString();
 
 /** What the pretend teammates write while you watch a live board. */
 const BOT_CARDS: [string, string][] = [
-  ['Went well', 'The new dashboards made the incident way easier to follow'],
-  ['To improve', 'PR descriptions are getting thin again'],
-  ['Action ideas', 'Rotate who runs the retro each sprint'],
-  ['Went well', 'Design and eng synced early on the billing flow'],
-  ['Action ideas', 'Pork tenderloin lunch when we ship on time 🐷'],
-  ['To improve', 'Too many Slack pings during focus time'],
+  ['Went Well', 'The new dashboards made the incident way easier to follow'],
+  ['To Improve', 'PR descriptions are getting thin again'],
+  ['Action Ideas', 'Rotate who runs the retro each sprint'],
+  ['Went Well', 'Design and eng synced early on the billing flow'],
+  ['Action Ideas', 'Pork tenderloin lunch when we ship on time 🐷'],
+  ['To Improve', 'Too many Slack pings during focus time'],
 ];
 const BOT_REPLIES = ['Ope, +1, felt this too', 'Agreed. Can we pick an owner?', 'This came up last sprint as well', 'Love it'];
 
@@ -34,7 +34,10 @@ export class DemoBackend {
   private listeners = new Map<string, Set<Listener>>();
   private bot: ReturnType<typeof setInterval> | null = null;
 
-  constructor(public state: DemoState, private onChange: () => void) {}
+  constructor(public state: DemoState, private onChange: () => void) {
+    // Demos saved before column titles were Title Case: bring the built-in ones up to date.
+    for (const c of state.columns) c.title = RENAMED_COLUMN_TITLES[c.title] ?? c.title;
+  }
 
   static fresh(onChange: () => void) {
     return new DemoBackend(seedDemo(), onChange);
@@ -277,7 +280,7 @@ export class DemoBackend {
 
     if (roll < 0.15 && this.state.botCards < BOT_CARDS.length && !board.settings.locked) {
       const [colTitle, body] = BOT_CARDS[this.state.botCards];
-      const col = this.state.columns.find(c => c.boardId === boardId && c.title === colTitle) ??
+      const col = this.state.columns.find(c => c.boardId === boardId && sameColumnTitle(c.title, colTitle)) ??
         pick(this.state.columns.filter(c => c.boardId === boardId));
       if (!col) return;
       for (const l of this.listeners.get(boardId) ?? []) l.onTyping({ user: who, columnId: col.id });
@@ -421,7 +424,7 @@ export class DemoBackend {
       return this.meDto();
     }],
     ['POST', /^\/api\/auth\/logout$/, () => undefined],
-    // "Switch person": in the demo you can be anyone on the teams
+    // "Switch Person": in the demo you can be anyone on the teams
     ['POST', /^\/api\/auth\/guest\/claim$/, (_p, b) => {
       const u = this.state.users.find(x => x.id === b.userId && x.name) ?? notFound('Person');
       this.state.meId = u.id;
@@ -617,7 +620,7 @@ export class DemoBackend {
       const { board } = this.requireBoard(id, 'admin');
       const t = {
         id: newId(), teamId: board.teamId, name: String(b.name), description: String(b.description ?? ''), builtIn: false,
-        columns: this.state.columns.filter(c => c.boardId === id && c.title !== CARRIED_OVER_COLUMN.title).sort(byPosition)
+        columns: this.state.columns.filter(c => c.boardId === id && !isCarriedOverColumn(c.title)).sort(byPosition)
           .map(c => ({ title: c.title, color: c.color, description: c.description })),
       };
       this.state.templates.push(t);
@@ -824,7 +827,7 @@ export class DemoBackend {
     }],
   ];
 
-  /** Mirrors the server: columns from a template, plus a "Carried over" column for cards marked to carry over. */
+  /** Mirrors the server: columns from a template, plus a "Carried Over" column for cards marked to carry over. */
   private createBoard(teamId: string, b: any): BoardDto {
     const { team } = this.requireTeam(teamId, 'member');
     const title = String(b.title ?? '').trim() || fail(400, 'Give the retro a title');
@@ -856,12 +859,12 @@ export class DemoBackend {
     const pending = this.state.cards.filter(c => boardIds.has(c.boardId) && c.status === 'carry_over' && !c.carriedToBoardId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     if (!pending.length) return;
-    const targets = new Map(matchColumns ? this.state.columns.filter(c => c.boardId === boardId).map(c => [c.title, c.id]) : []);
+    const targets = new Map(matchColumns ? this.state.columns.filter(c => c.boardId === boardId).map(c => [c.title.trim().toLowerCase(), c.id]) : []);
     let carriedColumnId: string | null = null;
     const lastPos = new Map<string, string | null>();
     for (const orig of pending) {
       const fromTitle = this.state.columns.find(c => c.id === orig.columnId)?.title ?? '';
-      let columnId = fromTitle !== CARRIED_OVER_COLUMN.title ? targets.get(fromTitle) : undefined;
+      let columnId = !isCarriedOverColumn(fromTitle) ? targets.get(fromTitle.trim().toLowerCase()) : undefined;
       if (!columnId) {
         if (!carriedColumnId) {
           carriedColumnId = newId();
@@ -880,7 +883,7 @@ export class DemoBackend {
     }
   }
 
-  /** "Save board": file it in the history under the date (and name), start a fresh one with the same columns. */
+  /** "Save Board": file it in the history under the date (and name), start a fresh one with the same columns. */
   private saveBoard(boardId: string, b: any) {
     const { board } = this.requireBoard(boardId, 'facilitate');
     if (board.status !== 'open') fail(400, 'This board is already in the history');
@@ -896,7 +899,7 @@ export class DemoBackend {
     this.state.boards.push(next);
     const carriedPos = positionAfter(null);
     let pos = carriedPos;
-    for (const c of this.state.columns.filter(c => c.boardId === boardId && c.title !== CARRIED_OVER_COLUMN.title).sort(byPosition)) {
+    for (const c of this.state.columns.filter(c => c.boardId === boardId && !isCarriedOverColumn(c.title)).sort(byPosition)) {
       pos = positionAfter(pos);
       this.state.columns.push({ id: newId(), boardId: next.id, title: c.title, color: c.color, description: c.description, position: pos });
     }

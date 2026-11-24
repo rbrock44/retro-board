@@ -28,18 +28,18 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     route: '/teams/t-platform', target: '.columns',
-    title: 'The current board',
+    title: 'The Current Board',
     body: 'Columns fill the screen. Facilitators add, rename, recolor and reorder them, or start from templates like Start / Stop / Continue.',
   },
   {
     route: '/teams/t-platform', target: 'form.composer',
-    title: 'Add a card',
+    title: 'Add a Card',
     body: 'Write in markdown, paste or drag in images, GIFs and videos, and tick Anonymous to hide your name. Everyone sees it appear instantly.',
   },
   {
     route: '/teams/t-platform', target: 'button.likes',
     title: 'Likes',
-    body: 'Everyone can like every card, once. Sort by "Most liked" to see what the team cares about.',
+    body: 'Everyone can like every card, once. Sort by "Most Liked" to see what the team cares about.',
   },
   {
     route: '/teams/t-platform', target: '.group-box',
@@ -48,7 +48,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     route: '/teams/t-platform', target: '.card-menu-btn',
-    title: 'Mark, carry over, act',
+    title: 'Mark, Carry Over, Act',
     body: 'Mark a card Discussed, Resolved or Carry over, turn it into an action item with an owner and due date, or group it.',
   },
   {
@@ -58,17 +58,17 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     route: '/teams/t-platform', target: '.presence',
-    title: 'Live, together',
+    title: 'Live, Together',
     body: 'See who\'s on the board right now. In this demo a few pretend teammates are here: watch them like and add cards.',
   },
   {
     route: '/teams/t-platform', target: '[data-tour="actions"]',
-    title: 'Action items',
+    title: 'Action Items',
     body: 'Every open action item from the team shows here, on every board, until it\'s done.',
   },
   {
     route: '/teams/t-platform', target: '[data-tour="save"]',
-    title: 'Save board',
+    title: 'Save Board',
     body: 'When the retro is over, save it to the team\'s history under today\'s date. A fresh board takes its place, and cards marked Carry over come along.',
   },
   {
@@ -78,24 +78,24 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     route: '/teams/t-platform', target: '[data-tour="board-settings"]',
-    title: 'Board settings',
+    title: 'Board Settings',
     body: 'Lock the board, allow or hide anonymous cards, and give one board its own colors.',
   },
   {
     route: '/admin', target: 'app-customize',
-    title: 'Make it yours',
+    title: 'Make It Yours',
     body: 'Admins set the site name, a theme and colors for everyone, default columns, templates every team can use, and who can sign up. Everyone can still pick their own theme.',
   },
   {
     target: '[data-tour="share"]',
-    title: 'Share this demo',
+    title: 'Share This Demo',
     body: 'Set up a demo the way you like, then Share copies a link with all of it inside. Whoever opens it gets their own copy.',
   },
   {
     route: '/',
-    title: 'Run your own',
+    title: 'Run Your Own',
     body: 'The real thing runs on your own computer or server with one command, and all its data stays there.',
-    link: { href: 'https://github.com/rbrock44/retro-board#readme', label: 'Get it on GitHub' },
+    link: { href: 'https://github.com/rbrock44/retro-board#readme', label: 'Get It on GitHub' },
   },
 ];
 

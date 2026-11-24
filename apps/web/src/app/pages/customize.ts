@@ -54,7 +54,7 @@ type Key = keyof InstanceSettings;
           <p class="muted small">Teams can pick their own default, and pick any template when they start a board. {{ hint('defaultTemplateId') }}
             @if (overridden('defaultTemplateId')) { <button type="button" class="link-btn" (click)="reset('defaultTemplateId')">Reset</button> }</p>
 
-          <h3>Your templates</h3>
+          <h3>Your Templates</h3>
           <p class="muted small">Column sets every team can choose from, next to the built-in ones.</p>
           @for (t of instanceTemplates(); track t.id) {
             <div class="row">
@@ -66,7 +66,7 @@ type Key = keyof InstanceSettings;
           } @empty { <p class="muted small">None yet.</p> }
 
           <details class="new-template">
-            <summary>New template</summary>
+            <summary>New Template</summary>
             <div class="stack">
               <label>Name <input [(ngModel)]="draftName" maxlength="80" placeholder="e.g. Rose / Thorn / Bud"></label>
               @for (c of draftColumns; track $index; let i = $index) {
@@ -79,7 +79,7 @@ type Key = keyof InstanceSettings;
               <div class="row">
                 <button type="button" class="btn ghost small" (click)="addDraftColumn()" [disabled]="draftColumns.length >= 12">＋ Column</button>
                 <div class="spacer"></div>
-                <button type="button" class="btn small" (click)="createTemplate()" [disabled]="!draftName.trim() || !draftColumns.every(c => c.title.trim())">Add template</button>
+                <button type="button" class="btn small" (click)="createTemplate()" [disabled]="!draftName.trim() || !draftColumns.every(c => c.title.trim())">Add Template</button>
               </div>
             </div>
           </details>
@@ -113,7 +113,7 @@ type Key = keyof InstanceSettings;
         }
 
         <section class="card-surface stack">
-          <h2>Your data</h2>
+          <h2>Your Data</h2>
           <p>Everything stays on the computer or server running this app. Nothing is sent anywhere else, except
             GIF searches (to Tenor, if turned on) and signing in with a provider you set up.</p>
           @if (d.storage.location) {
@@ -128,7 +128,7 @@ type Key = keyof InstanceSettings;
         </section>
 
         <div class="row end sticky-save">
-          <button type="button" class="btn primary" (click)="save()" [disabled]="saving() || !dirty()">Save changes</button>
+          <button type="button" class="btn primary" (click)="save()" [disabled]="saving() || !dirty()">Save Changes</button>
         </div>
       </div>
     } @else {

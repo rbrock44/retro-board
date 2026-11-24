@@ -62,27 +62,27 @@ import { ClickOutside } from '../shared/click-outside';
         @if (s.board.status !== 'open') {
           <div class="history-note no-print" role="note">
             <span>📚 This board is in the team's history{{ s.board.closedAt ? ', saved ' + (s.board.closedAt | date: 'mediumDate') : '' }}. It's read-only.</span>
-            <a class="btn small" [routerLink]="['/teams', s.team.id]">Go to the current board</a>
-            <a class="btn small ghost" [routerLink]="['/teams', s.team.id, 'history']">All past boards</a>
+            <a class="btn small" [routerLink]="['/teams', s.team.id]">Go to the Current Board</a>
+            <a class="btn small ghost" [routerLink]="['/teams', s.team.id, 'history']">All Past Boards</a>
           </div>
         }
 
         <div class="board-tools no-print">
           <label>Show
             <select [ngModel]="store.statusFilter()" (ngModelChange)="store.statusFilter.set($event)">
-              <option value="all">All cards</option>
+              <option value="all">All Cards</option>
               @for (st of statuses; track st) { <option [value]="st">{{ labels[st] }}</option> }
             </select>
           </label>
           <label>Sort
             <select [ngModel]="store.sort()" (ngModelChange)="store.sort.set($event)">
               <option value="position">Manual</option>
-              <option value="likes">Most liked</option>
+              <option value="likes">Most Liked</option>
             </select>
           </label>
           @if (perm().canWrite) {
             <button type="button" class="chip" [class.active]="store.groupMode()" (click)="store.groupMode.set(!store.groupMode())"
-                    title="Drag a card onto another card to group them (G)">⧉ Group mode</button>
+                    title="Drag a card onto another card to group them (G)">⧉ Group Mode</button>
           }
           <div class="spacer"></div>
           <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
@@ -99,9 +99,9 @@ import { ClickOutside } from '../shared/click-outside';
             }
           </span>
           @if (perm().canFacilitate && s.board.status === 'open') {
-            <button type="button" class="btn primary" data-tour="save" (click)="openSave()" title="File this board in the history and start a fresh one">💾 Save board</button>
+            <button type="button" class="btn primary" data-tour="save" (click)="openSave()" title="File this board in the history and start a fresh one">💾 Save Board</button>
           }
-          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board settings</button> }
+          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board Settings</button> }
         </div>
 
         @if (store.pickingGroupFor()) {
@@ -152,13 +152,13 @@ import { ClickOutside } from '../shared/click-outside';
               </section>
             }
             @if (perm().canFacilitate) {
-              <button type="button" class="add-column no-print" (click)="newColumn()" aria-label="Add column" data-tip="Add column">＋</button>
+              <button type="button" class="add-column no-print" (click)="newColumn()" aria-label="Add Column" data-tip="Add Column">＋</button>
             }
           </div>
 
           @if (sidebar()) {
-            <aside class="sidebar card-surface" aria-label="Action items">
-              <div class="row"><h2>Action items</h2><div class="spacer"></div>
+            <aside class="sidebar card-surface" aria-label="Action Items">
+              <div class="row"><h2>Action Items</h2><div class="spacer"></div>
                 <button type="button" class="icon-btn" (click)="sidebar.set(false)" aria-label="Close action items">✕</button></div>
               <p class="muted small">Open items from every retro in this team, plus the ones made here.</p>
               <app-action-list [actions]="store.boardActions()" [members]="s.members" [teamId]="s.team.id" [boardId]="s.board.id"
@@ -169,16 +169,16 @@ import { ClickOutside } from '../shared/click-outside';
       </div>
 
       @if (columnEdit(); as ce) {
-        <app-modal [heading]="ce.id ? 'Edit column' : 'New column'" (closed)="columnEdit.set(null)">
+        <app-modal [heading]="ce.id ? 'Edit Column' : 'New Column'" (closed)="columnEdit.set(null)">
           <form class="stack" (ngSubmit)="saveColumn()">
             <label>Title <input name="title" [(ngModel)]="ce.title" required maxlength="80" autofocus></label>
             <label>Description <input name="desc" [(ngModel)]="ce.description" maxlength="300" placeholder="Optional prompt shown under the title"></label>
             <div><span class="token-label">Color</span><app-color-picker [(value)]="ce.color" label="Column color" /></div>
             <div class="row wrap">
               @if (ce.id) {
-                <button type="button" class="btn ghost" (click)="shiftColumn(-1)">← Move left</button>
-                <button type="button" class="btn ghost" (click)="shiftColumn(1)">Move right →</button>
-                <button type="button" class="btn ghost danger" (click)="deleteColumn()">Delete column</button>
+                <button type="button" class="btn ghost" (click)="shiftColumn(-1)">← Move Left</button>
+                <button type="button" class="btn ghost" (click)="shiftColumn(1)">Move Right →</button>
+                <button type="button" class="btn ghost danger" (click)="deleteColumn()">Delete Column</button>
               }
               <div class="spacer"></div>
               <button type="submit" class="btn primary" [disabled]="!ce.title.trim()">Save</button>
@@ -188,7 +188,7 @@ import { ClickOutside } from '../shared/click-outside';
       }
 
       @if (saveOpen()) {
-        <app-modal heading="Save board" (closed)="saveOpen.set(false)">
+        <app-modal heading="Save Board" (closed)="saveOpen.set(false)">
           <form class="stack" (ngSubmit)="saveBoard()">
             <p>This board goes into the team's history as it is now, and a fresh board with the same columns takes its place.</p>
             <label>Name <span class="muted">(optional)</span>
@@ -196,19 +196,19 @@ import { ClickOutside } from '../shared/click-outside';
             </label>
             <p class="muted">Saved as <strong>{{ today }}{{ saveName.trim() ? ' · ' + saveName.trim() : '' }}</strong></p>
             <p class="muted">
-              @if (carryCount()) { {{ carryCount() }} card{{ carryCount() === 1 ? '' : 's' }} marked <em>Carry over</em> will move to the fresh board. }
-              @else { No cards are marked <em>Carry over</em>, so the fresh board starts empty. }
+              @if (carryCount()) { {{ carryCount() }} card{{ carryCount() === 1 ? '' : 's' }} marked <em>Carry Over</em> will move to the fresh board. }
+              @else { No cards are marked <em>Carry Over</em>, so the fresh board starts empty. }
               Open action items show on it too.
             </p>
             <div class="row end">
               <button type="button" class="btn ghost" (click)="saveOpen.set(false)">Cancel</button>
-              <button type="submit" class="btn primary" [disabled]="saving()">Save and start fresh</button>
+              <button type="submit" class="btn primary" [disabled]="saving()">Save and Start Fresh</button>
             </div>
           </form>
         </app-modal>
       }
       @if (settingsOpen()) {
-        <app-modal heading="Board settings" [wide]="true" (closed)="settingsOpen.set(false)">
+        <app-modal heading="Board Settings" [wide]="true" (closed)="settingsOpen.set(false)">
           <form class="stack" (ngSubmit)="saveSettings()">
             <label class="check"><input name="anon" type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
             <label class="check"><input name="lock" type="checkbox" [(ngModel)]="form.locked"> Lock board (no new or edited cards; likes and reactions stay open)</label>
@@ -222,21 +222,21 @@ import { ClickOutside } from '../shared/click-outside';
             </fieldset>
 
             <div class="row wrap">
-              <button type="submit" class="btn primary">Save settings</button>
+              <button type="submit" class="btn primary">Save Settings</button>
               <div class="spacer"></div>
               @if (s.permissions.role === 'admin') {
-                <button type="button" class="btn ghost" (click)="saveTemplate()">Save columns as template</button>
+                <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
               }
             </div>
             <hr>
             <div class="row wrap">
               @if (s.board.status === 'open') {
-                <button type="button" class="btn" (click)="setStatus('closed')">Close board</button>
+                <button type="button" class="btn" (click)="setStatus('closed')">Close Board</button>
               } @else {
-                <button type="button" class="btn" (click)="setStatus('open')">Reopen board</button>
+                <button type="button" class="btn" (click)="setStatus('open')">Reopen Board</button>
               }
               @if (s.board.status !== 'archived') { <button type="button" class="btn ghost" (click)="setStatus('archived')">Archive</button> }
-              @if (s.permissions.role === 'admin') { <button type="button" class="btn ghost danger" (click)="deleteBoard()">Delete board</button> }
+              @if (s.permissions.role === 'admin') { <button type="button" class="btn ghost danger" (click)="deleteBoard()">Delete Board</button> }
             </div>
           </form>
         </app-modal>

@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, byPosition, positionAfter,
+  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, isCarriedOverColumn, byPosition, positionAfter,
   sanitizeTokens, type BoardSettings, type BoardStateDto, type CardDto, type ColumnSpec,
 } from '@retro/shared';
 import { toUserDto } from '../auth/users';
@@ -72,12 +72,12 @@ async function carryPending(tx: Tx, teamId: string, boardId: string, carriedPos:
   if (!pending.length) return;
 
   const targets = matchColumns
-    ? new Map((await tx.select().from(columns).where(eq(columns.boardId, boardId))).map(c => [c.title, c.id]))
+    ? new Map((await tx.select().from(columns).where(eq(columns.boardId, boardId))).map(c => [c.title.trim().toLowerCase(), c.id]))
     : new Map<string, string>();
   let carriedColumnId: string | null = null;
   const lastPos = new Map<string, string | null>();
   for (const { card: orig, columnTitle } of pending) {
-    let columnId = columnTitle !== CARRIED_OVER_COLUMN.title ? targets.get(columnTitle) : undefined;
+    let columnId = !isCarriedOverColumn(columnTitle) ? targets.get(columnTitle.trim().toLowerCase()) : undefined;
     if (!columnId) {
       if (!carriedColumnId) {
         carriedColumnId = newId();
@@ -220,7 +220,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       const carriedPos = positionAfter(null);
       let pos = carriedPos;
       const old = (await tx.select().from(columns).where(eq(columns.boardId, board.id))).sort(byPosition);
-      for (const c of old.filter(c => c.title !== CARRIED_OVER_COLUMN.title)) {
+      for (const c of old.filter(c => !isCarriedOverColumn(c.title))) {
         pos = positionAfter(pos);
         await tx.insert(columns).values({ id: newId(), boardId: nextId, title: c.title, color: c.color, description: c.description, position: pos });
       }

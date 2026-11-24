@@ -154,7 +154,7 @@ import { Composer, type ComposerResult } from './composer';
               </section>
             }
             @if (perm().canFacilitate) {
-              <button type="button" class="add-column no-print" (click)="newColumn()">＋ Add column</button>
+              <button type="button" class="add-column no-print" (click)="newColumn()" aria-label="Add column" data-tip="Add column">＋</button>
             }
           </div>
 

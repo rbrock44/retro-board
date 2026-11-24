@@ -11,27 +11,36 @@ import { Media } from './media';
 import { Reactions } from './reactions';
 import { Reply } from './reply';
 
-/** One card. A group head also renders its grouped cards inside itself (`nested` cards render compactly). */
+/**
+ * One card. A group is shown as a box: its name, then every card in it as an equal, full card (the first card
+ * holds the group's name in the data, but isn't shown any differently). `nested` marks a card drawn inside a box.
+ */
 @Component({
   selector: 'app-card',
   imports: [FormsModule, RouterLink, Avatar, MarkdownPipe, RelativeTimePipe, Composer, Media, Reactions, Reply],
   template: `
-    <article class="card" [class.nested]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
-             [class.pick-target]="picking() && store.pickingGroupFor() !== card().id"
-             (click)="onPickClick($event)" [attr.aria-label]="'Card: ' + card().body.slice(0, 60)">
-      @if (kids().length && !nested()) {
-        <div class="group-head">
+    @if (kids().length) {
+      <section class="group-box" [attr.data-card-id]="card().id" [class.pick-target]="picking() && !sourceInGroup()"
+               (click)="onPickClick($event)" [attr.aria-label]="'Group: ' + groupName()">
+        <header class="group-head">
           @if (editingTitle()) {
             <input class="inline-edit" [value]="card().groupTitle ?? ''" placeholder="Name this group" (change)="saveTitle($event)"
                    (blur)="editingTitle.set(false)" (keydown.enter)="$any($event.target).blur()" autofocus aria-label="Group name">
           } @else {
-            <button type="button" class="group-title" (click)="editingTitle.set(canMark())" [disabled]="!canMark()">
-              {{ card().groupTitle || 'Group of ' + (kids().length + 1) }}
-            </button>
+            <button type="button" class="group-title" (click)="editingTitle.set(canMark())" [disabled]="!canMark()"
+                    [title]="canMark() ? 'Rename the group' : ''">{{ groupName() }}</button>
           }
-          <span class="tag">👍 {{ totalLikes() }}</span>
-        </div>
-      }
+          <span class="group-meta">{{ kids().length + 1 }} cards · 👍 {{ totalLikes() }}</span>
+        </header>
+        <app-card [card]="card()" [boardId]="boardId()" [nested]="true" />
+        @for (k of kids(); track k.id) {
+          <app-card [card]="k" [boardId]="boardId()" [nested]="true" />
+        }
+      </section>
+    } @else {
+    <article class="card" [class.in-group]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
+             [class.pick-target]="picking() && !nested() && store.pickingGroupFor() !== card().id"
+             (click)="onPickClick($event)" [attr.aria-label]="'Card: ' + card().body.slice(0, 60)">
 
       @if (card().carriedFrom; as from) {
         <a class="carried" [routerLink]="['/boards', from.boardId]" title="Open the earlier board">↪ carried from {{ from.boardTitle }}</a>
@@ -86,8 +95,8 @@ import { Reply } from './reply';
                   <button type="button" role="menuitem" (click)="makeAction()">Create action item</button>
                 }
                 @if (canWrite()) {
-                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ card().parentId || kids().length ? 'Add to group' : 'Create group' }}</button>
-                  @if (card().parentId || kids().length) {
+                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ inGroup() ? 'Add to group' : 'Create group' }}</button>
+                  @if (inGroup()) {
                     <button type="button" role="menuitem" (click)="store.ungroup(card().id)">{{ card().parentId ? 'Remove from group' : 'Break up group' }}</button>
                   }
                 }
@@ -115,11 +124,8 @@ import { Reply } from './reply';
           }
         </section>
       }
-
-      @for (k of kids(); track k.id) {
-        <app-card [card]="k" [boardId]="boardId()" [nested]="true" />
-      }
     </article>
+    }
   `,
 })
 export class Card {
@@ -137,6 +143,14 @@ export class Card {
   protected replyingTo = signal<ReplyDto | null>(null);
 
   protected kids = computed(() => (this.nested() ? [] : this.store.childrenOf().get(this.card().id) ?? []));
+  /** In a group, whether drawn in a box or not: has a parent, or is the first card of one */
+  protected inGroup = computed(() => !!this.card().parentId || !!this.store.childrenOf().get(this.card().id)?.length);
+  protected groupName = computed(() => this.card().groupTitle || 'Group of ' + (this.kids().length + 1));
+  /** While picking, the group the picked card is already in isn't a target */
+  protected sourceInGroup = computed(() => {
+    const source = this.store.pickingGroupFor();
+    return source === this.card().id || this.kids().some(k => k.id === source);
+  });
   protected totalLikes = computed(() => groupLikes(this.card(), this.kids()));
   protected likesLabel = computed(() => `${this.card().likes} ${this.card().likes === 1 ? 'like' : 'likes'}`);
   protected canWrite = computed(() => !!this.store.permissions()?.canWrite);

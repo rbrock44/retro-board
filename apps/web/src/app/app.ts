@@ -4,13 +4,14 @@ import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { ToastService } from './core/toast.service';
 import { Avatar } from './shared/avatar';
+import { ClickOutside } from './shared/click-outside';
 import { NamePrompt } from './shared/name-prompt';
 import { DemoBanner } from './demo/demo-banner';
 import { DemoService } from './demo/demo.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner],
+  imports: [ClickOutside, RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner],
   template: `
     <a class="skip-link" href="#main">Skip to content</a>
     @if (demo.active()) { <app-demo-banner /> }
@@ -26,7 +27,7 @@ import { DemoService } from './demo/demo.service';
         <div class="spacer"></div>
         <button type="button" class="icon-btn" (click)="toggleDark()" [attr.aria-label]="theme.isDark() ? 'Use light theme' : 'Use dark theme'"
                 [title]="theme.isDark() ? 'Light theme' : 'Dark theme'">{{ theme.isDark() ? '☀' : '☾' }}</button>
-        <div class="menu-wrap">
+        <div class="menu-wrap" (clickOutside)="menuOpen.set(false)">
           <button type="button" class="user-btn" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()" aria-haspopup="menu">
             <app-avatar [user]="me" [size]="28" /> <span class="hide-sm">{{ me.name }}</span>
           </button>
@@ -49,7 +50,6 @@ import { DemoService } from './demo/demo.service';
       }
     </div>
   `,
-  host: { '(document:keydown.escape)': 'menuOpen.set(false)' },
 })
 export class App {
   protected auth = inject(AuthService);

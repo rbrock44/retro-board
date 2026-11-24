@@ -10,6 +10,7 @@ import { Composer, type ComposerResult } from './composer';
 import { Media } from './media';
 import { Reactions } from './reactions';
 import { Reply } from './reply';
+import { ClickOutside } from '../shared/click-outside';
 
 /**
  * One card. A group is shown as a box: its name, then every card in it as an equal, full card (the first card
@@ -17,7 +18,7 @@ import { Reply } from './reply';
  */
 @Component({
   selector: 'app-card',
-  imports: [FormsModule, RouterLink, Avatar, MarkdownPipe, RelativeTimePipe, Composer, Media, Reactions, Reply],
+  imports: [ClickOutside, FormsModule, RouterLink, Avatar, MarkdownPipe, RelativeTimePipe, Composer, Media, Reactions, Reply],
   template: `
     @if (kids().length) {
       <section class="group-box" [attr.data-card-id]="card().id" [class.pick-target]="picking() && !sourceInGroup()"
@@ -77,7 +78,7 @@ import { Reply } from './reply';
         <app-reactions [items]="card().reactions" [enabled]="canVote()" (toggle)="store.react('card', card().id, $event)" />
         <div class="spacer"></div>
         @if (canMark() || canEdit()) {
-          <span class="menu-wrap">
+          <span class="menu-wrap" (clickOutside)="menuOpen.set(false)">
             <button type="button" class="card-menu-btn" (click)="menuOpen.set(!menuOpen())" aria-label="Card options" title="Card options" [attr.aria-expanded]="menuOpen()">⋯</button>
             @if (menuOpen()) {
               <div class="menu right" role="menu" (click)="menuOpen.set(false)">

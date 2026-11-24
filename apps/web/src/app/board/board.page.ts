@@ -22,11 +22,12 @@ import { ThemeEditor } from '../shared/theme-editor';
 import { BoardStore, boardTabTitle } from './board.store';
 import { Card } from './card';
 import { Composer, type ComposerResult } from './composer';
+import { ClickOutside } from '../shared/click-outside';
 
 @Component({
   selector: 'app-board-page',
   providers: [BoardStore],
-  imports: [
+  imports: [ClickOutside, 
     FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragPlaceholder,
     Card, Composer, Avatar, ActionList, Modal, ColorPicker, ThemeEditor, DatePipe,
   ],
@@ -87,7 +88,7 @@ import { Composer, type ComposerResult } from './composer';
           <button type="button" class="btn ghost" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
             ✅ Actions ({{ store.openActions().length }})
           </button>
-          <span class="menu-wrap">
+          <span class="menu-wrap" (clickOutside)="exportOpen.set(false)">
             <button type="button" class="btn ghost" (click)="exportOpen.set(!exportOpen())" [attr.aria-expanded]="exportOpen()">Export</button>
             @if (exportOpen()) {
               <div class="menu right" role="menu" (click)="exportOpen.set(false)">

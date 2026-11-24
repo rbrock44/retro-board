@@ -76,12 +76,9 @@ import { Reply } from './reply';
       <div class="card-actions">
         <app-reactions [items]="card().reactions" [enabled]="canVote()" (toggle)="store.react('card', card().id, $event)" />
         <div class="spacer"></div>
-        <button type="button" class="link-btn" (click)="repliesOpen.set(!repliesOpen())" [attr.aria-expanded]="repliesOpen()">
-          💬 {{ card().replies.length || '' }}
-        </button>
         @if (canMark() || canEdit()) {
           <span class="menu-wrap">
-            <button type="button" class="icon-btn small" (click)="menuOpen.set(!menuOpen())" aria-label="Card options" [attr.aria-expanded]="menuOpen()">⋯</button>
+            <button type="button" class="card-menu-btn" (click)="menuOpen.set(!menuOpen())" aria-label="Card options" title="Card options" [attr.aria-expanded]="menuOpen()">⋯</button>
             @if (menuOpen()) {
               <div class="menu right" role="menu" (click)="menuOpen.set(false)">
                 @if (canMark()) {
@@ -110,6 +107,14 @@ import { Reply } from './reply';
           </span>
         }
       </div>
+
+      <!-- A wide bar, not a small icon, so opening replies doesn't take careful aim -->
+      <button type="button" class="replies-toggle no-print" [class.open]="repliesOpen()" (click)="repliesOpen.set(!repliesOpen())"
+              [attr.aria-expanded]="repliesOpen()" [attr.aria-label]="repliesLabel()" [title]="repliesLabel()">
+        <span aria-hidden="true">💬</span>
+        @if (card().replies.length) { <span class="replies-count">{{ card().replies.length }}</span> }
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
 
       @if (repliesOpen()) {
         <section class="replies" aria-label="Replies">
@@ -152,6 +157,11 @@ export class Card {
     return source === this.card().id || this.kids().some(k => k.id === source);
   });
   protected totalLikes = computed(() => groupLikes(this.card(), this.kids()));
+  protected repliesLabel = computed(() => {
+    const n = this.card().replies.length;
+    if (this.repliesOpen()) return 'Hide replies';
+    return n ? `Show ${n} ${n === 1 ? 'reply' : 'replies'}` : 'Reply';
+  });
   protected likesLabel = computed(() => `${this.card().likes} ${this.card().likes === 1 ? 'like' : 'likes'}`);
   protected canWrite = computed(() => !!this.store.permissions()?.canWrite);
   protected canVote = computed(() => !!this.store.permissions()?.canVote);

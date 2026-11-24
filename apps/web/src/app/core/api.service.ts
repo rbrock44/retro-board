@@ -1,0 +1,72 @@
+import { Injectable } from '@angular/core';
+
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+/**
+ * Thin fetch wrapper for the same-origin API. Every request sends the session cookie and the CSRF
+ * header the server requires on anything that changes data.
+ */
+@Injectable({ providedIn: 'root' })
+export class Api {
+  async request<T>(method: string, url: string, body?: unknown): Promise<T> {
+    const isForm = body instanceof FormData;
+    const res = await fetch(url, {
+      method,
+      credentials: 'same-origin',
+      headers: {
+        'x-retro-csrf': '1',
+        ...(body !== undefined && !isForm ? { 'content-type': 'application/json' } : {}),
+      },
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+    });
+    if (res.status === 204) return undefined as T;
+    const text = await res.text();
+    const data = text ? safeJson(text) : undefined;
+    if (!res.ok) {
+      const msg = (data as { error?: string } | undefined)?.error ?? `Request failed (${res.status})`;
+      throw new ApiError(res.status, msg);
+    }
+    return data as T;
+  }
+
+  get<T>(url: string) { return this.request<T>('GET', url); }
+  post<T>(url: string, body: unknown = {}) { return this.request<T>('POST', url, body); }
+  patch<T>(url: string, body: unknown) { return this.request<T>('PATCH', url, body); }
+  delete<T = void>(url: string) { return this.request<T>('DELETE', url); }
+
+  /** Upload with progress, which fetch cannot report. */
+  upload<T>(url: string, file: File, onProgress?: (fraction: number) => void): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('x-retro-csrf', '1');
+      xhr.upload.onprogress = e => e.lengthComputable && onProgress?.(e.loaded / e.total);
+      xhr.onload = () => {
+        const data = safeJson(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data as T);
+        else reject(new ApiError(xhr.status, (data as { error?: string })?.error ?? `Upload failed (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new ApiError(0, 'Upload failed, check your connection'));
+      const form = new FormData();
+      form.append('file', file, file.name);
+      xhr.send(form);
+    });
+  }
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Something went wrong';
+}

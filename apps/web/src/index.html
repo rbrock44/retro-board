@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Retro Board</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Self-hosted team retrospectives">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script>
+    // Paint the saved theme before Angular boots so there is no flash of the wrong colors.
+    (function () {
+      try {
+        var t = JSON.parse(localStorage.getItem('retro-board-theme') || 'null');
+        if (!t || !t.tokens) return;
+        var map = { bg: '--bg', surface: '--surface', surface2: '--surface-2', text: '--text', muted: '--muted',
+          border: '--border', accent: '--accent', accentText: '--accent-text', danger: '--danger' };
+        for (var k in map) if (/^#[0-9a-f]{6}$/i.test(t.tokens[k])) document.documentElement.style.setProperty(map[k], t.tokens[k]);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

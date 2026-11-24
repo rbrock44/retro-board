@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --tsconfig tsconfig.json src/main.ts",
+    "dev": "node --watch --env-file-if-exists=.env --import tsx src/main.ts",
     "build": "node build.mjs",
     "start": "node dist/main.js",
     "db:generate": "drizzle-kit generate",

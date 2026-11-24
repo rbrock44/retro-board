@@ -420,7 +420,10 @@ button.likes { cursor: pointer;
 
 /* Capped so pictures stay picture-shaped when columns are very wide */
 .media-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3rem; max-width: 520px;
-  &.single { grid-template-columns: 1fr; } }
+  &.single { grid-template-columns: 1fr;
+    /* One picture: show all of it, scaled to fit, rather than cropping it into a tile */
+    .media-cell { justify-self: start; max-width: 100%; background: none; }
+    .media-cell img, .media-cell video { width: auto; max-width: 100%; max-height: 360px; object-fit: contain; } } }
 .media-cell { position: relative; border-radius: 6px; overflow: hidden; background: var(--surface-2);
   img, video { display: block; width: 100%; height: auto; max-height: 260px; object-fit: cover; }
   video { object-fit: contain; background: #000; } }

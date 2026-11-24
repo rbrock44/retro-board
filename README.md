@@ -109,6 +109,9 @@ and a live one with likes, groups, replies and images, plus pretend teammates wh
 watch. A banner says it's a demo. This is what [retro.ryan-brock.com](https://retro.ryan-brock.com) is: the web app
 on GitHub Pages with no server behind it.
 
+- **🧭 Tour** walks through every feature one at a time, highlighting each on the real page: teams, the current
+  board, cards and media, likes, groups, marking and carry over, replies, live teammates, action items, saving to
+  history, board settings, Customize and sharing. First-time visitors are offered it once
 - **Everything works and is saved in your browser**: add teams, start retros, write cards, like, mark, carry over
 - **Demos** keeps several setups side by side; open, rename, delete, or start a new one from the sample data.
   **Reset** puts the current one back

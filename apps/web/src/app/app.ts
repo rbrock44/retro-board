@@ -7,11 +7,12 @@ import { Avatar } from './shared/avatar';
 import { ClickOutside } from './shared/click-outside';
 import { NamePrompt } from './shared/name-prompt';
 import { DemoBanner } from './demo/demo-banner';
+import { TourOverlay } from './demo/tour-overlay';
 import { DemoService } from './demo/demo.service';
 
 @Component({
   selector: 'app-root',
-  imports: [ClickOutside, RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner],
+  imports: [ClickOutside, RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner, TourOverlay],
   template: `
     <a class="skip-link" href="#main">Skip to content</a>
     @if (demo.active()) { <app-demo-banner /> }
@@ -44,6 +45,7 @@ import { DemoService } from './demo/demo.service';
     }
     <main id="main" tabindex="-1"><router-outlet /></main>
     @if (auth.whoPrompt(); as w) { <app-name-prompt [mode]="w.mode" /> }
+    @if (demo.active()) { <app-tour-overlay /> }
     <div class="toasts" aria-live="polite">
       @for (t of toast.toasts(); track t.id) {
         <div class="toast" [class.error]="t.kind === 'error'" (click)="toast.dismiss(t.id)">{{ t.text }}</div>

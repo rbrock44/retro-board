@@ -41,6 +41,7 @@ behavior changes; `docs/api.md` lists every endpoint.
 - Instance settings: launch defaults come from env (`config.defaults`), admin overrides from `instance_settings`;
   read them with `getSettings(ctx)` and add new ones to `InstanceSettings`, `launchDefaults()`, the Customize page,
   `.env.example`, both launchers and the demo backend
+- The demo tour (`demo/tour.service.ts`) points at elements by selector (`data-tour="…"` attributes and a few classes like `.group-box`, `.replies-toggle`). Keep those when reworking the board, or update the steps
 - Demo mode (`apps/web/src/app/demo/`) is a full in-browser copy of the API. **When you add or change an endpoint
   the web app calls, update `demo-backend.ts` too**, or the public demo breaks. `demo-backend.spec.ts` covers the core
 - `AUTH_MODE=none` makes every visitor a guest (`users.guest`): team admin everywhere via `teamRole()`, sees all

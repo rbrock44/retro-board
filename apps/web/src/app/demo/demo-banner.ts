@@ -4,6 +4,7 @@ import { ToastService } from '../core/toast.service';
 import { Modal } from '../shared/modal';
 import { RelativeTimePipe } from '../shared/relative-time.pipe';
 import { DemoService } from './demo.service';
+import { TourService } from './tour.service';
 
 /** The strip across the top in demo mode, and the "Your demos" panel behind it. */
 @Component({
@@ -22,11 +23,19 @@ import { DemoService } from './demo.service';
         @if (demo.saveFailed()) { <span class="error"> Couldn't save (browser storage is full or blocked).</span> }
       </span>
       <span class="demo-actions">
-        <button type="button" class="btn small" (click)="share()" [disabled]="sharing()">🔗 Share</button>
+        <button type="button" class="btn small primary" data-tour="tour" (click)="tour.start()">🧭 Tour</button>
+        <button type="button" class="btn small" data-tour="share" (click)="share()" [disabled]="sharing()">🔗 Share</button>
         <button type="button" class="btn small ghost" (click)="panelOpen.set(true)">Demos</button>
         <button type="button" class="btn small ghost" (click)="reset()">Reset</button>
       </span>
     </div>
+    @if (offerTour()) {
+      <div class="tour-offer" role="status">
+        <span>👋 New here? A one-minute tour shows you around.</span>
+        <button type="button" class="btn small primary" (click)="tour.start(); offerTour.set(false)">Take the tour</button>
+        <button type="button" class="btn small ghost" (click)="tour.markSeen(); offerTour.set(false)">No thanks</button>
+      </div>
+    }
 
     @if (panelOpen()) {
       <app-modal heading="Your demos" [wide]="true" (closed)="panelOpen.set(false)">
@@ -59,6 +68,9 @@ import { DemoService } from './demo.service';
 })
 export class DemoBanner {
   protected demo = inject(DemoService);
+  protected tour = inject(TourService);
+  /** Offered once per browser, until they take it or say no */
+  protected offerTour = signal(!this.tour.seen());
   private toast = inject(ToastService);
   protected panelOpen = signal(false);
   protected sharing = signal(false);

@@ -85,7 +85,7 @@ import { ClickOutside } from '../shared/click-outside';
                     title="Drag a card onto another card to group them (G)">⧉ Group mode</button>
           }
           <div class="spacer"></div>
-          <button type="button" class="btn ghost" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
+          <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
             ✅ Actions ({{ store.openActions().length }})
           </button>
           <span class="menu-wrap" (clickOutside)="exportOpen.set(false)">
@@ -99,9 +99,9 @@ import { ClickOutside } from '../shared/click-outside';
             }
           </span>
           @if (perm().canFacilitate && s.board.status === 'open') {
-            <button type="button" class="btn primary" (click)="openSave()" title="File this board in the history and start a fresh one">💾 Save board</button>
+            <button type="button" class="btn primary" data-tour="save" (click)="openSave()" title="File this board in the history and start a fresh one">💾 Save board</button>
           }
-          @if (perm().canFacilitate) { <button type="button" class="btn" (click)="openSettings()">⚙ Board settings</button> }
+          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board settings</button> }
         </div>
 
         @if (store.pickingGroupFor()) {

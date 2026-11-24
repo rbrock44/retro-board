@@ -506,3 +506,29 @@ button.likes { cursor: pointer;
   summary { cursor: pointer; font-weight: 600; } > .stack { margin-top: 0.6rem; } }
 .sticky-save { position: sticky; bottom: 0.75rem; z-index: 5; }
 .self-hosted { text-align: center; margin: 1rem 0 0; }
+
+/* ---- demo tour ---- */
+.tour-offer { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; padding: 0.45rem 1rem; font-size: 0.9rem;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.tour-layer { position: fixed; inset: 0; z-index: 300; }
+.tour-dim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); }
+/* The spotlight: a clear box with everything around it dimmed, and a ring that pulses to draw the eye */
+.tour-spot { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.55);
+  outline: 3px solid var(--accent); outline-offset: 0; transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s;
+  pointer-events: none;
+  &::after { content: ''; position: absolute; inset: -3px; border-radius: 12px; border: 3px solid var(--accent);
+    animation: tour-pulse 1.6s ease-out infinite; } }
+@keyframes tour-pulse { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; &::after { animation: none; } } }
+.tour-card { position: fixed; width: min(340px, calc(100vw - 24px)); padding: 1rem 1.1rem 0.9rem; border-radius: var(--radius);
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+  transition: top 0.25s, left 0.25s;
+  &.centered { top: 50% !important; left: 50% !important; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); }
+  h2 { margin: 0.15rem 0 0.4rem; font-size: 1.1rem; }
+  p { margin: 0 0 0.75rem; line-height: 1.45; } }
+.tour-step { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.tour-dots { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 0.75rem;
+  span { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+  span.on { background: var(--accent); } }
+.tour-actions { display: flex; align-items: center; gap: 0.4rem; }
+@media print { .tour-layer, .tour-offer { display: none !important; } }

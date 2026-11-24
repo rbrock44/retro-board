@@ -1,0 +1,136 @@
+# API reference
+
+JSON over HTTP under `/api`, plus Socket.IO at `/socket.io`. Request and response types are in
+[`packages/shared/src/models.ts`](../packages/shared/src/models.ts).
+
+**Every request that changes data needs the header `x-retro-csrf: 1`.** Authentication is the `rb_session`
+cookie set by sign-in. Errors are `{ "error": "message" }` with a 4xx/5xx status. 404 is returned both for things
+that don't exist and things you can't see.
+
+```bash
+# example with curl
+curl -c jar -H 'x-retro-csrf: 1' -H 'content-type: application/json' \
+  -d '{"email":"me@example.com","password":"…"}' http://localhost:8080/api/auth/login
+curl -b jar http://localhost:8080/api/teams
+```
+
+## Auth
+
+| Method | Path | Body / query | Notes |
+|---|---|---|---|
+| GET | `/api/auth/config` | | Enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install |
+| POST | `/api/auth/signup` | `email, name, password, inviteToken?` | Subject to `local.signup` |
+| POST | `/api/auth/login` | `email, password` | |
+| POST | `/api/auth/logout` | | |
+| GET | `/api/auth/me` | | Profile, prefs (theme), linked providers |
+| PATCH | `/api/auth/me` | `name?, avatarUrl?, prefs?: { theme: {preset, tokens} \| null }` | |
+| POST | `/api/auth/password` | `current?, next` | `current` required when a password exists. Signs out other sessions |
+| DELETE | `/api/auth/identities/:provider` | | Unlink a provider |
+| GET | `/api/auth/:provider/start` | `?invite=&next=` | Browser redirect to the provider |
+| GET | `/api/auth/:provider/callback` | | Provider redirects here |
+
+## Teams
+
+| Method | Path | Body / query | Role |
+|---|---|---|---|
+| GET | `/api/teams` | `?all=1` (instance admins) | |
+| POST | `/api/teams` | `name, description?` | any user; creator becomes admin |
+| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?` | viewer / admin / admin |
+| GET | `/api/teams/:teamId/members` | | viewer (emails shown to admins) |
+| POST | `/api/teams/:teamId/members` | `email, role` | admin; adds an existing account |
+| PATCH | `/api/teams/:teamId/members/:userId` | `role` | admin; last admin can't be demoted |
+| DELETE | `/api/teams/:teamId/members/:userId` | | admin, or yourself (leave) |
+| GET / POST | `/api/teams/:teamId/invites` | POST: `email?, role, expiresInDays?, maxUses?` | admin |
+| DELETE | `/api/invites/:inviteId` | | admin; revokes |
+| GET | `/api/invites/by-token/:token` | | public: team name and role |
+| POST | `/api/invites/by-token/:token/accept` | | signed in |
+| GET / POST | `/api/teams/:teamId/templates` | POST: `name, description?, columns[{title,color,description?}]` | viewer / admin |
+| DELETE | `/api/templates/:templateId` | | admin |
+| GET | `/api/teams/:teamId/boards` | `?status=open\|closed\|archived` | viewer |
+| POST | `/api/teams/:teamId/boards` | `title, templateId? \| columns?, settings?, carryOver?` | member |
+| GET | `/api/teams/:teamId/actions` | `?status=open\|done` | viewer |
+| POST | `/api/teams/:teamId/actions` | `title, ownerId?, dueDate? (YYYY-MM-DD), boardId?, cardId?` | member |
+| GET | `/api/teams/:teamId/carry-over` | | viewer; `{ cards, openActions }` waiting for the next board |
+| GET | `/api/teams/:teamId/search` | `?q=` (2+ chars) | viewer |
+
+## Boards and columns
+
+| Method | Path | Body / query | Needs |
+|---|---|---|---|
+| GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards, actions, members, your permissions and votes used |
+| PATCH | `/api/boards/:boardId` | `title?, status?, settings?{allowAnonymous, votesPerUser, maxVotesPerCard, locked, theme}` | facilitate |
+| DELETE | `/api/boards/:boardId` | | team admin |
+| POST | `/api/boards/:boardId/save-template` | `name, description?` | team admin |
+| GET | `/api/boards/:boardId/export` | `?format=md\|csv` | read |
+| POST | `/api/boards/:boardId/columns` | `title, color, description?` | facilitate |
+| PATCH | `/api/columns/:columnId` | `title?, color?, description?, position?` | facilitate |
+| DELETE | `/api/columns/:columnId` | | facilitate; deletes its cards |
+
+## Cards
+
+| Method | Path | Body | Needs |
+|---|---|---|---|
+| POST | `/api/boards/:boardId/cards` | `columnId, body, anonymous?, attachmentIds?` | write |
+| PATCH | `/api/cards/:cardId` | `body?, anonymous?, attachmentIds?, removeAttachmentIds?` (author or facilitator); `status?, groupTitle?` (anyone who can vote) | |
+| DELETE | `/api/cards/:cardId` | | write + author or facilitator |
+| POST | `/api/cards/:cardId/move` | `columnId, position` | write. `position` is a fractional key; see `positionBetween()` in shared |
+| POST | `/api/cards/:cardId/group` | `targetId` | write |
+| POST | `/api/cards/:cardId/ungroup` | | write |
+| POST / DELETE | `/api/cards/:cardId/vote` | | vote. Returns `{ used }` |
+| POST | `/api/reactions` | `targetType: card\|reply, targetId, emoji` | vote. Toggles |
+| POST | `/api/cards/:cardId/replies` | `body, parentId?, attachmentIds?` | write |
+| PATCH / DELETE | `/api/replies/:replyId` | PATCH: `body` | write + author or facilitator |
+
+`status` is one of `none`, `discussed`, `resolved`, `carry_over`.
+
+## Actions
+
+| Method | Path | Body |
+|---|---|---|
+| PATCH | `/api/actions/:actionId` | `title?, ownerId?, dueDate?, status?: open\|done` |
+| DELETE | `/api/actions/:actionId` | |
+
+## Media
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/api/boards/:boardId/attachments` | `multipart/form-data` with one `file`. Returns an attachment; pass its id in `attachmentIds` |
+| POST | `/api/boards/:boardId/attachments/gif` | `url, previewUrl?, width?, height?, title?`. Tenor and Giphy https URLs only |
+| GET | `/api/media/:id` and `/api/media/:id/thumb` | Supports `Range` (video seeking) |
+| DELETE | `/api/attachments/:id` | Uploader or facilitator |
+| GET | `/api/gifs?q=` | Tenor search; 404 when no `TENOR_API_KEY` |
+
+Unused uploads (never attached to a card or reply) stay in storage; they are small and rare.
+
+## Admin
+
+| Method | Path | Body |
+|---|---|---|
+| GET | `/api/admin/users` | |
+| PATCH | `/api/admin/users/:userId` | `role?: admin\|user, disabled?` |
+
+## Health
+
+`GET /api/health` → `{ "ok": true }`. Used by the Docker health check.
+
+## Socket.IO
+
+Connect to `/socket.io` with the session cookie (unauthenticated connections are refused).
+
+| Direction | Event | Payload |
+|---|---|---|
+| client → server | `board:join` | `boardId`, ack `{ ok, error? }` |
+| client → server | `board:leave` | `boardId` |
+| client → server | `board:typing` | `boardId, columnId` |
+| server → client | `board:typing` | `{ user, columnId }` |
+| server → client | `board:event` | one `BoardEvent` (below) |
+
+```ts
+type BoardEvent =
+  | { type: 'board.update'; board }
+  | { type: 'column.upsert'; column } | { type: 'column.delete'; id }
+  | { type: 'card.upsert'; card }     | { type: 'card.delete'; id }
+  | { type: 'action.upsert'; action } | { type: 'action.delete'; id }
+  | { type: 'votes.used'; used }        // only to the person who voted
+  | { type: 'presence'; users };        // everyone currently on the board
+```

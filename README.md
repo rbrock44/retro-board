@@ -90,7 +90,7 @@ its default template), so people always land in the right place.
 
 - `Like` - 👍 on a card likes it, click again to unlike. Everyone can like every card, once. No budget, no limits
 - `Group` - Turn on `Group mode` (or press `G`) and drag a card onto another card, or use a card's `⋯` →
-  `Group with…` and click the target. Name the group by clicking its title. Groups show their combined likes
+  `Create group` (or `Add to group` on a grouped card) and click the target. Name the group by clicking its title. Groups show their combined likes
 - `Sort` - `Manual` (drag to reorder, including across columns) or `Most liked`
 - `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry over`. Filter the board by mark with `Show`
 

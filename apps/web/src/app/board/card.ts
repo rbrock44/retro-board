@@ -86,7 +86,7 @@ import { Reply } from './reply';
                   <button type="button" role="menuitem" (click)="makeAction()">Create action item</button>
                 }
                 @if (canWrite()) {
-                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">Group with…</button>
+                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ card().parentId || kids().length ? 'Add to group' : 'Create group' }}</button>
                   @if (card().parentId || kids().length) {
                     <button type="button" role="menuitem" (click)="store.ungroup(card().id)">{{ card().parentId ? 'Remove from group' : 'Break up group' }}</button>
                   }

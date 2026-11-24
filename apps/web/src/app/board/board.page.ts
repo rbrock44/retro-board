@@ -102,7 +102,7 @@ import { Composer, type ComposerResult } from './composer';
         </div>
 
         @if (store.pickingGroupFor()) {
-          <div class="banner" role="status">Click the card to group with. <button type="button" class="link-btn" (click)="store.pickingGroupFor.set(null)">Cancel</button></div>
+          <div class="banner" role="status">Click a card to create a group with it, or a group to add to it. <button type="button" class="link-btn" (click)="store.pickingGroupFor.set(null)">Cancel</button></div>
         }
         @if (s.board.status !== 'open') {
           <div class="banner" role="status">This board is {{ s.board.status }} and read-only.

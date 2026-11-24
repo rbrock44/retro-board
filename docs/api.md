@@ -20,6 +20,8 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/auth/config` | | `mode` (`accounts` or `none`), enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install |
 | POST | `/api/auth/guest` | | `AUTH_MODE=none` only: gives the browser a guest session (or returns the current one) |
+| POST | `/api/auth/guest/claim` | `userId` | `AUTH_MODE=none` only: "that's me", switch this browser to an existing named guest |
+| POST | `/api/auth/guest/new` | | `AUTH_MODE=none` only: start over as a new, unnamed guest |
 | POST | `/api/auth/signup` | `email, name, password, inviteToken?` | Subject to `local.signup` |
 | POST | `/api/auth/login` | `email, password` | |
 | POST | `/api/auth/logout` | | |

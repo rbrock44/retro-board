@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { DemoService } from '../demo/demo.service';
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -12,7 +13,10 @@ export class ApiError extends Error {
  */
 @Injectable({ providedIn: 'root' })
 export class Api {
+  private demo = inject(DemoService);
+
   async request<T>(method: string, url: string, body?: unknown): Promise<T> {
+    if (this.demo.active()) return (await this.demo.handle(method, url, body)) as T;
     const isForm = body instanceof FormData;
     const res = await fetch(url, {
       method,
@@ -40,6 +44,7 @@ export class Api {
 
   /** Upload with progress, which fetch cannot report. */
   upload<T>(url: string, file: File, onProgress?: (fraction: number) => void): Promise<T> {
+    if (this.demo.active()) return this.demo.upload(url, file, onProgress) as Promise<T>;
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', url);

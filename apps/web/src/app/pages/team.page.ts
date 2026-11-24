@@ -295,7 +295,7 @@ export class TeamPage {
     effect(() => {
       const id = this.teamId();
       this.results.set(null);
-      void this.load(id);
+      void this.load(id).then(() => this.auth.welcome(id));
     });
   }
 

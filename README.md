@@ -2,6 +2,8 @@
 
 > A self-hosted, real-time retrospective board for teams. One command to run, any login provider you like
 
+**Try it:** [retro.ryan-brock.com](https://retro.ryan-brock.com) is a live demo that runs entirely in your browser.
+
 ---
 
 ## 📚 Table of Contents
@@ -13,6 +15,7 @@
   - [Cards, Media and Replies](#cards-media-and-replies)
   - [Voting, Grouping and Marking](#voting-grouping-and-marking)
   - [Carry Over and Action Items](#carry-over-and-action-items)
+  - [Demo Mode](#demo-mode)
   - [History, Search and Export](#history-search-and-export)
   - [Themes](#themes)
   - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -88,6 +91,24 @@ plain email and password).
   back to where they came from. Each card is carried once
 - `Action items` - Create them from a card (`⋯` → `Create action item`), from the board's `Actions` panel, or on
   the team page. Each has an owner and due date. Open items from every retro show on every new board until done
+
+### Demo Mode
+
+If the app can't reach its server when it starts, it runs as a **demo** instead: sample teams, a finished retro
+and a live one with votes, groups, replies and images, plus pretend teammates who vote and add cards while you
+watch. A banner says it's a demo. This is what [retro.ryan-brock.com](https://retro.ryan-brock.com) is: the web app
+on GitHub Pages with no server behind it.
+
+- **Everything works and is saved in your browser**: add teams, start retros, write cards, vote, mark, carry over
+- **Demos** keeps several setups side by side; open, rename, delete, or start a new one from the sample data.
+  **Reset** puts the current one back
+- **Share** copies a link that carries the whole demo. Whoever opens it gets their own copy to play with. Big
+  uploads (over about 200 KB) are left out to keep links short
+- **Switch person** lets you be anyone on the sample teams
+- Add `?demo` to the address of a real install to see the demo there without touching real data
+
+Demo mode only starts when the server doesn't answer at load time. If a running server drops later, you see
+errors and live updates reconnect as usual, rather than quietly swapping in sample data.
 
 ### History, Search and Export
 
@@ -195,6 +216,11 @@ one. On Windows, `launch.cmd` offers to open the port in Windows Firewall (it as
 `./launch.sh --auth none` (or `AUTH_MODE=none` in `.env`) turns accounts off. Anyone who can open the site can see
 every team and board and do everything, including starting and facilitating retros. Each browser gets a guest
 identity, and people are asked for their name the first time they add a card or reply.
+
+People don't have to stay tied to one browser. When someone new opens a team, they're asked **"Who are you?"** with
+the team's people listed ("Are you one of these?") plus anyone who has used this browser before. Picking a name
+carries on as that person; otherwise they type a new one. **Switch person** in the menu does the same at any time,
+for a shared meeting-room laptop.
 
 Use it only on a trusted network, or behind something that already controls who gets in (a VPN, or a proxy with
 its own login). Switching back to `accounts` signs guests out; what they wrote stays.

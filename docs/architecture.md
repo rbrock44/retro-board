@@ -135,5 +135,10 @@ cross-origin without a CORS preflight, and CORS is off, so other sites can't for
 - **Themes** are nine CSS custom properties (`--bg`, `--surface`, `--accent`, …). `ThemeService` writes them on
   `<html>`; a board theme writes them on the board's root element, so it overrides only inside the board. An
   inline script in `index.html` applies the saved theme before Angular boots, so there's no flash
+- **Demo mode**: `AuthService` checks `/api/auth/config` at startup. If nothing answers (or `?demo` / a
+  `#demo=` share link is in the address), `DemoService` loads `demo/demo-backend.ts` (a lazy chunk) and `Api`
+  sends every request to it instead of `fetch`. It answers the same URLs with the same DTOs, reuses the shared
+  rules (vote budget, permissions, ordering), plays `BoardEvent`s to `BoardStore` in place of the socket, and
+  saves its state in `localStorage`. Share links are that state, deflated and base64url-encoded, after `#demo=`
 - Markdown is rendered with `marked` and sanitized with DOMPurify using a strict allowlist (no images, no raw
   HTML, no `javascript:` links)

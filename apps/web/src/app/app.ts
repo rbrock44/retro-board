@@ -5,12 +5,15 @@ import { ThemeService } from './core/theme.service';
 import { ToastService } from './core/toast.service';
 import { Avatar } from './shared/avatar';
 import { NamePrompt } from './shared/name-prompt';
+import { DemoBanner } from './demo/demo-banner';
+import { DemoService } from './demo/demo.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner],
   template: `
     <a class="skip-link" href="#main">Skip to content</a>
+    @if (demo.active()) { <app-demo-banner /> }
     @if (auth.me(); as me) {
       <header class="topbar">
         <a routerLink="/" class="brand" aria-label="Retro Board home">
@@ -31,14 +34,15 @@ import { NamePrompt } from './shared/name-prompt';
             <div class="menu" role="menu" (click)="menuOpen.set(false)">
               <a role="menuitem" routerLink="/settings">Profile &amp; theme</a>
               @if (auth.isAdmin()) { <a role="menuitem" routerLink="/admin">Instance admin</a> }
-              @if (!me.guest) { <button role="menuitem" type="button" (click)="logout()">Sign out</button> }
+              @if (me.guest) { <button role="menuitem" type="button" (click)="auth.switchPerson()">Switch person</button> }
+              @else { <button role="menuitem" type="button" (click)="logout()">Sign out</button> }
             </div>
           }
         </div>
       </header>
     }
     <main id="main" tabindex="-1"><router-outlet /></main>
-    @if (auth.namePrompt()) { <app-name-prompt /> }
+    @if (auth.whoPrompt(); as w) { <app-name-prompt [mode]="w.mode" /> }
     <div class="toasts" aria-live="polite">
       @for (t of toast.toasts(); track t.id) {
         <div class="toast" [class.error]="t.kind === 'error'" (click)="toast.dismiss(t.id)">{{ t.text }}</div>
@@ -51,11 +55,15 @@ export class App {
   protected auth = inject(AuthService);
   protected theme = inject(ThemeService);
   protected toast = inject(ToastService);
+  protected demo = inject(DemoService);
   private router = inject(Router);
   protected menuOpen = signal(false);
 
   constructor() {
-    void this.auth.ensureLoaded();
+    void this.auth.ensureLoaded().then(() => {
+      // A share link has been read into this browser; take the (long) #demo=... off the address bar.
+      if (location.hash.startsWith('#demo=')) void this.router.navigateByUrl(this.router.url.split('#')[0], { replaceUrl: true });
+    });
   }
 
   async toggleDark() {

@@ -6,6 +6,7 @@ import {
 } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { ToastService } from '../core/toast.service';
+import { DemoService } from '../demo/demo.service';
 
 export type SortMode = 'position' | 'votes';
 
@@ -51,6 +52,8 @@ export class BoardStore {
   private api = inject(Api);
   private toast = inject(ToastService);
   private socket: Socket | null = null;
+  private demo = inject(DemoService);
+  private demoOff: (() => void) | null = null;
   private boardId = '';
 
   readonly state = signal<BoardStateDto | null>(null);
@@ -123,6 +126,11 @@ export class BoardStore {
       this.error.set(err instanceof Error ? err.message : 'Could not load the board');
       return;
     }
+    if (this.demo.active()) {
+      this.demoOff = this.demo.subscribe(boardId, e => this.handle(e), t => this.onTyping(t));
+      this.connected.set(true);
+      return;
+    }
     const socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], withCredentials: true });
     this.socket = socket;
     socket.on('connect', () => {
@@ -135,14 +143,16 @@ export class BoardStore {
     });
     socket.on('disconnect', () => this.connected.set(false));
     socket.on(SOCKET_EVENTS.event, (e: BoardEvent) => this.handle(e));
-    socket.on(SOCKET_EVENTS.typing, (t: { user: UserDto; columnId: string }) => {
-      this.typing.update(m => ({ ...m, [t.columnId + ':' + t.user.id]: { name: t.user.name, at: Date.now() } }));
-      setTimeout(() => this.typing.update(m => {
-        const next = { ...m };
-        for (const [k, v] of Object.entries(next)) if (Date.now() - v.at > 2500) delete next[k];
-        return next;
-      }), 3000);
-    });
+    socket.on(SOCKET_EVENTS.typing, (t: { user: UserDto; columnId: string }) => this.onTyping(t));
+  }
+
+  private onTyping(t: { user: UserDto; columnId: string }) {
+    this.typing.update(m => ({ ...m, [t.columnId + ':' + t.user.id]: { name: t.user.name, at: Date.now() } }));
+    setTimeout(() => this.typing.update(m => {
+      const next = { ...m };
+      for (const [k, v] of Object.entries(next)) if (Date.now() - v.at > 2500) delete next[k];
+      return next;
+    }), 3000);
   }
 
   async reload() {
@@ -151,6 +161,8 @@ export class BoardStore {
   }
 
   close() {
+    this.demoOff?.();
+    this.demoOff = null;
     if (this.socket) {
       this.socket.emit(SOCKET_EVENTS.leave, this.boardId);
       this.socket.close();

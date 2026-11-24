@@ -159,6 +159,15 @@ DATABASE_URL=postgres://… SESSION_SECRET=… PUBLIC_URL=https://… npm start
 
 Run it under systemd, pm2 or similar. `npm start` serves the web app and API on `PORT` (8080).
 
+## The public demo
+
+`.github/workflows/test.yml` has a `demo` job: on every push to `master`, after the tests pass, it builds the web
+app and publishes it to the `gh-pages` branch with a `CNAME` of `retro.ryan-brock.com` (and a `404.html` copy of
+`index.html` so deep links load). With no API there, the app runs in [demo mode](../README.md#demo-mode).
+
+To point it somewhere else, change `cname:` in that job. For the domain to work, add a DNS `CNAME` record for it to
+`<github-user>.github.io` and turn on Pages for the `gh-pages` branch in the repo settings.
+
 ## Scaling notes
 
 One app container handles a lot of teams; retros are small and bursty. Live updates are routed in-process, so run

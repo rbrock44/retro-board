@@ -9,6 +9,8 @@ import {
 import { Api } from '../core/api.service';
 import { themeStyle } from '../core/theme.service';
 import { ToastService } from '../core/toast.service';
+import { DemoService } from '../demo/demo.service';
+import { AuthService } from '../core/auth.service';
 import { ActionList } from '../shared/action-list';
 import { Avatar } from '../shared/avatar';
 import { ColorPicker } from '../shared/color-picker';
@@ -83,8 +85,8 @@ import { Composer, type ComposerResult } from './composer';
             <button type="button" class="btn ghost" (click)="exportOpen.set(!exportOpen())" [attr.aria-expanded]="exportOpen()">Export</button>
             @if (exportOpen()) {
               <div class="menu right" role="menu" (click)="exportOpen.set(false)">
-                <a role="menuitem" [href]="'/api/boards/' + s.board.id + '/export?format=md'" download>Markdown (.md)</a>
-                <a role="menuitem" [href]="'/api/boards/' + s.board.id + '/export?format=csv'" download>Spreadsheet (.csv)</a>
+                <a role="menuitem" [href]="'/api/boards/' + s.board.id + '/export?format=md'" download (click)="exportDemo($event, 'md')">Markdown (.md)</a>
+                <a role="menuitem" [href]="'/api/boards/' + s.board.id + '/export?format=csv'" download (click)="exportDemo($event, 'csv')">Spreadsheet (.csv)</a>
                 <button type="button" role="menuitem" (click)="print()">Print / PDF</button>
               </div>
             }
@@ -223,6 +225,8 @@ export class BoardPage implements OnDestroy {
   private api = inject(Api);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private demo = inject(DemoService);
+  private auth = inject(AuthService);
   readonly boardId = input.required<string>();
 
   protected labels = CARD_STATUS_LABELS;
@@ -243,12 +247,20 @@ export class BoardPage implements OnDestroy {
     return t ? themeStyle(t) : {};
   });
 
+  /** In demo mode there's no server to download from, so the file is built in the browser. */
+  exportDemo(e: Event, format: 'md' | 'csv') {
+    if (!this.demo.active()) return;
+    e.preventDefault();
+    this.demo.exportBoard(this.store.board()!.id, format);
+  }
+
   constructor() {
     effect(() => {
       const id = this.boardId();
       void this.store.open(id).then(() => {
         const b = this.store.board();
         if (b) document.title = `${b.title} · Retro Board`;
+        if (b) void this.auth.welcome(b.teamId);
       });
     });
   }

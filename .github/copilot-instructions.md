@@ -32,6 +32,8 @@ behavior changes; `docs/api.md` lists every endpoint.
 - Styles use theme tokens only (`var(--bg)`, `var(--surface)`, `var(--accent)`, …), never literal colors
 - Uploads are type-checked from bytes (sharp / magic numbers), never from names or claimed MIME types
 - Sign-in providers implement `AuthProvider` (`start`/`finish`) in `apps/api/src/auth/`; config in `config/auth.yaml`
+- Demo mode (`apps/web/src/app/demo/`) is a full in-browser copy of the API. **When you add or change an endpoint
+  the web app calls, update `demo-backend.ts` too**, or the public demo breaks. `demo-backend.spec.ts` covers the core
 - `AUTH_MODE=none` makes every visitor a guest (`users.guest`): team admin everywhere via `teamRole()`, sees all
   teams, must have a name before writing (`requireNamed()`). Guest sessions are ignored in `accounts` mode
 - Default branch is `master`. CI runs tests, build and a Docker build; no lint gate

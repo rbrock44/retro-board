@@ -13,6 +13,8 @@ export interface AppConfig {
   sessionDays: number;
   cookieSecure: boolean;
   authConfigPath: string;
+  /** accounts (default) or none: no sign-in, every visitor gets a guest identity that can do everything */
+  authMode: 'accounts' | 'none';
   adminEmails: string[];
   storage: StorageConfig;
   maxUploadBytes: number;
@@ -34,10 +36,13 @@ export type StorageConfig =
     };
 
 /** config/auth.yaml in the repo, whether the API runs from the repo root or from apps/api (npm run dev). */
+/** config/auth.yaml if you made one, otherwise the shipped config/auth.example.yaml. */
 function defaultAuthConfig(): string {
-  for (const dir of ['.', '..', '../..']) {
-    const p = resolve(dir, 'config/auth.yaml');
-    if (existsSync(p)) return p;
+  for (const name of ['config/auth.yaml', 'config/auth.example.yaml']) {
+    for (const dir of ['.', '..', '../..']) {
+      const p = resolve(dir, name);
+      if (existsSync(p)) return p;
+    }
   }
   return 'config/auth.yaml';
 }
@@ -87,7 +92,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sessionSecret,
     sessionDays: Number(env.SESSION_DAYS ?? 30),
     cookieSecure: secureSetting === 'auto' ? publicUrl.startsWith('https://') : secureSetting === 'true',
-    authConfigPath: env.AUTH_CONFIG ?? defaultAuthConfig(),
+    authConfigPath: env.AUTH_CONFIG || defaultAuthConfig(),
+    authMode: env.AUTH_MODE === 'none' ? 'none' : 'accounts',
     adminEmails: list(env.ADMIN_EMAILS),
     storage,
     maxUploadBytes: Number(env.MAX_UPLOAD_MB ?? 25) * 1024 * 1024,

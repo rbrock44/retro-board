@@ -6,7 +6,7 @@ import type { Ctx } from '../context';
 import type { Db } from '../db';
 import { attachments, cards, columns, reactions, replies, votes, type User } from '../db/schema';
 import { canEditOwn, loadCard, loadReply, requireBoard } from '../lib/access';
-import { badRequest, forbidden, noContent, notFound, parse, requireUser, zBody, zId, zPosition } from '../lib/http';
+import { badRequest, forbidden, noContent, notFound, parse, requireNamed, requireUser, zBody, zId, zPosition } from '../lib/http';
 import { newId } from '../lib/ids';
 import { loadCards } from '../lib/serialize';
 import { broadcastCards } from './boards';
@@ -34,7 +34,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
   }
 
   app.post('/api/boards/:boardId/cards', async req => {
-    const user = requireUser(req);
+    const user = requireNamed(req);
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'write');
     const body = parse(z.object({
       columnId: zId,
@@ -217,7 +217,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
   // ---- replies ----
 
   app.post('/api/cards/:cardId/replies', async req => {
-    const user = requireUser(req);
+    const user = requireNamed(req);
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     await requireBoard(db, user, card.boardId, 'write');
     const body = parse(z.object({ body: zBody, parentId: zId.nullable().optional(), attachmentIds: zAttachmentIds }), req.body);

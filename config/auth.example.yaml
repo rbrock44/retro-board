@@ -1,5 +1,7 @@
-# Sign-in configuration. Copy to config/auth.yaml and edit; restart the app to apply.
-# ${VAR} and ${VAR:-default} are replaced from the environment, so secrets can live in .env.
+# Sign-in configuration. This file is used as-is until you create config/auth.yaml (copy this one), so
+# for Google, GitHub, Microsoft and Okta you only need to fill in their values in .env and restart
+# (./launch.sh update). A provider whose client id, secret or issuer is empty is skipped, not an error.
+# ${VAR} and ${VAR:-default} are replaced from the environment.
 #
 # Every provider's callback URL is:   <PUBLIC_URL>/api/auth/<id>/callback
 #   e.g. http://localhost:8080/api/auth/google/callback
@@ -10,32 +12,42 @@ local:
   # open:   anyone can create an account
   # invite: only people holding a team invite link can create one
   # closed: nobody can sign up with a password (admins add people, or use a provider)
-  signup: open
+  signup: ${LOCAL_SIGNUP:-open}
 
 providers:
   # Any OpenID Connect issuer works with type: oidc. Add as many as you like; each needs a unique id.
+  # Setup steps for each: docs/auth.md
 
-  # - id: google
-  #   type: oidc
-  #   name: Google
-  #   issuer: https://accounts.google.com
-  #   clientId: ${GOOGLE_CLIENT_ID}
-  #   clientSecret: ${GOOGLE_CLIENT_SECRET}
+  - id: google
+    type: oidc
+    name: Google
+    issuer: https://accounts.google.com
+    clientId: ${GOOGLE_CLIENT_ID:-}
+    clientSecret: ${GOOGLE_CLIENT_SECRET:-}
 
-  # - id: microsoft
-  #   type: oidc
-  #   name: Microsoft
-  #   # use your tenant id instead of "common" to allow only your organisation
-  #   issuer: https://login.microsoftonline.com/common/v2.0
-  #   clientId: ${MS_CLIENT_ID}
-  #   clientSecret: ${MS_CLIENT_SECRET}
+  - id: github
+    type: github
+    name: GitHub
+    clientId: ${GITHUB_CLIENT_ID:-}
+    clientSecret: ${GITHUB_CLIENT_SECRET:-}
 
-  # - id: okta
-  #   type: oidc
-  #   name: Okta
-  #   issuer: https://your-org.okta.com
-  #   clientId: ${OKTA_CLIENT_ID}
-  #   clientSecret: ${OKTA_CLIENT_SECRET}
+  - id: microsoft
+    type: oidc
+    name: Microsoft
+    # set MS_TENANT to your tenant id to allow only your organisation
+    issuer: https://login.microsoftonline.com/${MS_TENANT:-common}/v2.0
+    clientId: ${MS_CLIENT_ID:-}
+    clientSecret: ${MS_CLIENT_SECRET:-}
+
+  - id: okta
+    type: oidc
+    name: Okta
+    # https://your-org.okta.com, or https://your-org.okta.com/oauth2/default for Okta's default auth server
+    issuer: ${OKTA_ISSUER:-}
+    clientId: ${OKTA_CLIENT_ID:-}
+    clientSecret: ${OKTA_CLIENT_SECRET:-}
+
+  # ---- more examples (copy this file to config/auth.yaml to use them) ----
 
   # - id: keycloak
   #   type: oidc
@@ -53,12 +65,6 @@ providers:
   #   clientId: ${AUTHENTIK_CLIENT_ID}
   #   clientSecret: ${AUTHENTIK_CLIENT_SECRET}
   #   scopes: openid email profile
-
-  # - id: github
-  #   type: github
-  #   name: GitHub
-  #   clientId: ${GITHUB_CLIENT_ID}
-  #   clientSecret: ${GITHUB_CLIENT_SECRET}
 
   # - id: github-enterprise
   #   type: github

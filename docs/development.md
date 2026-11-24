@@ -28,7 +28,7 @@ Run one side at a time with `npm run dev -w @retro/api` or `npm start -w @retro/
 | `npm run build` | Production build of web and API |
 | `npm start` | Serve the build on :8080 |
 | `npm run db:generate` | Create a SQL migration after changing `apps/api/src/db/schema.ts` |
-| `./launch.sh` | Build and run the Docker image |
+| `./launch.sh` | Build and run the Docker image (`--help` for options) |
 
 ## Conventions
 
@@ -46,7 +46,7 @@ Run one side at a time with `npm run dev -w @retro/api` or `npm start -w @retro/
 ## Database changes
 
 1. Edit `apps/api/src/db/schema.ts`
-2. `npm run db:generate -- --name short-description`
+2. `npm run db:generate -w @retro/api -- --name short-description`
 3. Commit the new file in `apps/api/drizzle/` together with the schema change
 
 Migrations run on every start, on both Postgres and PGlite. Settings-like data (board settings, team settings,

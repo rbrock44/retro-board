@@ -27,7 +27,7 @@ ENV NODE_ENV=production \
     WEB_DIST=/app/web \
     UPLOAD_DIR=/data/uploads \
     DATABASE_URL=pglite:/data/pglite \
-    AUTH_CONFIG=/app/config/auth.yaml
+    AUTH_CONFIG=
 # Keep the workspace layout so packages npm nested under apps/api/node_modules still resolve.
 COPY --from=deps /app /app
 COPY --from=build /app/apps/api/dist /app/apps/api/dist

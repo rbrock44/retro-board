@@ -112,8 +112,9 @@ export class Composer {
     return (this.body.trim().length > 0 || this.attachments().length > 0) && !this.uploads().some(u => !u.error);
   }
 
-  submit() {
+  async submit() {
     if (!this.canSubmit()) return;
+    if (!(await this.auth.ensureName())) return;
     this.submitted.emit({ body: this.body, anonymous: this.anonymous, attachmentIds: this.attachments().map(a => a.id) });
     this.body = '';
     this.attachments.set([]);

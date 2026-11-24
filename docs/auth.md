@@ -1,9 +1,31 @@
 # Sign-in
 
 Retro Board has real accounts. People sign in with email and password, with any number of external providers, or
-both. Providers are configured in `config/auth.yaml`; copy [`config/auth.example.yaml`](../config/auth.example.yaml)
-to start. Restart the app (`./launch.sh update`) after editing it.
+both.
 
+**Google, GitHub, Microsoft and Okta are ready to go.** Give their values when `./launch.sh` asks, pass them as
+options (`--google-id`, `--google-secret`, …; see `./launch.sh --help`), or put them in `.env` and run
+`./launch.sh update`. Each button appears once its values are set:
+
+```env
+GOOGLE_CLIENT_ID=…
+GOOGLE_CLIENT_SECRET=…
+GITHUB_CLIENT_ID=…
+GITHUB_CLIENT_SECRET=…
+MS_TENANT=common            # or your tenant id
+MS_CLIENT_ID=…
+MS_CLIENT_SECRET=…
+OKTA_ISSUER=https://your-org.okta.com
+OKTA_CLIENT_ID=…
+OKTA_CLIENT_SECRET=…
+```
+
+That works because the app reads [`config/auth.example.yaml`](../config/auth.example.yaml) until you create
+`config/auth.yaml`, and a provider whose client id, secret or issuer is empty is skipped. To change sign-up rules,
+rename a button or add Keycloak, Authentik or another provider, copy the example to `config/auth.yaml` and edit it.
+The startup log line `sign-in providers` shows which providers are on and which are skipped for missing values.
+
+- [No sign-in mode](#no-sign-in-mode)
 - [How accounts work](#how-accounts-work)
 - [Email and password](#email-and-password)
 - [Adding a provider](#adding-a-provider)
@@ -11,6 +33,20 @@ to start. Restart the app (`./launch.sh update`) after editing it.
   [Authentik](#authentik) · [GitHub](#github) · [Any other OIDC provider](#any-other-oidc-provider)
 - [Troubleshooting](#troubleshooting)
 - [Writing a new kind of provider](#writing-a-new-kind-of-provider)
+
+## No sign-in mode
+
+`AUTH_MODE=none` (`./launch.sh --auth none`) switches accounts off for the whole site:
+
+- Each browser gets a **guest** identity on its first visit (a session cookie, no password, no email)
+- Guests see every team and board and can do everything: create teams, start, facilitate and close retros. They
+  join a team's member list the first time they open it, so they can own action items
+- The first time a guest adds a card or reply, they're asked for their name. The API refuses the write until they
+  give one
+- Sign-up, sign-in, providers and invite links are all switched off
+
+It's either/or: in `accounts` mode guest sessions are ignored, so switching back signs guests out (their cards stay,
+under the names they gave). Use it only where everyone who can reach the site is trusted.
 
 ## How accounts work
 
@@ -56,7 +92,7 @@ Every provider entry has:
 | `id` | yes | Lowercase letters, numbers, dashes. Part of the callback URL; don't change it once people use it |
 | `type` | yes | `oidc` or `github` |
 | `name` | yes | Button label: "Continue with `name`" |
-| `clientId`, `clientSecret` | yes | From the provider |
+| `clientId`, `clientSecret` | yes | From the provider. If either is empty (an unset env var), the provider is skipped |
 | `enabled` | no | `false` hides it without deleting the config |
 | `allowSignup` | no | Default `true`. `false` means only people already linked, or arriving with a team invite, get in |
 

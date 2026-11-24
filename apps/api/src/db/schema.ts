@@ -18,6 +18,8 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   role: text('role').$type<InstanceRole>().notNull().default('user'),
   disabled: boolean('disabled').notNull().default(false),
+  /** Created by AUTH_MODE=none; name is '' until they enter one. */
+  guest: boolean('guest').notNull().default(false),
   prefs: jsonb('prefs').$type<UserPrefs>().notNull().default(sql`'{}'::jsonb`),
   createdAt: createdAt(),
 }, t => [uniqueIndex('users_email_idx').on(t.email)]);

@@ -18,7 +18,8 @@ curl -b jar http://localhost:8080/api/teams
 
 | Method | Path | Body / query | Notes |
 |---|---|---|---|
-| GET | `/api/auth/config` | | Enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install |
+| GET | `/api/auth/config` | | `mode` (`accounts` or `none`), enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install |
+| POST | `/api/auth/guest` | | `AUTH_MODE=none` only: gives the browser a guest session (or returns the current one) |
 | POST | `/api/auth/signup` | `email, name, password, inviteToken?` | Subject to `local.signup` |
 | POST | `/api/auth/login` | `email, password` | |
 | POST | `/api/auth/logout` | | |

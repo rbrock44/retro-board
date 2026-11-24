@@ -4,10 +4,11 @@ import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { ToastService } from './core/toast.service';
 import { Avatar } from './shared/avatar';
+import { NamePrompt } from './shared/name-prompt';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Avatar],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt],
   template: `
     <a class="skip-link" href="#main">Skip to content</a>
     @if (auth.me(); as me) {
@@ -30,13 +31,14 @@ import { Avatar } from './shared/avatar';
             <div class="menu" role="menu" (click)="menuOpen.set(false)">
               <a role="menuitem" routerLink="/settings">Profile &amp; theme</a>
               @if (auth.isAdmin()) { <a role="menuitem" routerLink="/admin">Instance admin</a> }
-              <button role="menuitem" type="button" (click)="logout()">Sign out</button>
+              @if (!me.guest) { <button role="menuitem" type="button" (click)="logout()">Sign out</button> }
             </div>
           }
         </div>
       </header>
     }
     <main id="main" tabindex="-1"><router-outlet /></main>
+    @if (auth.namePrompt()) { <app-name-prompt /> }
     <div class="toasts" aria-live="polite">
       @for (t of toast.toasts(); track t.id) {
         <div class="toast" [class.error]="t.kind === 'error'" (click)="toast.dismiss(t.id)">{{ t.text }}</div>

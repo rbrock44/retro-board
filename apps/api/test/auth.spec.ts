@@ -106,6 +106,35 @@ describe('auth config file', () => {
     expect(() => loadAuthFile(bad)).toThrow(/bad\.yaml: providers\.0\./);
   });
 
+  it('skips providers whose credentials are not set', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'retro-auth-'));
+    const file = join(dir, 'auth.yaml');
+    writeFileSync(file, [
+      'providers:',
+      '  - { id: google, type: oidc, name: Google, issuer: https://accounts.google.com, clientId: "${GID:-}", clientSecret: "${GSECRET:-}" }',
+      '  - { id: okta, type: oidc, name: Okta, issuer: "${OKTA_ISSUER:-}", clientId: a, clientSecret: b }',
+      '  - { id: github, type: github, name: GitHub, clientId: "${GHID:-}", clientSecret: "${GHSECRET:-}" }',
+    ].join('\n'));
+    const none = loadAuthFile(file, {});
+    expect(none.providers).toEqual([]);
+    expect(none.unconfigured).toEqual(['google', 'okta', 'github']);
+
+    const some = loadAuthFile(file, { GID: 'g', GSECRET: 's', OKTA_ISSUER: 'https://x.okta.com' });
+    expect(some.providers.map(p => p.id)).toEqual(['google', 'okta']);
+    expect(some.unconfigured).toEqual(['github']);
+  });
+
+  it('ships an example config that loads with nothing set', () => {
+    const cfg = loadAuthFile(join(__dirname, '../../../config/auth.example.yaml'), {});
+    expect(cfg.local).toEqual({ enabled: true, signup: 'open' });
+    expect(cfg.providers).toEqual([]);
+    expect(cfg.unconfigured).toEqual(['google', 'github', 'microsoft', 'okta']);
+    const on = loadAuthFile(join(__dirname, '../../../config/auth.example.yaml'), {
+      MS_CLIENT_ID: 'm', MS_CLIENT_SECRET: 's', MS_TENANT: 'tenant-1',
+    });
+    expect(on.providers).toMatchObject([{ id: 'microsoft', issuer: 'https://login.microsoftonline.com/tenant-1/v2.0' }]);
+  });
+
   it('lists only enabled providers on the login page', async () => {
     t = await makeApp({
       authFile: {

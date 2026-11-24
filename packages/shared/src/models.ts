@@ -50,7 +50,14 @@ export interface MeDto extends UserDto {
   prefs: UserPrefs;
   identities: { provider: string; email: string | null }[];
   hasPassword: boolean;
+  /** A no-sign-in visitor (AUTH_MODE=none) */
+  guest: boolean;
+  /** A guest who hasn't given a name yet; asked for one before their first card or reply */
+  needsName: boolean;
 }
+
+/** accounts: people sign in to see anything. none: no sign-in, anyone with the URL can do everything */
+export type AuthMode = 'accounts' | 'none';
 
 export interface AuthProviderInfo {
   id: string;
@@ -59,6 +66,7 @@ export interface AuthProviderInfo {
 }
 
 export interface AuthConfigDto {
+  mode: AuthMode;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };
   providers: AuthProviderInfo[];
   gifSearch: boolean;

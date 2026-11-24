@@ -31,13 +31,15 @@ import { ThemeEditor } from '../shared/theme-editor';
           <app-theme-editor [value]="theme.current()" (valueChange)="setTheme($event)" />
         </section>
 
-        <section class="card-surface stack">
-          <h2>Password</h2>
-          @if (me.hasPassword) { <label>Current password <input type="password" [(ngModel)]="current" autocomplete="current-password"></label> }
-          @else { <p class="muted">You sign in with an external provider. Set a password to also sign in with email.</p> }
-          <label>New password <input type="password" [(ngModel)]="next" minlength="8" autocomplete="new-password"></label>
-          <div class="row"><button class="btn" type="button" (click)="changePassword()" [disabled]="next.length < 8">{{ me.hasPassword ? 'Change password' : 'Set password' }}</button></div>
-        </section>
+        @if (!me.guest) {
+          <section class="card-surface stack">
+            <h2>Password</h2>
+            @if (me.hasPassword) { <label>Current password <input type="password" [(ngModel)]="current" autocomplete="current-password"></label> }
+            @else { <p class="muted">You sign in with an external provider. Set a password to also sign in with email.</p> }
+            <label>New password <input type="password" [(ngModel)]="next" minlength="8" autocomplete="new-password"></label>
+            <div class="row"><button class="btn" type="button" (click)="changePassword()" [disabled]="next.length < 8">{{ me.hasPassword ? 'Change password' : 'Set password' }}</button></div>
+          </section>
+        }
 
         @if (providers().length || me.identities.length) {
           <section class="card-surface stack">

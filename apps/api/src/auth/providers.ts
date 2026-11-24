@@ -56,6 +56,8 @@ export const authFileSchema = z.object({
     signup: z.enum(['open', 'invite', 'closed']).default('open'),
   }).default({ enabled: true, signup: 'open' }),
   providers: z.array(providerSchema).default([]),
+  /** Providers listed in the file but skipped because their client id, secret or issuer is empty. */
+  unconfigured: z.array(z.string()).optional(),
 });
 export type AuthFileConfig = z.infer<typeof authFileSchema>;
 
@@ -68,6 +70,18 @@ export function substituteEnv(text: string, env: NodeJS.ProcessEnv = process.env
 export function loadAuthFile(path: string, env: NodeJS.ProcessEnv = process.env): AuthFileConfig {
   if (!existsSync(path)) return authFileSchema.parse({});
   const raw = parseYaml(substituteEnv(readFileSync(path, 'utf8'), env)) ?? {};
+  // A provider whose credentials come from unset env vars is skipped rather than an error, so the default
+  // file can list Google, GitHub, Microsoft and Okta and each one appears once its values are in .env.
+  const unconfigured: string[] = [];
+  if (Array.isArray(raw.providers)) {
+    raw.providers = raw.providers.filter((p: Record<string, unknown>) => {
+      const blank = (k: string) => k in p && (p[k] == null || String(p[k]).trim() === '');
+      const missing = blank('clientId') || blank('clientSecret') || blank('issuer');
+      if (missing) unconfigured.push(String(p.id ?? '?'));
+      return !missing;
+    });
+  }
+  raw.unconfigured = unconfigured;
   const result = authFileSchema.safeParse(raw);
   if (!result.success) {
     const issue = result.error.issues[0];

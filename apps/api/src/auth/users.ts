@@ -10,7 +10,7 @@ export function toUserDto(u: User, opts: { withEmail?: boolean; admin?: boolean 
   const dto: UserDto = {
     id: u.id,
     email: opts.withEmail ? u.email : null,
-    name: u.name,
+    name: u.name || 'Guest',
     avatarUrl: u.avatarUrl,
     role: u.role,
   };
@@ -28,7 +28,15 @@ export async function toMeDto(db: Db, u: User): Promise<MeDto> {
     prefs: u.prefs ?? {},
     identities: ids.map(i => ({ provider: i.provider, email: i.email })),
     hasPassword: !!u.passwordHash,
+    guest: u.guest,
+    needsName: u.guest && !u.name,
   };
+}
+
+/** AUTH_MODE=none: a visitor with no account. Name stays empty until they enter one. */
+export async function createGuest(db: Db): Promise<User> {
+  const [u] = await db.insert(users).values({ id: newId(), email: null, name: '', guest: true }).returning();
+  return u;
 }
 
 export async function userCount(db: Db): Promise<number> {

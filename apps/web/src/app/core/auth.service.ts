@@ -12,6 +12,10 @@ export class AuthService {
   readonly config = signal<AuthConfigDto | null>(null);
   readonly loaded = signal(false);
   readonly isAdmin = computed(() => this.me()?.role === 'admin');
+  /** No-sign-in mode: no accounts, everyone is a guest */
+  readonly open = computed(() => this.config()?.mode === 'none');
+  /** Set while the "what's your name?" dialog is showing; called with the outcome */
+  readonly namePrompt = signal<((ok: boolean) => void) | null>(null);
 
   private loading: Promise<void> | null = null;
 
@@ -30,8 +34,18 @@ export class AuthService {
       }),
     ]);
     this.config.set(config);
-    this.setMe(me);
+    // No sign-in: give this browser a guest identity instead of showing a login page.
+    this.setMe(!me && config?.mode === 'none' ? await this.api.post<MeDto>('/api/auth/guest') : me);
     this.loaded.set(true);
+  }
+
+  /**
+   * Guests give a name before their first card or reply. Resolves true once they have one, false if they
+   * close the dialog.
+   */
+  ensureName(): Promise<boolean> {
+    if (!this.me()?.needsName) return Promise.resolve(true);
+    return new Promise(resolve => this.namePrompt.set(ok => { this.namePrompt.set(null); resolve(ok); }));
   }
 
   setMe(me: MeDto | null) {

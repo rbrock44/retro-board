@@ -4,7 +4,9 @@ Settings are environment variables. With Docker they go in `.env` next to `docke
 create it from [`.env.example`](../.env.example)). Without Docker, put them in `.env` at the repo root; `npm run dev`
 reads it. Restart after changing anything (`./launch.sh update`).
 
-Sign-in providers are not environment variables; they live in `config/auth.yaml`. See [auth.md](auth.md).
+Sign-in providers are defined in `config/auth.yaml` (or the shipped `config/auth.example.yaml`). The example reads
+Google, GitHub, Microsoft and Okta credentials from the `GOOGLE_*`, `GITHUB_*`, `MS_*` and `OKTA_*` variables in
+`.env`; see [auth.md](auth.md).
 
 ## Server
 
@@ -35,8 +37,14 @@ setup does.
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `AUTH_MODE` | `accounts` | `accounts`: people sign in to see anything. `none`: no sign-in; anyone who can open the site can do everything and is asked for a name before their first card. Trusted networks only |
+| `LOCAL_SIGNUP` | `open` | Who can create an email/password account: `open`, `invite` (team invite link only), `closed`. Read by the default `config/auth.yaml` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | | Turns on Google sign-in. See [auth.md](auth.md#google) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | | Turns on GitHub sign-in |
+| `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT` | tenant `common` | Turns on Microsoft sign-in. A tenant id limits it to your organisation |
+| `OKTA_ISSUER`, `OKTA_CLIENT_ID`, `OKTA_CLIENT_SECRET` | | Turns on Okta sign-in |
 | `ADMIN_EMAILS` | | Comma-separated. These become instance admins when they sign up. The first account always does |
-| `AUTH_CONFIG` | `config/auth.yaml` | Where the sign-in config lives. Docker mounts `./config` at `/app/config` |
+| `AUTH_CONFIG` | `config/auth.yaml`, else `config/auth.example.yaml` | Where the sign-in config lives. Docker mounts `./config` at `/app/config` |
 
 ## Uploads
 

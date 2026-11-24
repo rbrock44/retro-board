@@ -26,6 +26,13 @@ export function requireUser(req: FastifyRequest): User {
   return req.user;
 }
 
+/** Writing a card or reply: guests (no-sign-in mode) have to give a name first. */
+export function requireNamed(req: FastifyRequest): User {
+  const user = requireUser(req);
+  if (user.guest && !user.name) throw badRequest('Enter your name first');
+  return user;
+}
+
 export function requireAdmin(req: FastifyRequest): User {
   const user = requireUser(req);
   if (user.role !== 'admin') throw forbidden('Instance admins only');

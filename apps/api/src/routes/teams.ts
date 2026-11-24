@@ -55,7 +55,7 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.get('/api/teams', async req => {
     const user = requireUser(req);
-    const all = (req.query as { all?: string }).all === '1' && user.role === 'admin';
+    const all = user.guest || ((req.query as { all?: string }).all === '1' && user.role === 'admin');
     const rows = all
       ? await db.select().from(teams).orderBy(teams.name)
       : (await db.select({ t: teams }).from(teamMembers).innerJoin(teams, eq(teams.id, teamMembers.teamId))

@@ -6,7 +6,7 @@ import { sanitizeTokens, type AuthConfigDto } from '@retro/shared';
 import {
   OAUTH_COOKIE, SESSION_COOKIE, createSession, deleteSession, deleteUserSessions,
 } from '../auth/sessions';
-import { createUser, findUserByEmail, resolveExternalLogin, toMeDto, userCount } from '../auth/users';
+import { createGuest, createUser, findUserByEmail, resolveExternalLogin, toMeDto, userCount } from '../auth/users';
 import type { Ctx } from '../context';
 import { identities, users, type User } from '../db/schema';
 import { badRequest, forbidden, noContent, notFound, parse, requireUser, unauthorized } from '../lib/http';
@@ -43,9 +43,21 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     });
   }
 
+  const open = config.authMode === 'none';
+
+  // In no-sign-in mode there are no accounts to create or sign in to.
+  app.addHook('onRequest', async (req, reply) => {
+    if (!open) return;
+    const path = req.url.split('?')[0];
+    const blocked = ['/api/auth/signup', '/api/auth/login', '/api/auth/password'].includes(path) ||
+      /^\/api\/auth\/[^/]+\/(start|callback)$/.test(path) || path.startsWith('/api/invites/');
+    if (blocked) return reply.code(404).send({ error: 'Sign-in is turned off on this site' });
+  });
+
   app.get('/api/auth/config', async (): Promise<AuthConfigDto> => ({
-    local: ctx.auth.local,
-    providers: ctx.auth.list(),
+    mode: config.authMode,
+    local: open ? { ...ctx.auth.local, enabled: false } : ctx.auth.local,
+    providers: open ? [] : ctx.auth.list(),
     gifSearch: !!config.tenorApiKey,
     needsSetup: (await userCount(db)) === 0,
   }));
@@ -53,6 +65,15 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/auth/me', async req => {
     if (!req.user) throw unauthorized();
     return toMeDto(db, req.user);
+  });
+
+  /** No-sign-in mode: gives this browser a guest identity (or returns the one it has). */
+  app.post('/api/auth/guest', async (req, reply) => {
+    if (!open) throw notFound();
+    if (req.user) return toMeDto(db, req.user);
+    const guest = await createGuest(db);
+    await startSession(reply, guest, req.headers['user-agent']);
+    return toMeDto(db, guest);
   });
 
   app.post('/api/auth/signup', async (req, reply) => {

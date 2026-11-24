@@ -16,9 +16,7 @@ checks, restarts. This page covers putting it on a real server.
 
 ```bash
 git clone <this repo> retro-board && cd retro-board
-./launch.sh                       # creates .env, builds, starts
-nano .env                         # set PUBLIC_URL=https://retro.example.com
-./launch.sh update
+./launch.sh --url https://retro.example.com    # or run it bare and answer the questions
 ```
 
 Then put a reverse proxy in front for HTTPS.

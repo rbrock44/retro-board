@@ -41,15 +41,24 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
     bodyLimit: 1024 * 1024,
   });
 
+  const authFile = opts.authFile ?? loadAuthFile(config.authConfigPath);
   const database = await openDatabase(config.databaseUrl);
   const hubRef: { current: Hub } = { current: noopHub() };
   const ctx: Ctx = {
     config,
     db: database.db,
     storage: opts.storage ?? createStorage(config.storage),
-    auth: createRegistry(opts.authFile ?? loadAuthFile(config.authConfigPath)),
+    auth: createRegistry(authFile),
     get hub() { return hubRef.current; },
   };
+  app.log.info({
+    authConfig: opts.authFile ? '(inline)' : config.authConfigPath,
+    providers: ctx.auth.list().map(p => p.id),
+    unconfigured: authFile.unconfigured ?? [],
+  }, 'sign-in providers');
+  if (config.authMode === 'none') {
+    app.log.warn('AUTH_MODE=none: no sign-in. Anyone who can reach this site can see and change everything');
+  }
 
   await app.register(cookie, { secret: config.sessionSecret });
   await app.register(multipart);
@@ -64,7 +73,7 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
       return reply.code(403).send({ error: 'Missing CSRF header' });
     }
     const found = await userForToken(ctx.db, req.cookies[SESSION_COOKIE]);
-    if (found) {
+    if (found && (!found.user.guest || config.authMode === 'none')) {
       req.user = found.user;
       req.sessionId = found.sessionId;
     }

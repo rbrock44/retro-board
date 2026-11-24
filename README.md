@@ -25,6 +25,7 @@
   - [Test](#test)
   - [Build](#build)
 - [Further Docs](#-further-docs)
+- [License](#-license)
 
 ---
 
@@ -221,3 +222,9 @@ npm start         # serve both on :8080
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit, data model, realtime, permissions |
 | [docs/api.md](docs/api.md) | REST endpoints and Socket.IO events |
 | [docs/development.md](docs/development.md) | Repo layout, migrations, adding a provider, conventions |
+
+---
+
+## 📄 License
+
+[MIT](LICENSE). Free to use, change and share. Provided as is, with no warranty and no liability.

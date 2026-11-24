@@ -20,9 +20,10 @@ const BOT_CARDS: [string, string][] = [
   ['To improve', 'PR descriptions are getting thin again'],
   ['Action ideas', 'Rotate who runs the retro each sprint'],
   ['Went well', 'Design and eng synced early on the billing flow'],
+  ['Action ideas', 'Pork tenderloin lunch when we ship on time 🐷'],
   ['To improve', 'Too many Slack pings during focus time'],
 ];
-const BOT_REPLIES = ['+1, felt this too', 'Agreed. Can we pick an owner?', 'This came up last sprint as well', 'Love it'];
+const BOT_REPLIES = ['Ope, +1, felt this too', 'Agreed. Can we pick an owner?', 'This came up last sprint as well', 'Love it'];
 
 /**
  * An in-browser stand-in for the API, used when there's no server (the public demo) or when asked for.

@@ -83,14 +83,15 @@ export function seedDemo(now = Date.now()): DemoState {
 
   const users: DemoState['users'] = [
     { id: DEMO_ME, name: 'You', email: 'you@example.com', avatarUrl: null, role: 'admin' },
-    { id: 'u-alex', name: 'Alex Rivera', email: 'alex@example.com', avatarUrl: null, role: 'user' },
-    { id: 'u-sam', name: 'Sam Chen', email: 'sam@example.com', avatarUrl: null, role: 'user' },
-    { id: 'u-priya', name: 'Priya Patel', email: 'priya@example.com', avatarUrl: null, role: 'user' },
-    { id: 'u-jordan', name: 'Jordan Lee', email: 'jordan@example.com', avatarUrl: null, role: 'user' },
-    { id: 'u-morgan', name: 'Morgan Diaz', email: 'morgan@example.com', avatarUrl: null, role: 'user' },
+    // Famous Iowans (from Winterset, Corning, Denison, Anamosa and Clarinda) as the sample team
+    { id: 'u-alex', name: 'John Wayne', email: 'john.wayne@example.com', avatarUrl: null, role: 'user' },
+    { id: 'u-sam', name: 'Johnny Carson', email: 'johnny.carson@example.com', avatarUrl: null, role: 'user' },
+    { id: 'u-priya', name: 'Donna Reed', email: 'donna.reed@example.com', avatarUrl: null, role: 'user' },
+    { id: 'u-jordan', name: 'Grant Wood', email: 'grant.wood@example.com', avatarUrl: null, role: 'user' },
+    { id: 'u-morgan', name: 'Glenn Miller', email: 'glenn.miller@example.com', avatarUrl: null, role: 'user' },
   ];
-  const team = { id: 't-platform', name: 'Platform Team', description: 'APIs, infrastructure and the deploy pipeline', settings: {}, createdAt: ago(120) };
-  const team2 = { id: 't-design', name: 'Design Crew', description: 'Product design and research', settings: { defaultTemplateId: 'mad-sad-glad' }, createdAt: ago(60) };
+  const team = { id: 't-platform', name: 'Corn Belt Platform', description: 'APIs, infrastructure and the deploy pipeline, out of Des Moines', settings: {}, createdAt: ago(120) };
+  const team2 = { id: 't-design', name: 'Des Moines Design Crew', description: 'Product design and research', settings: { defaultTemplateId: 'mad-sad-glad' }, createdAt: ago(60) };
   const members: DemoState['members'] = [
     { teamId: team.id, userId: DEMO_ME, role: 'admin', joinedAt: ago(120) },
     ...['u-alex', 'u-sam', 'u-priya', 'u-jordan'].map(userId => ({ teamId: team.id, userId, role: 'member' as TeamRole, joinedAt: ago(100) })),
@@ -148,6 +149,7 @@ export function seedDemo(now = Date.now()): DemoState {
   const carry1 = p(pImprove, 'u-jordan', 'On-call handoffs keep missing context', { status: 'carry_over', carriedToBoardId: live.id });
   const carry2 = p(pIdeas, DEMO_ME, 'Write a runbook for the payment service', { status: 'carry_over', carriedToBoardId: live.id });
   p(pIdeas, 'u-sam', 'Try a no-meeting Thursday');
+  p(pWell, 'u-priya', 'Team lunch at the Maid-Rite was a great reset');
 
   // ---- Sprint 42 (live) ----
   card(live.id, lCarried, 'u-jordan', carry1.body, { carriedFromId: carry1.id }, 1);
@@ -167,9 +169,10 @@ export function seedDemo(now = Date.now()): DemoState {
 
   const idea1 = card(live.id, lIdeas, 'u-alex', 'Quarantine flaky tests automatically and file a ticket');
   card(live.id, lIdeas, 'u-priya', 'Demo something small every Friday');
+  card(live.id, lIdeas, 'u-morgan', 'Summer offsite at the Iowa State Fair 🌽 (butter cow optional)');
 
   // ---- Research kickoff (another team) ----
-  card(kickoff.id, kMad, 'u-morgan', 'Recruiting participants takes weeks', {}, 70);
+  card(kickoff.id, kMad, 'u-morgan', 'Recruiting farmers for interviews before harvest takes weeks', {}, 70);
   card(kickoff.id, kSad, 'u-priya', 'Last round of findings never made it into the roadmap', {}, 70);
   card(kickoff.id, kGlad, DEMO_ME, 'New interview script is much tighter', {}, 70);
 

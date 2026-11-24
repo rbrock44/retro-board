@@ -13,7 +13,7 @@ describe('demo backend', () => {
   it('serves the sample teams and a live board', async () => {
     const { b } = backend();
     const teams = (await b.handle('GET', '/api/teams')) as TeamDto[];
-    expect(teams.map(t => t.name)).toEqual(['Design Crew', 'Platform Team']);
+    expect(teams.map(t => t.name)).toEqual(['Corn Belt Platform', 'Des Moines Design Crew']);
     const state = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
     expect(state.columns.map(c => c.title)).toEqual(['Carried over', 'Went well', 'To improve', 'Action ideas']);
     expect(state.permissions.canFacilitate).toBe(true);
@@ -85,7 +85,7 @@ describe('demo backend', () => {
   it('lets you switch to another person', async () => {
     const { b } = backend();
     const me = (await b.handle('POST', '/api/auth/guest/claim', { userId: 'u-alex' })) as { name: string };
-    expect(me.name).toBe('Alex Rivera');
+    expect(me.name).toBe('John Wayne');
     expect(b.state.meId).not.toBe(DEMO_ME);
   });
 

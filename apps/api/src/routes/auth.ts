@@ -77,6 +77,30 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     return toMeDto(db, guest);
   });
 
+  /**
+   * No-sign-in mode: "I'm one of these people". Switches this browser to an existing guest, so someone on a new
+   * device (or after clearing cookies) carries on as themselves. Everyone can do everything in this mode anyway,
+   * so there's nothing more to check than that the target is a named guest.
+   */
+  app.post('/api/auth/guest/claim', async (req, reply) => {
+    if (!open) throw notFound();
+    const { userId } = parse(z.object({ userId: z.string().min(1).max(64) }), req.body);
+    const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!target || !target.guest || !target.name || target.disabled) throw notFound('Person');
+    if (req.sessionId) await deleteSession(db, req.sessionId);
+    await startSession(reply, target, req.headers['user-agent']);
+    return toMeDto(db, target);
+  });
+
+  /** No-sign-in mode: "I'm someone else". A fresh, unnamed guest for this browser. */
+  app.post('/api/auth/guest/new', async (req, reply) => {
+    if (!open) throw notFound();
+    if (req.sessionId) await deleteSession(db, req.sessionId);
+    const guest = await createGuest(db);
+    await startSession(reply, guest, req.headers['user-agent']);
+    return toMeDto(db, guest);
+  });
+
   app.post('/api/auth/signup', async (req, reply) => {
     const body = parse(z.object({
       email, password, name: z.string().trim().min(1, 'enter your name').max(100), inviteToken: z.string().optional(),

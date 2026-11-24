@@ -14,6 +14,7 @@ export function toUserDto(u: User, opts: { withEmail?: boolean; admin?: boolean 
     avatarUrl: u.avatarUrl,
     role: u.role,
   };
+  if (u.guest) dto.guest = true;
   if (opts.admin) {
     dto.disabled = u.disabled;
     dto.createdAt = u.createdAt.toISOString();

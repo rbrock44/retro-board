@@ -60,10 +60,36 @@ describe('no-sign-in mode (AUTH_MODE=none)', () => {
     expect(members).toEqual(expect.arrayContaining([a.me.id, b.me.id]));
   });
 
+  it('lets someone pick who they are, or start fresh', async () => {
+    t = await makeApp({ env: { AUTH_MODE: 'none' } });
+    const ana = await guest(t.app);
+    await ana.c.patch('/api/auth/me', { name: 'Ana' });
+    const team = (await ana.c.post('/api/teams', { name: 'Crew' })).body;
+
+    // A new browser sees Ana among the team's members, flagged as a guest, and says "that's me"
+    const other = await guest(t.app);
+    const members = (await other.c.get(`/api/teams/${team.id}/members`)).body;
+    const anaRow = members.find((m: { user: { name: string } }) => m.user.name === 'Ana');
+    expect(anaRow.user.guest).toBe(true);
+    const claimed = await other.c.post('/api/auth/guest/claim', { userId: anaRow.user.id });
+    expect(claimed.body).toMatchObject({ id: ana.me.id, name: 'Ana', needsName: false });
+    expect((await other.c.get('/api/auth/me')).body.id).toBe(ana.me.id);
+
+    // unnamed guests and real accounts can't be claimed
+    const nameless = await guest(t.app);
+    expect((await other.c.post('/api/auth/guest/claim', { userId: nameless.me.id })).status).toBe(404);
+
+    const fresh = await other.c.post('/api/auth/guest/new');
+    expect(fresh.body).toMatchObject({ guest: true, needsName: true });
+    expect(fresh.body.id).not.toBe(ana.me.id);
+  });
+
   it('does not offer guest identities in accounts mode', async () => {
     t = await makeApp();
     expect((await new Client(t.app).get('/api/auth/config')).body.mode).toBe('accounts');
     expect((await new Client(t.app).post('/api/auth/guest')).status).toBe(404);
+    expect((await new Client(t.app).post('/api/auth/guest/new')).status).toBe(404);
+    expect((await new Client(t.app).post('/api/auth/guest/claim', { userId: 'x' })).status).toBe(404);
     const { client } = await signUp(t.app, 'Ada');
     expect((await client.get('/api/auth/me')).body).toMatchObject({ guest: false, needsName: false });
   });

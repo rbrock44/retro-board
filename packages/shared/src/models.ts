@@ -42,6 +42,8 @@ export interface UserDto {
   name: string;
   avatarUrl: string | null;
   role: InstanceRole;
+  /** A no-sign-in visitor; others can pick them on "Are you one of these?" */
+  guest?: boolean;
   disabled?: boolean;
   createdAt?: string;
 }

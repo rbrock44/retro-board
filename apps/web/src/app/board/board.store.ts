@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { io, type Socket } from 'socket.io-client';
 import {
   SOCKET_EVENTS, byPosition, positionBetween, type ActionItemDto, type BoardEvent, type BoardStateDto, type CardDto,
-  type CardStatus, type ColumnDto, type UserDto,
+  type BoardSummaryDto, type CardStatus, type ColumnDto, type UserDto,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { ToastService } from '../core/toast.service';
@@ -44,6 +44,15 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 /** Likes on a group head plus every card in its group. */
 export function groupLikes(head: CardDto, kids: CardDto[]): number {
   return head.likes + kids.reduce((n, k) => n + k.likes, 0);
+}
+
+/** Title the server gives a team's fresh board (CURRENT_BOARD_TITLE in the API). */
+export const CURRENT_BOARD_TITLE = 'Current retro';
+
+/** Browser tab title for a board page: "Current - Team - Site" for the team's current board, else the board's title. */
+export function boardTabTitle(board: Pick<BoardSummaryDto, 'title' | 'status'>, teamName: string, siteName: string): string {
+  const name = board.status === 'open' && board.title === CURRENT_BOARD_TITLE ? 'Current' : board.title;
+  return `${name} - ${teamName} - ${siteName}`;
 }
 
 /** One board's live state. Provided by the board page, so each open board gets its own store and socket. */

@@ -2,7 +2,9 @@ import { CdkDrag, CdkDragPlaceholder, CdkDropList, CdkDropListGroup, type CdkDra
 import { Component, computed, effect, inject, input, OnDestroy, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import {
   CARD_STATUSES, CARD_STATUS_LABELS, COLOR_PRESETS, THEME_PRESETS, type CardDto, type CardStatus, type ColumnDto,
   type ThemePreference, type BoardDto,
@@ -17,7 +19,7 @@ import { Avatar } from '../shared/avatar';
 import { ColorPicker } from '../shared/color-picker';
 import { Modal } from '../shared/modal';
 import { ThemeEditor } from '../shared/theme-editor';
-import { BoardStore } from './board.store';
+import { BoardStore, boardTabTitle } from './board.store';
 import { Card } from './card';
 import { Composer, type ComposerResult } from './composer';
 
@@ -315,9 +317,17 @@ export class BoardPage implements OnDestroy {
       const id = this.boardId();
       void this.store.open(id).then(() => {
         const b = this.store.board();
-        if (b) document.title = `${b.title} · ${this.auth.siteName()}`;
         if (b) void this.auth.welcome(b.teamId);
       });
+    });
+    // Tab title follows renames, status changes, the site name and moves to a fresh board. Reading navEnd re-runs
+    // this after the route TitleStrategy (which sets the title right after NavigationEnd), so the board's title wins.
+    const navEnd = toSignal(this.router.events.pipe(filter(e => e instanceof NavigationEnd)));
+    effect(() => {
+      navEnd();
+      const s = this.store.state();
+      if (!s || s.board.id !== this.boardId()) return;
+      document.title = boardTabTitle(s.board, s.team.name, this.auth.siteName());
     });
   }
 

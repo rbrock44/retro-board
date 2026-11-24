@@ -1,5 +1,5 @@
 import type { BoardStateDto, CardDto } from '@retro/shared';
-import { applyEvent, groupLikes } from './board.store';
+import { applyEvent, boardTabTitle, groupLikes } from './board.store';
 
 const card = (id: string, extra: Partial<CardDto> = {}): CardDto => ({
   id, boardId: 'b', columnId: 'c1', parentId: null, groupTitle: null, position: 'a0', body: id, anonymous: false,
@@ -53,5 +53,22 @@ describe('applyEvent', () => {
 describe('groupLikes', () => {
   it('adds up a group head and its cards', () => {
     expect(groupLikes(card('h', { likes: 2 }), [card('a', { likes: 3 }), card('b', { likes: 1 })])).toBe(6);
+  });
+});
+
+describe('boardTabTitle', () => {
+  it('calls the open "Current retro" board Current', () => {
+    expect(boardTabTitle({ title: 'Current retro', status: 'open' }, 'Platform Team', 'Retro Board')).toBe('Current - Platform Team - Retro Board');
+  });
+
+  it('uses the title for history boards', () => {
+    expect(boardTabTitle({ title: '2026-11-24 · Sprint 42', status: 'closed' }, 'Platform Team', 'Retro Board'))
+      .toBe('2026-11-24 · Sprint 42 - Platform Team - Retro Board');
+    expect(boardTabTitle({ title: 'Current retro', status: 'archived' }, 'Platform Team', 'Retro Board'))
+      .toBe('Current retro - Platform Team - Retro Board');
+  });
+
+  it('uses the title for other open boards', () => {
+    expect(boardTabTitle({ title: 'Planning', status: 'open' }, 'Platform Team', 'Team Retros')).toBe('Planning - Platform Team - Team Retros');
   });
 });

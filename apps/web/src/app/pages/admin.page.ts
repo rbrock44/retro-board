@@ -13,7 +13,7 @@ import { RelativeTimePipe } from '../shared/relative-time.pipe';
   template: `
     <div class="page stack">
       <h1>Instance admin</h1>
-      <p class="muted">Instance admins manage accounts and act as admin on every team. Sign-in providers are set in <code>auth.config.yaml</code>.</p>
+      <p class="muted">Instance admins manage accounts and act as admin on every team. Sign-in providers are set in <code>config/auth.yaml</code>.</p>
       <section class="card-surface stack">
         <div class="row">
           <h2>Users ({{ users().length }})</h2><div class="spacer"></div>

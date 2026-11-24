@@ -47,7 +47,7 @@ import { AuthService } from '../core/auth.service';
           </div>
         }
         @if (!localEnabled() && !cfg()?.providers?.length && cfg()) {
-          <p class="muted">No sign-in methods are enabled. Check <code>auth.config.yaml</code>.</p>
+          <p class="muted">No sign-in methods are enabled. Check <code>config/auth.yaml</code>.</p>
         }
       </div>
     </div>

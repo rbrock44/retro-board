@@ -1,5 +1,4 @@
 import type { Server as HttpServer } from 'node:http';
-import { parse as parseCookie } from 'cookie';
 import { Server, type Socket } from 'socket.io';
 import { SOCKET_EVENTS, type BoardEvent, type UserDto } from '@retro/shared';
 import { SESSION_COOKIE, userForToken } from './auth/sessions';
@@ -22,6 +21,21 @@ interface SocketData {
 
 const room = (boardId: string) => `board:${boardId}`;
 
+/** Reads one cookie from a Cookie header. Small on purpose: npm may hoist an incompatible `cookie` package. */
+export function readCookie(header: string | undefined, name: string): string | undefined {
+  for (const part of (header ?? '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) {
+      try {
+        return decodeURIComponent(part.slice(i + 1).trim());
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
 export function noopHub(): Hub {
   return { emitBoard() {}, emitUser() {}, async close() {} };
 }
@@ -31,8 +45,7 @@ export function createHub(server: HttpServer, db: Db): Hub {
 
   io.use(async (socket, next) => {
     try {
-      const cookies = parseCookie(socket.handshake.headers.cookie ?? '');
-      const found = await userForToken(db, cookies[SESSION_COOKIE]);
+      const found = await userForToken(db, readCookie(socket.handshake.headers.cookie, SESSION_COOKIE));
       if (!found) return next(new Error('unauthorized'));
       (socket.data as SocketData).user = found.user;
       (socket.data as SocketData).boards = new Set();

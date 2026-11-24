@@ -1,0 +1,69 @@
+# Sign-in configuration. Copy to config/auth.yaml and edit; restart the app to apply.
+# ${VAR} and ${VAR:-default} are replaced from the environment, so secrets can live in .env.
+#
+# Every provider's callback URL is:   <PUBLIC_URL>/api/auth/<id>/callback
+#   e.g. http://localhost:8080/api/auth/google/callback
+
+local:
+  # Email + password accounts
+  enabled: true
+  # open:   anyone can create an account
+  # invite: only people holding a team invite link can create one
+  # closed: nobody can sign up with a password (admins add people, or use a provider)
+  signup: open
+
+providers:
+  # Any OpenID Connect issuer works with type: oidc. Add as many as you like; each needs a unique id.
+
+  # - id: google
+  #   type: oidc
+  #   name: Google
+  #   issuer: https://accounts.google.com
+  #   clientId: ${GOOGLE_CLIENT_ID}
+  #   clientSecret: ${GOOGLE_CLIENT_SECRET}
+
+  # - id: microsoft
+  #   type: oidc
+  #   name: Microsoft
+  #   # use your tenant id instead of "common" to allow only your organisation
+  #   issuer: https://login.microsoftonline.com/common/v2.0
+  #   clientId: ${MS_CLIENT_ID}
+  #   clientSecret: ${MS_CLIENT_SECRET}
+
+  # - id: okta
+  #   type: oidc
+  #   name: Okta
+  #   issuer: https://your-org.okta.com
+  #   clientId: ${OKTA_CLIENT_ID}
+  #   clientSecret: ${OKTA_CLIENT_SECRET}
+
+  # - id: keycloak
+  #   type: oidc
+  #   name: Company SSO
+  #   issuer: https://sso.example.com/realms/main
+  #   clientId: retro-board
+  #   clientSecret: ${KEYCLOAK_CLIENT_SECRET}
+  #   # don't create accounts on first login; only people already invited or linked get in
+  #   allowSignup: false
+
+  # - id: authentik
+  #   type: oidc
+  #   name: Authentik
+  #   issuer: https://auth.example.com/application/o/retro-board/
+  #   clientId: ${AUTHENTIK_CLIENT_ID}
+  #   clientSecret: ${AUTHENTIK_CLIENT_SECRET}
+  #   scopes: openid email profile
+
+  # - id: github
+  #   type: github
+  #   name: GitHub
+  #   clientId: ${GITHUB_CLIENT_ID}
+  #   clientSecret: ${GITHUB_CLIENT_SECRET}
+
+  # - id: github-enterprise
+  #   type: github
+  #   name: GitHub Enterprise
+  #   baseUrl: https://github.example.com
+  #   apiUrl: https://github.example.com/api/v3
+  #   clientId: ${GHE_CLIENT_ID}
+  #   clientSecret: ${GHE_CLIENT_SECRET}

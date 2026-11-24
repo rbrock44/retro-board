@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.angular
+**/data
+**/coverage
+.git
+.env
+config/auth.yaml
+*.log

@@ -23,7 +23,7 @@ import { teamRoutes } from './routes/teams';
 
 export interface BuildOptions {
   config: AppConfig;
-  /** Overrides auth.config.yaml (tests). */
+  /** Overrides config/auth.yaml (tests). */
   authFile?: AuthFileConfig;
   storage?: Storage;
   /** Skip Socket.IO (tests that only use inject). */

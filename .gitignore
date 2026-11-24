@@ -7,6 +7,6 @@ data/
 uploads/
 *.log
 .env
-auth.config.yaml
+config/auth.yaml
 .DS_Store
 Thumbs.db

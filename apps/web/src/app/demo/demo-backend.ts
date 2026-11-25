@@ -38,6 +38,8 @@ export class DemoBackend {
     // Demos saved before column titles were Title Case: bring the built-in ones up to date.
     for (const c of state.columns) c.title = RENAMED_COLUMN_TITLES[c.title] ?? c.title;
     for (const b of state.boards) if (b.status === 'open' && b.title === OLD_CURRENT_BOARD_TITLE) b.title = CURRENT_BOARD_TITLE;
+    // Boards used to be closable; those are archived now.
+    for (const b of state.boards) if ((b.status as string) === 'closed') b.status = 'archived';
   }
 
   static fresh(onChange: () => void) {

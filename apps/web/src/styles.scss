@@ -640,12 +640,18 @@ button.likes { cursor: pointer;
   background: rgb(0 0 0 / 0.6); cursor: pointer; }
 .column-focus { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bg); cursor: auto;
   border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); overflow: hidden;
-  .focus-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border);
-    background: var(--surface); position: relative;
+  /* three columns, the outer two equal, so the title sits in the true center with the controls on the right */
+  .focus-head { display: grid; grid-template-columns: 1fr minmax(0, auto) 1fr; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface); position: relative;
+    .focus-title { grid-column: 2; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     h2 { margin: 0; font-size: 1.35rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .muted.small { white-space: nowrap; }
-    .col-bar { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--col); }
-    .icon-btn { font-size: 1.25rem; } }
+    .count { font-size: 0.8rem; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 0.05rem 0.5rem; }
+    .focus-nav { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 0.25rem; }
+    .muted.small { white-space: nowrap; line-height: 1; font-variant-numeric: tabular-nums; }
+    .icon-btn { width: 2.25rem; height: 2.25rem; padding: 0; line-height: 0;
+      svg { display: block; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      &:disabled { opacity: 0.35; cursor: default; background: transparent; } }
+    .col-bar { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--col); } }
   .focus-body { flex: 1; overflow: auto; padding: 1rem 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.9rem; }
   .focus-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 0.8rem; align-items: start; }
   .card, .group-box { font-size: 1.05rem; } }

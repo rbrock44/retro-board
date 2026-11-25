@@ -196,13 +196,17 @@ import { ClickOutside } from '../shared/click-outside';
         <div class="column-focus" role="dialog" aria-modal="true" [attr.aria-label]="fc.col.title" [style.--col]="fc.col.color">
           <header class="focus-head">
             <span class="col-bar"></span>
-            <h2>{{ fc.col.title }}</h2>
-            <span class="count">{{ fc.cards.length }}</span>
-            <div class="spacer"></div>
-            <button type="button" class="icon-btn" (click)="stepFocus(-1)" [disabled]="fc.index === 0" aria-label="Previous column" title="Previous column (←)">‹</button>
-            <span class="muted small">{{ fc.index + 1 }} / {{ s.columns.length }}</span>
-            <button type="button" class="icon-btn" (click)="stepFocus(1)" [disabled]="fc.index === s.columns.length - 1" aria-label="Next column" title="Next column (→)">›</button>
-            <button type="button" class="icon-btn" (click)="focusColumn.set(null)" aria-label="Close" title="Close (Esc)">✕</button>
+            <!-- title centered; SVG icons rather than ‹ › ✕ glyphs, which sit off-center in most fonts -->
+            <div class="focus-title"><h2>{{ fc.col.title }}</h2><span class="count">{{ fc.cards.length }}</span></div>
+            <div class="focus-nav">
+              <button type="button" class="icon-btn" (click)="stepFocus(-1)" [disabled]="fc.index === 0" aria-label="Previous column" title="Previous column (←)">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
+              <span class="muted small">{{ fc.index + 1 }} / {{ s.columns.length }}</span>
+              <button type="button" class="icon-btn" (click)="stepFocus(1)" [disabled]="fc.index === s.columns.length - 1" aria-label="Next column" title="Next column (→)">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
+              <button type="button" class="icon-btn" (click)="focusColumn.set(null)" aria-label="Close" title="Close (Esc)">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+            </div>
           </header>
           <div class="focus-body">
             @if (fc.col.description) { <p class="col-desc">{{ fc.col.description }}</p> }

@@ -32,8 +32,8 @@ type Key = keyof InstanceSettings;
         <section class="card-surface stack">
           <h2>Look</h2>
           <p class="muted">The colors everyone sees until they pick their own in Profile &amp; theme.</p>
-          <label class="row"><input type="radio" name="themeMode" [checked]="!form.theme" (change)="form.theme = null"> Light or dark, following each person's device</label>
-          <label class="row"><input type="radio" name="themeMode" [checked]="!!form.theme" (change)="useSiteTheme()"> One look for the whole site</label>
+          <label class="check"><input type="radio" name="themeMode" [checked]="!form.theme" (change)="form.theme = null"> Light or dark, following each person's device</label>
+          <label class="check"><input type="radio" name="themeMode" [checked]="!!form.theme" (change)="useSiteTheme()"> One look for the whole site</label>
           @if (form.theme) {
             <app-theme-editor [value]="form.theme" (valueChange)="form.theme = $event" />
           }
@@ -87,7 +87,7 @@ type Key = keyof InstanceSettings;
 
         <section class="card-surface stack">
           <h2>Cards</h2>
-          <label class="row"><input type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
+          <label class="check"><input type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
           <p class="muted small">Default for new boards; facilitators can change it.
             {{ hint('allowAnonymous') }}
             @if (overridden('allowAnonymous')) {

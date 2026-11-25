@@ -21,7 +21,7 @@ type Key = keyof InstanceSettings;
   imports: [FormsModule, ThemeEditor, ColorPicker],
   template: `
     @if (data(); as d) {
-      <div class="stack">
+      <div class="stack customize">
         <section class="card-surface stack">
           <h2>Name</h2>
           <label>Site name <input [(ngModel)]="form.siteName" maxlength="60"></label>

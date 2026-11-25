@@ -242,7 +242,8 @@ section.card-surface { padding: 1rem 1.25rem; }
 .action-list li { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.5rem 0; border-bottom: 1px solid var(--border);
   > input[type='checkbox'] { margin-top: 0.55rem; }
   &.done .inline-edit, &.done > .grow > span { text-decoration: line-through; color: var(--muted); }
-  select, input[type='date'] { padding: 0.15rem 0.35rem; font-size: 0.8rem; } }
+  /* owner and due date side by side: the same height (browsers size date inputs taller on their own) */
+  select, input[type='date'] { box-sizing: border-box; height: 1.9rem; padding: 0 0.4rem; font-size: 0.8rem; line-height: 1; } }
 .inline-edit { border-color: transparent !important; background: transparent !important; padding: 0.2rem 0.3rem !important; width: 100%;
   &:hover, &:focus { border-color: var(--border) !important; background: var(--surface) !important; } }
 

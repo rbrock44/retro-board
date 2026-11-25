@@ -32,6 +32,34 @@ export function sniffVideo(buf: Buffer): { mime: string; ext: string } | null {
 
 const GIF_HOSTS = /(^|\.)(tenor\.com|giphy\.com)$/;
 
+type GiphyImage = { url: string; width: string; height: string };
+
+/** Giphy search, or what's trending for an empty query. Rated PG-13 at most, like Tenor's "medium" filter. */
+export async function giphySearch(key: string, q: string, fetcher: typeof fetch = fetch): Promise<GifResultDto[]> {
+  const url = new URL(q ? 'https://api.giphy.com/v1/gifs/search' : 'https://api.giphy.com/v1/gifs/trending');
+  url.searchParams.set('api_key', key);
+  if (q) url.searchParams.set('q', q);
+  url.searchParams.set('limit', '24');
+  url.searchParams.set('rating', 'pg-13');
+  url.searchParams.set('bundle', 'messaging_non_clips');
+  const res = await fetcher(url);
+  if (!res.ok) throw new HttpError(502, 'GIF search is unavailable right now');
+  const data = (await res.json()) as { data: { id: string; title: string; images: Record<string, GiphyImage | undefined> }[] };
+  return data.data.filter(g => g.images.original?.url).map(g => {
+    const full = g.images.original!;
+    // fixed_width is a small, fast-loading copy for the picker grid
+    const small = g.images.fixed_width ?? full;
+    return {
+      id: g.id,
+      url: full.url,
+      previewUrl: small.url,
+      width: Math.min(4000, Number(full.width) || 0),
+      height: Math.min(4000, Number(full.height) || 0),
+      title: g.title,
+    };
+  });
+}
+
 export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db, storage, config } = ctx;
 
@@ -130,8 +158,9 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/gifs', async (req): Promise<GifResultDto[]> => {
     requireUser(req);
     await requireFeature(ctx, 'gifs');
-    if (!config.tenorApiKey) throw notFound('GIF search');
     const q = String((req.query as { q?: string }).q ?? '').trim().slice(0, 100);
+    if (config.giphyApiKey) return giphySearch(config.giphyApiKey, q);
+    if (!config.tenorApiKey) throw notFound('GIF search');
     const url = new URL(q ? 'https://tenor.googleapis.com/v2/search' : 'https://tenor.googleapis.com/v2/featured');
     if (q) url.searchParams.set('q', q);
     url.searchParams.set('key', config.tenorApiKey);

@@ -17,7 +17,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'images', group: 'Media', label: 'Image Uploads',
     info: 'Pictures on cards and replies (JPG, PNG, WebP, AVIF). When off, nobody can attach images, and images already on boards are hidden and no longer served.' },
   { key: 'gifs', group: 'Media', label: 'GIFs',
-    info: 'Animated GIF files, and GIF search if a Tenor key is set up. When off, GIFs can\'t be added, and ones already on boards are hidden and no longer served.' },
+    info: 'Animated GIF files, and GIF search if a Giphy or Tenor key is set up. When off, GIFs can\'t be added, and ones already on boards are hidden and no longer served.' },
   { key: 'videos', group: 'Media', label: 'Video Uploads',
     info: 'MP4, WebM and MOV videos on cards and replies. When off, videos can\'t be added, and videos already on boards are hidden and no longer served: useful where video sharing isn\'t allowed.' },
   { key: 'anonymous', group: 'Cards', label: 'Anonymous Cards',

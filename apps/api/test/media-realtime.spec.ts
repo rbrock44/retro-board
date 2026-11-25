@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { io as connect, type Socket } from 'socket.io-client';
 import { SOCKET_EVENTS, type BoardEvent } from '@retro/shared';
-import { sniffVideo } from '../src/routes/media';
+import { giphySearch, sniffVideo } from '../src/routes/media';
 import { addMember, makeApp, multipart, teamWithBoard, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -72,6 +72,33 @@ describe('media', () => {
     expect((await owner.client.post(`/api/boards/${board.id}/attachments/gif`, { url: 'https://evil.example/x.gif' })).status).toBe(400);
     const ok = await owner.client.post(`/api/boards/${board.id}/attachments/gif`, { url: 'https://media.tenor.com/abc/x.gif' });
     expect(ok.body).toMatchObject({ kind: 'gif', url: 'https://media.tenor.com/abc/x.gif' });
+  });
+
+  it('searches Giphy (trending when empty) and maps results to GIFs that can be embedded', async () => {
+    const urls: URL[] = [];
+    const fake = (async (u: URL) => {
+      urls.push(u);
+      return new Response(JSON.stringify({ data: [
+        { id: 'a1', title: 'Party', images: {
+          original: { url: 'https://media2.giphy.com/media/a1/giphy.gif?cid=x', width: '480', height: '270' },
+          fixed_width: { url: 'https://media2.giphy.com/media/a1/200w.gif?cid=x', width: '200', height: '113' } } },
+        { id: 'b2', title: 'No original', images: {} },
+      ] }));
+    }) as unknown as typeof fetch;
+    const found = await giphySearch('k', 'party', fake);
+    expect(found).toEqual([{ id: 'a1', title: 'Party', url: 'https://media2.giphy.com/media/a1/giphy.gif?cid=x',
+      previewUrl: 'https://media2.giphy.com/media/a1/200w.gif?cid=x', width: 480, height: 270 }]);
+    expect(urls[0].pathname).toBe('/v1/gifs/search');
+    expect(urls[0].searchParams.get('q')).toBe('party');
+    expect(urls[0].searchParams.get('rating')).toBe('pg-13');
+    await giphySearch('k', '', fake);
+    expect(urls[1].pathname).toBe('/v1/gifs/trending');
+
+    // and the result embeds
+    t = await makeApp();
+    const { owner, board } = await teamWithBoard(t.app);
+    const a = await owner.client.post(`/api/boards/${board.id}/attachments/gif`, { url: found[0].url, previewUrl: found[0].previewUrl, width: 480, height: 270 });
+    expect(a.body).toMatchObject({ kind: 'gif', url: found[0].url });
   });
 
   it('sniffs video containers by magic bytes', () => {

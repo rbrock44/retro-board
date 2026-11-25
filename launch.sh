@@ -57,6 +57,7 @@ Look and defaults (admins can change these later in the app: Admin > Customize)
                             (images, gifs, videos, anonymous, replies, reactions, likes, groups, actions, carryOver, export, presence, personShades)
 
 Other
+  --giphy-key KEY           turns on GIF search (searches go to Giphy; used over Tenor if both are set)
   --tenor-key KEY           turns on GIF search (searches go to Tenor)
   -y, --yes                 don't ask anything
   -h, --help                this help
@@ -130,7 +131,7 @@ while [ $# -gt 0 ]; do
     -h|--help) usage; exit 0 ;;
     -y|--yes) ask=0; shift; continue ;;
     --network) add_set ACCESS network; shift; continue ;;
-    --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--tenor-key) ;;
+    --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--giphy-key|--tenor-key) ;;
     --data|--site-name|--theme|--accent|--columns|--disable) ;;
     *) warn "Unknown option $opt (see ./launch.sh --help)"; exit 2 ;;
   esac
@@ -161,6 +162,7 @@ while [ $# -gt 0 ]; do
     --access)
       case "$val" in local|network|domain) ;; *) warn "--access is local, network or domain"; exit 2 ;; esac
       add_set ACCESS "$val" ;;
+    --giphy-key) add_set GIPHY_API_KEY "$val" ;;
     --tenor-key) add_set TENOR_API_KEY "$val" ;;
     --data)
       case "$val" in folder|volumes) ;; *) warn "--data is folder or volumes"; exit 2 ;; esac
@@ -461,7 +463,10 @@ if [ "$ask" = 1 ]; then
   fi
 
   say ""
-  prompt_secret tenor "5. Tenor API key for GIF search (optional; searches go to Tenor)" "$(get_env TENOR_API_KEY)"
+  say "5. GIF search (optional): a Giphy or Tenor API key turns on the GIF button. Enter to skip either"
+  prompt_secret giphy "   Giphy API key (searches go to Giphy; used if both are set)" "$(get_env GIPHY_API_KEY)"
+  set_env GIPHY_API_KEY "$giphy"
+  prompt_secret tenor "   Tenor API key (searches go to Tenor)" "$(get_env TENOR_API_KEY)"
   set_env TENOR_API_KEY "$tenor"
   say ""
 fi

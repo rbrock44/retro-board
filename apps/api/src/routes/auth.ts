@@ -64,7 +64,7 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     publicUrl: config.publicUrl,
     local: open ? { ...local, enabled: false } : local,
     providers: open ? [] : ctx.auth.list(),
-    gifSearch: !!config.tenorApiKey,
+    gifSearch: config.giphyApiKey ? 'giphy' : config.tenorApiKey ? 'tenor' : null,
     needsSetup: (await userCount(db)) === 0,
     };
   });

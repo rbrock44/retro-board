@@ -30,6 +30,8 @@ export interface AppConfig {
   storage: StorageConfig;
   maxUploadBytes: number;
   tenorApiKey: string | null;
+  /** Giphy wins over Tenor when both are set */
+  giphyApiKey: string | null;
   webDist: string | null;
   logLevel: string;
 }
@@ -124,6 +126,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     storage,
     maxUploadBytes: Number(env.MAX_UPLOAD_MB ?? 25) * 1024 * 1024,
     tenorApiKey: env.TENOR_API_KEY || null,
+    giphyApiKey: env.GIPHY_API_KEY || null,
     webDist: env.WEB_DIST ?? defaultWebDist(),
     logLevel: env.LOG_LEVEL ?? 'info',
   };

@@ -86,7 +86,8 @@ its default template), so people always land in the right place.
 
 - `Cards` - Markdown text (bold, lists, links, code). Tick `Anonymous` to hide your name from everyone
 - `Media` - Attach images, GIFs and videos (mp4, webm, mov) with 📎, by pasting an image, or by dropping files on
-  the composer. With a Tenor key configured, the `GIF` button searches GIFs. Click an image for a full-size view
+  the composer. With a Giphy or Tenor key configured, the `GIF` button searches GIFs.
+  Text and any mix of images, GIFs and videos go together in one card or reply. Click an image for a full-size view
 - `Replies` - 💬 opens a thread on any card. Replies support markdown, media and reactions, and can be answered
   one level deep
 - `Reactions` - Emoji reactions on cards and replies, separate from likes
@@ -252,8 +253,8 @@ Pass options instead of answering questions, which suits scripts and servers:
 ### Your Data
 
 **Everything stays on the computer running Retro Board.** There's no cloud service, no account with us, and no
-tracking. The only things that ever leave the machine are ones you turn on: GIF searches (sent to Tenor, if you add
-a key) and sign-ins through a provider you set up (Google, Microsoft, …).
+tracking. The only things that ever leave the machine are ones you turn on: GIF searches (sent to Giphy or Tenor, if
+you add a key) and sign-ins through a provider you set up (Google, Microsoft, …).
 
 Where it lives is your choice at setup:
 
@@ -347,7 +348,8 @@ likely to change:
 | `ADMIN_EMAILS` | | Extra instance admins |
 | `MAX_UPLOAD_MB` | `25` | Largest image or video |
 | `STORAGE_DRIVER` | `local` | `s3` for S3, R2, MinIO or B2 |
-| `TENOR_API_KEY` | | Turns on GIF search |
+| `GIPHY_API_KEY` | | Turns on GIF search through Giphy (used over Tenor if both are set) |
+| `TENOR_API_KEY` | | Turns on GIF search through Tenor |
 
 Full reference: [docs/configuration.md](docs/configuration.md). HTTPS, reverse proxies, backups and upgrades:
 [docs/deployment.md](docs/deployment.md).

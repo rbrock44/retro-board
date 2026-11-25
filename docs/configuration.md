@@ -98,7 +98,8 @@ only to people who can see the board, with headers that stop browsers from runni
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `TENOR_API_KEY` | | Enables the GIF button. Get a key in Google Cloud console → enable **Tenor API** → Credentials |
+| `GIPHY_API_KEY` | | Enables the GIF button, searching Giphy. Get a key at developers.giphy.com → **Create an App** → API. Used over Tenor when both are set |
+| `TENOR_API_KEY` | | Enables the GIF button, searching Tenor. Get a key in Google Cloud console → enable **Tenor API** → Credentials |
 
 Without a key, people can still upload GIF files. Embedded GIFs are only accepted from Tenor and Giphy hosts.
 

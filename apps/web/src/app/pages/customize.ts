@@ -140,7 +140,7 @@ type Key = keyof InstanceSettings;
         <section class="card-surface stack">
           <h2>Your Data</h2>
           <p>Everything stays on the computer or server running this app. Nothing is sent anywhere else, except
-            GIF searches (to Tenor, if turned on) and signing in with a provider you set up.</p>
+            GIF searches (to Giphy or Tenor, if turned on) and signing in with a provider you set up.</p>
           @if (d.storage.location) {
             <p>It's kept in <code>{{ d.storage.location }}</code>.</p>
           } @else {

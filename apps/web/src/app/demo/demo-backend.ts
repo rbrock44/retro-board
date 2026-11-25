@@ -426,7 +426,7 @@ export class DemoBackend {
   private routes: [string, RegExp, (p: string[], body: any, q: URLSearchParams) => unknown][] = [
     // ---- auth ----
     ['GET', /^\/api\/auth\/config$/, (): AuthConfigDto => ({
-      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: false, needsSetup: false,
+      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: null, needsSetup: false,
     })],
     ['GET', /^\/api\/auth\/me$/, () => this.meDto()],
     ['POST', /^\/api\/auth\/guest$/, () => this.meDto()],

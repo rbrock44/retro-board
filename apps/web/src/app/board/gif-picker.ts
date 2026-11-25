@@ -3,9 +3,10 @@ import { FormsModule } from '@angular/forms';
 import type { AttachmentDto, GifResultDto } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { ToastService } from '../core/toast.service';
+import { AuthService } from '../core/auth.service';
 import { Modal } from '../shared/modal';
 
-/** Tenor search, shown only when the server has TENOR_API_KEY. */
+/** GIF search through Giphy or Tenor, shown only when the server has GIPHY_API_KEY or TENOR_API_KEY. */
 @Component({
   selector: 'app-gif-picker',
   imports: [FormsModule, Modal],
@@ -21,12 +22,13 @@ import { Modal } from '../shared/modal';
           <button type="button" class="gif-cell" (click)="pick(g)" [title]="g.title"><img [src]="g.previewUrl" [alt]="g.title" loading="lazy"></button>
         } @empty { @if (!loading()) { <p class="muted">No GIFs found.</p> } }
       </div>
-      <p class="muted small">Powered by Tenor</p>
+      <p class="muted small gif-credit">Powered by {{ auth.config()?.gifSearch === 'giphy' ? 'GIPHY' : 'Tenor' }}</p>
     </app-modal>
   `,
 })
 export class GifPicker {
   private api = inject(Api);
+  protected auth = inject(AuthService);
   private toast = inject(ToastService);
   readonly boardId = input.required<string>();
   readonly picked = output<AttachmentDto>();
@@ -53,7 +55,7 @@ export class GifPicker {
   async pick(g: GifResultDto) {
     try {
       const a = await this.api.post<AttachmentDto>(`/api/boards/${this.boardId()}/attachments/gif`, {
-        url: g.url, previewUrl: g.previewUrl, width: g.width, height: g.height, title: g.title,
+        url: g.url, previewUrl: g.previewUrl, width: g.width || undefined, height: g.height || undefined, title: g.title,
       });
       this.picked.emit(a);
     } catch (err) {

@@ -55,6 +55,7 @@ Look and defaults (admins can change these later in the app: Admin > Customize)
                             (images, gifs, videos, anonymous, replies, reactions, likes, groups, actions, carryOver, export, presence, personShades)
 
 Other
+  --giphy-key KEY           turns on GIF search (searches go to Giphy; used over Tenor if both are set)
   --tenor-key KEY           turns on GIF search (searches go to Tenor)
   -y, --yes                 don't ask anything
   -h, --help                this help
@@ -130,7 +131,7 @@ $optionKeys = [ordered]@{
   '--github-id' = 'GITHUB_CLIENT_ID'; '--github-secret' = 'GITHUB_CLIENT_SECRET'
   '--ms-id' = 'MS_CLIENT_ID'; '--ms-secret' = 'MS_CLIENT_SECRET'; '--ms-tenant' = 'MS_TENANT'
   '--okta-issuer' = 'OKTA_ISSUER'; '--okta-id' = 'OKTA_CLIENT_ID'; '--okta-secret' = 'OKTA_CLIENT_SECRET'
-  '--port' = 'PORT'; '--url' = 'PUBLIC_URL'; '--tenor-key' = 'TENOR_API_KEY'
+  '--port' = 'PORT'; '--url' = 'PUBLIC_URL'; '--giphy-key' = 'GIPHY_API_KEY'; '--tenor-key' = 'TENOR_API_KEY'
   '--auth' = 'AUTH_MODE'; '--signup' = 'LOCAL_SIGNUP'; '--access' = 'ACCESS'
   '--data' = 'DATA_STORAGE'; '--site-name' = 'SITE_NAME'; '--theme' = 'DEFAULT_THEME'; '--accent' = 'DEFAULT_ACCENT'
   '--columns' = 'DEFAULT_TEMPLATE'; '--disable' = 'DISABLED_FEATURES'
@@ -414,7 +415,9 @@ if ($ask) {
   }
 
   Write-Host ''
-  Set-EnvValue 'TENOR_API_KEY' (Ask-Secret '5. Tenor API key for GIF search (optional; searches go to Tenor)' (Get-EnvValue 'TENOR_API_KEY'))
+  Write-Host '5. GIF search (optional): a Giphy or Tenor API key turns on the GIF button. Enter to skip either'
+  Set-EnvValue 'GIPHY_API_KEY' (Ask-Secret '   Giphy API key (searches go to Giphy; used if both are set)' (Get-EnvValue 'GIPHY_API_KEY'))
+  Set-EnvValue 'TENOR_API_KEY' (Ask-Secret '   Tenor API key (searches go to Tenor)' (Get-EnvValue 'TENOR_API_KEY'))
   Write-Host ''
 }
 

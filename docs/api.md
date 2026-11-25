@@ -107,7 +107,7 @@ curl -b jar http://localhost:8080/api/teams
 | POST | `/api/boards/:boardId/attachments/gif` | `url, previewUrl?, width?, height?, title?`. Tenor and Giphy https URLs only |
 | GET | `/api/media/:id` and `/api/media/:id/thumb` | Supports `Range` (video seeking) |
 | DELETE | `/api/attachments/:id` | Uploader or facilitator |
-| GET | `/api/gifs?q=` | Tenor search; 404 when no `TENOR_API_KEY` |
+| GET | `/api/gifs?q=` | Giphy search (`GIPHY_API_KEY`), else Tenor (`TENOR_API_KEY`); trending when `q` is empty; 404 with neither key |
 
 Unused uploads (never attached to a card or reply) stay in storage; they are small and rare.
 

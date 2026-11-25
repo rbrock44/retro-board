@@ -9,7 +9,9 @@ import { Api } from '../core/api.service';
 import { ToastService } from '../core/toast.service';
 import { DemoService } from '../demo/demo.service';
 
-export type SortMode = 'position' | 'likes';
+/** position: Oldest First, the order cards sit in (new ones go to the bottom; dragging rearranges).
+ *  newest: Newest First. likes: Most Liked. Only position can be rearranged by dragging. */
+export type SortMode = 'position' | 'newest' | 'likes';
 
 /** Applies one realtime event to a board state. Pure, so it is easy to test. */
 export function applyEvent(s: BoardStateDto, e: BoardEvent): BoardStateDto {
@@ -120,6 +122,7 @@ export class BoardStore {
     }
     for (const list of map.values()) {
       if (sort === 'likes') list.sort((a, b) => groupLikes(b, kids.get(b.id) ?? []) - groupLikes(a, kids.get(a.id) ?? []) || byPosition(a, b));
+      else if (sort === 'newest') list.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || byPosition(b, a));
       else list.sort(byPosition);
     }
     return map;

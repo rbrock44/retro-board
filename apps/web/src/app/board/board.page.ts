@@ -77,7 +77,8 @@ import { ClickOutside } from '../shared/click-outside';
           </label>
           <label>Sort
             <select [ngModel]="store.sort()" (ngModelChange)="store.sort.set($event)">
-              <option value="position">Manual</option>
+              <option value="position">Oldest First</option>
+              <option value="newest">Newest First</option>
               @if (auth.on('likes')) { <option value="likes">Most Liked</option> }
             </select>
           </label>
@@ -152,7 +153,7 @@ import { ClickOutside } from '../shared/click-outside';
                 }
 
                 <div class="card-list" cdkDropList [cdkDropListData]="col.id" [id]="'col-' + col.id"
-                     [cdkDropListSortingDisabled]="store.groupMode() || store.sort() === 'likes'"
+                     [cdkDropListSortingDisabled]="store.groupMode() || store.sort() !== 'position'"
                      (cdkDropListDropped)="drop($event)">
                   @for (card of store.columnCards().get(col.id) ?? []; track card.id) {
                     <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="!perm().canWrite" class="drag-wrap"
@@ -369,7 +370,8 @@ export class BoardPage implements OnDestroy {
       void this.store.moveCard(card, targetColumn, list.length);
       return;
     }
-    if (this.store.sort() === 'likes' && targetColumn === card.columnId) return;
+    // Newest First and Most Liked are computed orders: dragging only moves a card to another column
+    if (this.store.sort() !== 'position' && targetColumn === card.columnId) return;
     void this.store.moveCard(card, targetColumn, e.currentIndex);
   }
 

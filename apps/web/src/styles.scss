@@ -402,8 +402,8 @@ button.likes { cursor: pointer;
   color: var(--muted); font-size: 1.25rem; line-height: 1; letter-spacing: 1px; cursor: pointer;
   &:hover, &[aria-expanded='true'] { background: var(--surface-2); color: var(--text); } }
 .replies-toggle { display: flex; align-items: center; justify-content: center; gap: 0.4rem; width: calc(100% + 1.4rem);
-  margin: 0 -0.7rem -0.6rem; min-height: 34px; padding: 0.3rem; border: 0; border-top: 1px solid var(--border);
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm); background: none; color: var(--muted); font-size: 0.85rem; cursor: pointer;
+  margin: 0 -0.7rem -0.6rem; min-height: 24px; padding: 0.1rem 0.3rem; border: 0; border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm); background: none; color: var(--muted); font-size: 0.8rem; line-height: 1.2; cursor: pointer;
   &:hover { background: var(--surface-2); color: var(--text); }
   .chev { display: inline-block; transition: transform 0.15s; }
   &.open { margin-bottom: 0; border-radius: 0; .chev { transform: rotate(180deg); } } }

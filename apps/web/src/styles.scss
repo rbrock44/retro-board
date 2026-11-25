@@ -560,3 +560,18 @@ button.likes { cursor: pointer;
 .export-team { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.7rem; }
 .export-boards { list-style: none; margin: 0.35rem 0 0; padding: 0 0 0 1.6rem; display: flex; flex-direction: column; gap: 0.2rem; }
 .board-list li .board-export { margin-left: auto; }
+
+/* ---- person shades ---- */
+/* "Color by Person": a card by a named author gets a light tint of that person's hue (--person-hue, from
+   personHue() in @retro/shared), mixed into the theme's surface so it suits light and dark themes alike.
+   Anonymous cards never get the class, so they stay on plain --surface. The left border is left alone: it
+   still shows the column and the card's status. */
+.card.person-shaded {
+  --person-color: hsl(var(--person-hue) 70% 55%);
+  background: color-mix(in srgb, var(--person-color) 12%, var(--surface));
+  > .card-foot .author .avatar { box-shadow: 0 0 0 1.5px var(--person-color); }
+}
+/* People on the board wear the same colour, so faces match card shades */
+.presence .avatar.person-ring { box-shadow: 0 0 0 2px hsl(var(--person-hue) 70% 55%); }
+.board-tools .person-shades-toggle { white-space: nowrap; }
+@media print { .card.person-shaded { background: var(--surface); } }

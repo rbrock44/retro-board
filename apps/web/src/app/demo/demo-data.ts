@@ -91,23 +91,23 @@ export function seedDemo(now = Date.now()): DemoState {
     { id: 'u-sam', name: 'Johnny Carson', email: 'johnny.carson@example.com', avatarUrl: null, role: 'user' },
     { id: 'u-priya', name: 'Donna Reed', email: 'donna.reed@example.com', avatarUrl: null, role: 'user' },
     { id: 'u-jordan', name: 'Grant Wood', email: 'grant.wood@example.com', avatarUrl: null, role: 'user' },
-    { id: 'u-morgan', name: 'Glenn Miller', email: 'glenn.miller@example.com', avatarUrl: null, role: 'user' },
+    { id: 'u-glenn', name: 'Glenn Miller', email: 'glenn.miller@example.com', avatarUrl: null, role: 'user' },
   ];
   const team = { id: 't-platform', name: 'Corn Belt Platform', description: 'APIs, infrastructure and the deploy pipeline, out of Des Moines', settings: {}, createdAt: ago(120) };
   const team2 = { id: 't-design', name: 'Des Moines Design Crew', description: 'Product design and research', settings: { defaultTemplateId: 'mad-sad-glad' }, createdAt: ago(60) };
   const members: DemoState['members'] = [
     { teamId: team.id, userId: DEMO_ME, role: 'admin', joinedAt: ago(120) },
     ...['u-alex', 'u-sam', 'u-priya', 'u-jordan'].map(userId => ({ teamId: team.id, userId, role: 'member' as TeamRole, joinedAt: ago(100) })),
-    { teamId: team.id, userId: 'u-morgan', role: 'viewer', joinedAt: ago(30) },
+    { teamId: team.id, userId: 'u-glenn', role: 'viewer', joinedAt: ago(30) },
     { teamId: team2.id, userId: DEMO_ME, role: 'admin', joinedAt: ago(60) },
-    { teamId: team2.id, userId: 'u-morgan', role: 'member', joinedAt: ago(60) },
+    { teamId: team2.id, userId: 'u-glenn', role: 'member', joinedAt: ago(60) },
     { teamId: team2.id, userId: 'u-priya', role: 'member', joinedAt: ago(55) },
   ];
 
   const s = (o: Partial<BoardSettings> = {}): BoardSettings => ({ ...DEFAULT_BOARD_SETTINGS, ...o });
   const past = { id: 'b-s41', teamId: team.id, title: `${ago(15).slice(0, 10)} · Sprint 41`, status: 'closed' as BoardStatus, settings: s(), createdAt: ago(15), closedAt: ago(15, -2), createdBy: DEMO_ME };
   const live = { id: 'b-s42', teamId: team.id, title: CURRENT_BOARD_TITLE, status: 'open' as BoardStatus, settings: s(), createdAt: ago(0, 1), closedAt: null, createdBy: DEMO_ME };
-  const kickoff = { id: 'b-kick', teamId: team2.id, title: 'Research kickoff', status: 'open' as BoardStatus, settings: s(), createdAt: ago(3), closedAt: null, createdBy: 'u-morgan' };
+  const kickoff = { id: 'b-kick', teamId: team2.id, title: 'Research kickoff', status: 'open' as BoardStatus, settings: s(), createdAt: ago(3), closedAt: null, createdBy: 'u-glenn' };
 
   const columns: ColumnDto[] = [];
   const addColumns = (boardId: string, specs: { title: string; color: string; description?: string }[], carried = false) => {
@@ -172,10 +172,10 @@ export function seedDemo(now = Date.now()): DemoState {
 
   const idea1 = card(live.id, lIdeas, 'u-alex', 'Quarantine flaky tests automatically and file a ticket');
   card(live.id, lIdeas, 'u-priya', 'Demo something small every Friday');
-  card(live.id, lIdeas, 'u-morgan', 'Summer offsite at the Iowa State Fair 🌽 (butter cow optional)');
+  card(live.id, lIdeas, 'u-glenn', 'Summer offsite at the Iowa State Fair 🌽 (butter cow optional)');
 
   // ---- Research kickoff (another team) ----
-  card(kickoff.id, kMad, 'u-morgan', 'Recruiting farmers for interviews before harvest takes weeks', {}, 70);
+  card(kickoff.id, kMad, 'u-glenn', 'Recruiting farmers for interviews before harvest takes weeks', {}, 70);
   card(kickoff.id, kSad, 'u-priya', 'Last round of findings never made it into the roadmap', {}, 70);
   card(kickoff.id, kGlad, DEMO_ME, 'New interview script is much tighter', {}, 70);
 

@@ -45,3 +45,19 @@ export function clampInt(value: unknown, min: number, max: number, fallback: num
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n)));
 }
+
+/**
+ * A stable hue (0-359) for a person, from their user id, so their cards get the same shade on every board and
+ * device. FNV-1a (32-bit) of the id, then a Fibonacci (golden-ratio) multiply so similar ids land far apart,
+ * scaled from the top bits onto the colour wheel.
+ * Never call this for an anonymous card: the shade would give its author away.
+ */
+export function personHue(userId: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < userId.length; i++) {
+    h ^= userId.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  const spread = Math.imul(h, 0x9e3779b9) >>> 0;
+  return Math.floor((spread / 2 ** 32) * 360);
+}

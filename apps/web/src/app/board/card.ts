@@ -11,6 +11,7 @@ import { Media } from './media';
 import { Reactions } from './reactions';
 import { Reply } from './reply';
 import { ClickOutside } from '../shared/click-outside';
+import { PersonShades } from '../core/person-shades.service';
 
 /**
  * One card. A group is shown as a box: its name, then every card in it as an equal, full card (the first card
@@ -41,6 +42,7 @@ import { ClickOutside } from '../shared/click-outside';
       </section>
     } @else {
     <article class="card" [class.in-group]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
+             [class.person-shaded]="shadeHue() !== null" [style.--person-hue]="shadeHue()"
              [class.drop-target]="!nested() && store.dropTarget() === card().id"
              [class.pick-target]="picking() && !nested() && store.pickingGroupFor() !== card().id"
              (click)="onPickClick($event)" [attr.aria-label]="'Card: ' + card().body.slice(0, 60)">
@@ -172,6 +174,9 @@ export class Card {
   protected canEdit = computed(() => this.canWrite() && (this.card().mine || !!this.store.permissions()?.canFacilitate));
   protected allowAnonymous = computed(() => !!this.store.board()?.settings.allowAnonymous);
   protected picking = computed(() => !!this.store.pickingGroupFor());
+  private shades = inject(PersonShades);
+  /** The author's hue for the card's tint. Never for an anonymous card (not even the viewer's own): it would give the author away */
+  protected shadeHue = computed(() => (this.card().anonymous ? null : this.shades.hueFor(this.card().author)));
 
   onPickClick(e: MouseEvent) {
     const source = this.store.pickingGroupFor();

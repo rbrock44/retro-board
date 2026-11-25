@@ -85,6 +85,9 @@ its default template), so people always land in the right place.
 - `Replies` - 💬 opens a thread on any card. Replies support markdown, media and reactions, and can be answered
   one level deep
 - `Reactions` - Emoji reactions on cards and replies, separate from likes
+- `🎨 Color by Person` - Each person's cards get their own light shade (the same on every board), so you can see
+  who wrote what at a glance. Their avatar on the board gets a matching ring. Anonymous cards stay neutral, so the
+  shade never gives them away. Turn it off from the board's toolbar; the choice is remembered in your browser
 
 ### Likes, Grouping and Marking
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  THEME_PRESETS, canVoteBoard, canWriteBoard, contrastRatio, positionAfter, positionBetween,
+  THEME_PRESETS, canVoteBoard, canWriteBoard, contrastRatio, personHue, positionAfter, positionBetween,
   readableTextOn, sanitizeTokens,
 } from './index';
 
@@ -52,6 +52,39 @@ describe('themes', () => {
     for (const p of THEME_PRESETS) {
       expect(contrastRatio(p.tokens.text, p.tokens.bg), p.id).toBeGreaterThanOrEqual(7);
       expect(contrastRatio(p.tokens.accentText, p.tokens.accent), p.id).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+describe('personHue', () => {
+  const gap = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+
+  it('is stable for the same id', () => {
+    expect(personHue('u-alex')).toBe(personHue('u-alex'));
+    expect(personHue('8f14e45f-ceea-4672-a8b6-1b0c2a7d9e01')).toBe(personHue('8f14e45f-ceea-4672-a8b6-1b0c2a7d9e01'));
+  });
+
+  it('stays in 0-359, including for an empty id', () => {
+    for (const id of ['', 'a', 'u-alex', 'x'.repeat(500), '🎨 émoji']) {
+      const h = personHue(id);
+      expect(Number.isInteger(h)).toBe(true);
+      expect(h).toBeGreaterThanOrEqual(0);
+      expect(h).toBeLessThan(360);
+    }
+  });
+
+  it('spreads different ids across the wheel', () => {
+    const hues = Array.from({ length: 200 }, (_, i) => personHue(`user-${i}`));
+    const buckets = new Set(hues.map(h => Math.floor(h / 30)));
+    expect(buckets.size).toBe(12);
+    expect(new Set(hues).size).toBeGreaterThan(100);
+  });
+
+  it('keeps the demo people visibly apart', () => {
+    // The in-browser demo's sample people (and the demo's own "you"); closest pair is about 42 degrees apart
+    const hues = ['u-alex', 'u-sam', 'u-priya', 'u-jordan', 'u-glenn', 'demo-you'].map(personHue);
+    for (let i = 0; i < hues.length; i++) {
+      for (let j = i + 1; j < hues.length; j++) expect(gap(hues[i]!, hues[j]!)).toBeGreaterThanOrEqual(40);
     }
   });
 });

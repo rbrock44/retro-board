@@ -107,7 +107,7 @@ its default template), so people always land in the right place.
 - `Carry Over` - Cards marked `Carry Over` move to the fresh board when the current one is saved, into the column
   with the same name, linked back to where they came from. Boards started by hand from `New Board` put them in a
   `Carried Over` column instead. Each card is carried once
-- `Action Items` - Create them from a card (`⋯` → `Create Action Item`), from the board's `Actions` panel, or on
+- `Action Items` - Create them from a card (`⋯` → `Create Action Item`), from the board's `Action Items` panel, or on
   the team page. Each has an owner and due date. Open items from every retro show on every new board until done
 
 ### Demo Mode

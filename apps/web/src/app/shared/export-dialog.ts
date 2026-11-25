@@ -11,7 +11,8 @@ interface TeamHistory { team: TeamDto; boards: BoardSummaryDto[] }
 
 /**
  * "Export Retros": pick boards from each team's history (one team, or every team you're on), a format, and get
- * one file. Opened from Settings, from a team's History, and from a single past board in History.
+ * one file. Lists each team's Current board first, then its history. Opened from Settings, from a team's History,
+ * and from a single past board in History.
  */
 @Component({
   selector: 'app-export-dialog',
@@ -22,7 +23,7 @@ interface TeamHistory { team: TeamDto; boards: BoardSummaryDto[] }
         @if (loading()) {
           <p class="muted">Loading the history…</p>
         } @else if (!total()) {
-          <p class="muted">There's nothing in the history yet. When a retro is done, use <strong>Archive Board</strong> on it,
+          <p class="muted">There are no boards to export yet. When a retro is done, use <strong>Archive Board</strong> on it,
             and it shows up here to export.</p>
         } @else {
           <fieldset class="export-format">
@@ -45,14 +46,14 @@ interface TeamHistory { team: TeamDto; boards: BoardSummaryDto[] }
                   <input type="checkbox" [checked]="teamChosen(t) === 'all'" [indeterminate]="teamChosen(t) === 'some'"
                          [disabled]="!t.boards.length" (change)="chooseTeam(t, $any($event.target).checked)">
                   <strong>{{ t.team.name }}</strong>
-                  <span class="muted">{{ t.boards.length ? t.boards.length + ' past ' + (t.boards.length === 1 ? 'board' : 'boards') : 'no past boards yet' }}</span>
+                  <span class="muted">{{ t.boards.length ? t.boards.length + ' ' + (t.boards.length === 1 ? 'board' : 'boards') : 'no boards yet' }}</span>
                 </label>
                 @if (t.boards.length) {
                   <ul class="export-boards">
                     @for (b of t.boards; track b.id) {
                       <li><label class="check export-board">
                         <input type="checkbox" [checked]="chosen().has(b.id)" (change)="toggle(b.id)">
-                        <span class="grow">{{ b.title }}</span>
+                        <span class="grow">{{ b.title }} @if (b.status === 'open' && b.title !== 'Current') { <span class="chip">Current</span> }</span>
                         <span class="muted small">{{ b.cardCount }} cards · {{ (b.closedAt ?? b.createdAt) | date: 'mediumDate' }}</span>
                       </label></li>
                     }
@@ -102,8 +103,9 @@ export class ExportDialog {
       const teams = only ? [await this.api.get<TeamDto>(`/api/teams/${only}`)] : await this.api.get<TeamDto[]>('/api/teams');
       const withBoards = await Promise.all(teams.map(async team => ({
         team,
-        // the history: everything that isn't a team's open (current) board, newest first
-        boards: (await this.api.get<BoardSummaryDto[]>(`/api/teams/${team.id}/boards`)).filter(b => b.status !== 'open'),
+        // the Current board first, then the history, newest first
+        boards: (await this.api.get<BoardSummaryDto[]>(`/api/teams/${team.id}/boards`))
+          .sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open') || b.createdAt.localeCompare(a.createdAt)),
       })));
       this.teams.set(withBoards);
       const ids = this.preselect().length ? this.preselect() : withBoards.flatMap(t => t.boards.map(b => b.id));

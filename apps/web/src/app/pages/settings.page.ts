@@ -61,7 +61,7 @@ import { ExportDialog } from '../shared/export-dialog';
         @if (auth.on('export')) {
         <section class="card-surface stack">
           <h2>Export</h2>
-          <p class="muted">Download past retros from any of your teams' history as one Markdown or spreadsheet file.</p>
+          <p class="muted">Download retros from any of your teams, the current board and the history, as one Markdown or spreadsheet file.</p>
           <div class="row"><button class="btn" type="button" (click)="exportOpen.set(true)">Export Retros…</button></div>
         </section>
         }

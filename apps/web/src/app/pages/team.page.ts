@@ -98,9 +98,10 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
             <section class="stack">
               <ul class="member-list">
                 @for (m of members(); track m.user.id) {
-                  <li>
+                  <li [class.is-me]="m.user.id === auth.me()?.id">
                     <app-avatar [user]="m.user" />
-                    <span class="grow">{{ m.user.name }} @if (m.user.email) { <span class="muted">· {{ m.user.email }}</span> }</span>
+                    <span class="grow">{{ m.user.name }} @if (m.user.id === auth.me()?.id) { <span class="me-tag">You</span> }
+                      @if (m.user.email) { <span class="muted">· {{ m.user.email }}</span> }</span>
                     @if (isAdmin()) {
                       <select [ngModel]="m.role" (ngModelChange)="setRole(m, $event)" [attr.aria-label]="'Role for ' + m.user.name">
                         @for (r of roles; track r) { <option [value]="r">{{ r }}</option> }

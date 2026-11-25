@@ -30,8 +30,9 @@ import { Customize } from './customize';
             <thead><tr><th>User</th><th>Email</th><th>Joined</th><th>Role</th><th>Status</th></tr></thead>
             <tbody>
               @for (u of shown(); track u.id) {
-                <tr [class.muted]="u.disabled">
-                  <td><span class="row"><app-avatar [user]="u" [size]="24" /> {{ u.name }}</span></td>
+                <tr [class.muted]="u.disabled" [class.is-me]="u.id === auth.me()?.id">
+                  <td><span class="row"><app-avatar [user]="u" [size]="24" /> {{ u.name }}
+                    @if (u.id === auth.me()?.id) { <span class="me-tag">You</span> }</span></td>
                   <td>{{ u.email }}</td>
                   <td>{{ u.createdAt | ago }}</td>
                   <td>

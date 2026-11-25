@@ -227,6 +227,13 @@ section.card-surface { padding: 1rem 1.25rem; }
 .board-list li { padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.2rem; }
 .board-link { display: flex; align-items: center; gap: 0.6rem; color: var(--text); text-decoration: none; &:hover strong { color: var(--accent); } }
 .member-list li, .invite-list li, .template-list li { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+/* The signed-in person in any list of people: tinted, an accent bar, and a "You" pill by their name */
+.member-list li.is-me { margin-inline: -0.5rem; padding-inline: 0.5rem; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+tr.is-me td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+tr.is-me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.me-tag { display: inline-block; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--accent); color: var(--accent-text);
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; vertical-align: 0.1em; }
 .invite-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .help summary { cursor: pointer; color: var(--muted); }
 

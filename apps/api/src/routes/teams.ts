@@ -35,10 +35,13 @@ export function teamSettings(stored: (TeamSettings & { anonymousByDefault?: bool
   return out;
 }
 
-/** Puts the team's board settings on all its boards, and tells anyone looking at one. */
+/**
+ * Puts the team's board settings on its open (current) boards, and tells anyone looking at one. Boards in the
+ * history keep the settings they had when they were archived, so opening one shows it exactly as it was.
+ */
 async function applyToBoards(ctx: Ctx, team: Team) {
   const overlay = teamBoardOverlay(team.settings);
-  const rows = await ctx.db.select().from(boards).where(eq(boards.teamId, team.id));
+  const rows = await ctx.db.select().from(boards).where(and(eq(boards.teamId, team.id), eq(boards.status, 'open')));
   for (const b of rows) {
     const [next] = await ctx.db.update(boards).set({ settings: { ...b.settings, ...overlay } }).where(eq(boards.id, b.id)).returning();
     if (next.status === 'open') ctx.hub.emitBoard(next.id, { type: 'board.update', board: await boardDto(ctx.db, next) });
@@ -124,7 +127,7 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
       description: body.description ?? team.description,
       settings,
     }).where(eq(teams.id, team.id)).returning();
-    // Anonymous cards, lock and colors are the team's: every board of the team follows, live.
+    // Anonymous cards, lock and colors are the team's: its current board follows, live; history stays as it was.
     if (body.settings && TEAM_BOARD_SETTING_KEYS.some(k => k in body.settings!)) await applyToBoards(ctx, updated);
     return teamDto(ctx, updated, user);
   });

@@ -151,7 +151,7 @@ describe('boards, columns and cards', () => {
     expect(closed[0].closedAt).toBeTruthy();
   });
 
-  it('applies team settings (anonymous, lock, colors) to every board of the team, new ones too', async () => {
+  it('applies team settings (anonymous, lock, colors) to the open boards, new ones too', async () => {
     const { owner, team, board, state: s } = await teamWithBoard(t.app);
     const other = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Second' })).body;
     const res = await owner.client.patch(`/api/teams/${team.id}`, { settings: { allowAnonymous: false, theme: { accent: '#ffcd00' } } });
@@ -167,6 +167,27 @@ describe('boards, columns and cards', () => {
     // a board's own update can't change them any more
     await owner.client.patch(`/api/boards/${board.id}`, { settings: { allowAnonymous: true } });
     expect(((await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto).board.settings.allowAnonymous).toBe(false);
+  });
+
+  it('keeps each board in the history exactly as it was: its own columns, colors and settings', async () => {
+    const { owner, team, board } = await teamWithBoard(t.app);
+    await owner.client.patch(`/api/teams/${team.id}`, { settings: { allowAnonymous: false, theme: { accent: '#ff0000' } } });
+    const archived = (await owner.client.post(`/api/boards/${board.id}/archive`, { name: 'Sprint 1' })).body;
+    const current = archived.board.id;
+    // the next retro gets different columns and different team settings
+    const cols = ((await owner.client.get(`/api/boards/${current}`)).body as BoardStateDto).columns;
+    await owner.client.patch(`/api/columns/${cols[0].id}`, { title: 'Wins' });
+    await owner.client.post(`/api/boards/${current}/columns`, { title: 'Questions', color: '#3b82f6' });
+    await owner.client.patch(`/api/teams/${team.id}`, { settings: { allowAnonymous: true, theme: { accent: '#00ff00' } } });
+
+    const old = (await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto;
+    const now = (await owner.client.get(`/api/boards/${current}`)).body as BoardStateDto;
+    expect(old.columns.map(c => c.title)).toEqual(['Start', 'Stop', 'Continue']);
+    expect(now.columns.map(c => c.title)).toEqual(['Wins', 'Stop', 'Continue', 'Questions']);
+    expect(old.board.settings).toMatchObject({ allowAnonymous: false });
+    expect(old.board.settings.theme?.accent).toBe('#ff0000');
+    expect(now.board.settings).toMatchObject({ allowAnonymous: true });
+    expect(now.board.settings.theme?.accent).toBe('#00ff00');
   });
 
   it('threads replies one level deep and toggles reactions', async () => {

@@ -74,7 +74,8 @@ its default template), so people always land in the right place.
   `Save Columns as Template` keeps a layout for the team
 - `Team Settings` - Set once per team (History → Settings → Boards) and applied to all its boards: the columns new
   boards start with, anonymous cards, `Lock` (no new or edited cards; likes and reactions stay open) and the team's
-  colors. Changes reach open boards live
+  colors. Changes reach the current board live and carry on to the next ones; boards in History keep exactly what
+  they had
 - `Board Settings` - What's about one board: `Close` / `Reopen`, `Archive`, `Delete` and `Save Columns as Template`
 - `Live` - Every change appears for everyone instantly. Avatars in the header show who is on the board, and a
   "typing…" hint shows under columns where someone is writing

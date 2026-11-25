@@ -38,7 +38,7 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/teams` | `?all=1` (instance admins) | |
 | POST | `/api/teams` | `name, description?` | any user; creator becomes admin |
-| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme}`. `allowAnonymous`, `locked` and `theme` are copied onto all the team's boards and sent live to open ones | viewer / admin / admin |
+| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme}`. `allowAnonymous`, `locked` and `theme` are copied onto the team's open boards (sent live) and used for new ones; archived and closed boards keep theirs | viewer / admin / admin |
 | GET | `/api/teams/:teamId/members` | | viewer (emails shown to admins) |
 | POST | `/api/teams/:teamId/members` | `email, role` | admin; adds an existing account |
 | PATCH | `/api/teams/:teamId/members/:userId` | `role` | admin; last admin can't be demoted |

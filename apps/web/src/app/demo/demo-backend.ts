@@ -452,11 +452,12 @@ export class DemoBackend {
       if (b.description !== undefined) team.description = String(b.description);
       if (b.settings) {
         team.settings = { ...this.teamSettings(team), ...b.settings };
-        // Anonymous cards, lock and colors are the team's: every board of the team follows, live.
+        // Anonymous cards, lock and colors are the team's: its current board follows, live. Boards in the
+        // history keep the settings they were archived with.
         if (TEAM_BOARD_SETTING_KEYS.some(k => k in b.settings)) {
-          for (const board of this.state.boards.filter(x => x.teamId === team.id)) {
+          for (const board of this.state.boards.filter(x => x.teamId === team.id && x.status === 'open')) {
             board.settings = { ...board.settings, ...this.teamOverlay(team) };
-            if (board.status === 'open') this.emitBoard(board.id);
+            this.emitBoard(board.id);
           }
         }
       }

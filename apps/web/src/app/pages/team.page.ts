@@ -157,7 +157,8 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               <label>Name <input [(ngModel)]="edit.name" maxlength="80"></label>
               <label>Description <textarea [(ngModel)]="edit.description" rows="2" maxlength="500"></textarea></label>
               <h2 id="board-settings">Boards</h2>
-              <p class="muted">These apply to every board in this team, the current one and the history.</p>
+              <p class="muted">These apply to the team's current board and every board after it. Boards in the
+                history keep the columns, colors and settings they had, so they always look as they did.</p>
               <label>Columns for new boards
                 <select [(ngModel)]="edit.defaultTemplateId">
                   @for (tpl of templates(); track tpl.id) { <option [value]="tpl.id">{{ tpl.name }}</option> }

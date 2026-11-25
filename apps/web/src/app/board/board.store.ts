@@ -57,6 +57,9 @@ export function boardTabTitle(board: Pick<BoardSummaryDto, 'title' | 'status'>, 
   return `${name} - ${teamName} - ${siteName}`;
 }
 
+/** Where a dragged card would land: grouped with card (or group) `id`, or just before or after it in its column */
+export interface DropSpot { id: string; mode: 'group' | 'before' | 'after'; columnId: string; index: number }
+
 /** One board's live state. Provided by the board page, so each open board gets its own store and socket. */
 @Injectable()
 export class BoardStore {
@@ -77,9 +80,10 @@ export class BoardStore {
 
   readonly sort = signal<SortMode>('position');
   readonly statusFilter = signal<CardStatus | 'all'>('all');
-  readonly groupMode = signal(false);
-  /** In Group Mode, the card or group a dragged card would join if dropped now (highlighted) */
-  readonly dropTarget = signal<string | null>(null);
+  /** Cards only drag while Arrange Mode is on, so they can't be moved by accident */
+  readonly arrangeMode = signal(false);
+  /** While dragging in Arrange Mode, where the card would land if dropped now (highlighted) */
+  readonly dropSpot = signal<DropSpot | null>(null);
   readonly pickingGroupFor = signal<string | null>(null);
 
   readonly board = computed(() => this.state()?.board ?? null);

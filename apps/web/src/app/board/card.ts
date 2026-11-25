@@ -1,12 +1,13 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CdkDrag, CdkDragHandle, CdkDragPlaceholder, CdkDropList, moveItemInArray, type CdkDragDrop } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragHandle, CdkDragPlaceholder, CdkDropList, moveItemInArray, type CdkDragDrop, type CdkDragMove } from '@angular/cdk/drag-drop';
 import { CARD_STATUSES, CARD_STATUS_LABELS, type AttachmentDto, type CardDto, type CardStatus, type ReplyDto } from '@retro/shared';
 import { RouterLink } from '@angular/router';
 import { MarkdownPipe } from '../core/markdown.pipe';
 import { Avatar } from '../shared/avatar';
 import { RelativeTimePipe } from '../shared/relative-time.pipe';
-import { BoardStore, groupLikes } from './board.store';
+import { BoardStore, groupLikes, type DropSpot } from './board.store';
+import { dropSpotAt } from './drop-spot';
 import { Composer, type ComposerResult } from './composer';
 import { Media } from './media';
 import { Reactions } from './reactions';
@@ -26,9 +27,9 @@ import { AuthService } from '../core/auth.service';
   template: `
     @if (kids().length) {
       <section class="group-box" [attr.data-card-id]="card().id" [class.pick-target]="picking() && !sourceInGroup()"
-               [class.drop-target]="store.dropTarget() === card().id"
+               [class.drop-target]="isSpot('group')"
                (click)="onPickClick($event)" [attr.aria-label]="'Group: ' + groupName()">
-        <header class="group-head" cdkDragHandle title="Drag here to move the whole group">
+        <header class="group-head" cdkDragHandle [title]="store.arrangeMode() ? 'Drag here to move the whole group' : ''">
           @if (editingTitle()) {
             <input class="inline-edit" [value]="card().groupTitle ?? ''" placeholder="Name this group" (change)="saveTitle($event)"
                    (blur)="editingTitle.set(false)" (keydown.enter)="$any($event.target).blur()" autofocus aria-label="Group name">
@@ -40,11 +41,11 @@ import { AuthService } from '../core/auth.service';
         </header>
         <!-- each card in the group drags on its own: to a new spot in the group, into another group, or out -->
         <div class="group-cards" cdkDropList [id]="'grp-' + card().id" [cdkDropListData]="card().id"
-             [cdkDropListEnterPredicate]="fromAGroup" [cdkDropListConnectedTo]="store.dropListIds()" [cdkDropListSortingDisabled]="store.groupMode()"
+             [cdkDropListEnterPredicate]="fromAGroup" [cdkDropListConnectedTo]="store.dropListIds()"
              (cdkDropListDropped)="dropInGroup($event)">
           @for (m of members(); track m.id) {
-            <div cdkDrag [cdkDragData]="m" [cdkDragDisabled]="!canWrite()" class="group-member"
-                 (cdkDragMoved)="store.dragPointer = $event.pointerPosition" (cdkDragEnded)="store.dragPointer = null">
+            <div cdkDrag [cdkDragData]="m" [cdkDragDisabled]="!canWrite() || !store.arrangeMode()" class="group-member"
+                 (cdkDragMoved)="memberMoved($event)" (cdkDragEnded)="store.dragPointer = null; store.dropSpot.set(null)">
               <app-card [card]="m" [boardId]="boardId()" [nested]="true" />
               <div *cdkDragPlaceholder class="drag-placeholder"></div>
             </div>
@@ -54,7 +55,7 @@ import { AuthService } from '../core/auth.service';
     } @else {
     <article class="card" [class.in-group]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
              [class.person-shaded]="shadeHue() !== null" [style.--person-hue]="shadeHue()"
-             [class.drop-target]="!nested() && store.dropTarget() === card().id"
+             [class.drop-target]="!nested() && isSpot('group')"
              [class.pick-target]="picking() && !nested() && store.pickingGroupFor() !== card().id"
              (click)="onPickClick($event)" [attr.aria-label]="'Card: ' + card().body.slice(0, 60)">
 
@@ -185,10 +186,25 @@ export class Card {
   /** Group lists take cards dragged out of a group; loose cards and whole groups go between columns' cards. */
   protected fromAGroup = (drag: CdkDrag<CardDto>) => !!drag.dropContainer?.id?.startsWith('grp-');
 
+  /** A card dragged from a group: its own group list sorts it while it's over one, else it's headed for a column */
+  protected memberMoved(e: CdkDragMove<CardDto>) {
+    const p = e.pointerPosition;
+    this.store.dragPointer = p;
+    const overGroup = document.elementsFromPoint(p.x, p.y).some(el => el.classList.contains('group-cards'));
+    const spot = overGroup ? null : dropSpotAt(this.store, p, e.source.data, this.auth.on('groups'));
+    const now = this.store.dropSpot();
+    if (spot?.id !== now?.id || spot?.mode !== now?.mode) this.store.dropSpot.set(spot);
+  }
+
+  protected isSpot(mode: DropSpot['mode']) {
+    const s = this.store.dropSpot();
+    return s?.id === this.card().id && s.mode === mode;
+  }
+
   protected dropInGroup(e: CdkDragDrop<string, string, CardDto>) {
     const order = this.members().map(m => m.id);
     if (e.previousContainer === e.container) {
-      if (this.store.groupMode() || e.previousIndex === e.currentIndex) return;
+      if (e.previousIndex === e.currentIndex) return;
       moveItemInArray(order, e.previousIndex, e.currentIndex);
     } else {
       order.splice(e.currentIndex, 0, e.item.data.id);

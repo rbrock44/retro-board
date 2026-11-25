@@ -44,7 +44,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     route: '/teams/t-platform', target: '.group-box',
     title: 'Groups',
-    body: 'Related cards sit together under one name. Use a card\'s ⋯ → Create Group, or click ⧉ at the top of a column for Group Mode and drag one card onto another.',
+    body: 'Related cards sit together under one name. Use a card\'s ⋯ → Create Group, or click ✥ at the top of a column for Arrange Mode and drag one card onto another.',
   },
   {
     route: '/teams/t-platform', target: '.card-menu-btn',

@@ -18,7 +18,8 @@ import { ActionList } from '../shared/action-list';
 import { Avatar } from '../shared/avatar';
 import { ColorPicker } from '../shared/color-picker';
 import { Modal } from '../shared/modal';
-import { BoardStore, boardTabTitle } from './board.store';
+import { BoardStore, boardTabTitle, type DropSpot } from './board.store';
+import { dropSpotAt } from './drop-spot';
 import { Card } from './card';
 import { Composer, type ComposerResult } from './composer';
 import { ClickOutside } from '../shared/click-outside';
@@ -106,12 +107,13 @@ import { ClickOutside } from '../shared/click-outside';
           @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board Settings</button> }
         </div>
 
-        @if (store.groupMode()) {
-          <div class="group-mode-strip no-print" role="status">
-            <span class="gm-icon" aria-hidden="true">⧉</span>
-            <span><strong>Group Mode is on.</strong> Drag a card onto another card or group to group them. Drop it in an
-              empty spot to move it instead.</span>
-            <button type="button" class="btn small primary" (click)="store.groupMode.set(false)">Done</button>
+        @if (store.arrangeMode()) {
+          <div class="arrange-strip no-print" role="status">
+            <span class="am-icon" aria-hidden="true">✥</span>
+            <span><strong>Arrange Mode is on.</strong> Drag cards to move them.
+              @if (auth.on('groups')) { Drop on the middle of a card or group to group them, or on its top or bottom edge to place it there. }
+              @else { Drop on the top or bottom half of a card to place it there. }</span>
+            <button type="button" class="btn small primary" (click)="store.arrangeMode.set(false)">Done</button>
           </div>
         }
         @if (store.pickingGroupFor()) {
@@ -123,7 +125,7 @@ import { ClickOutside } from '../shared/click-outside';
         }
 
         <div class="board-body">
-          <div class="columns" [class.group-mode]="store.groupMode()" cdkDropListGroup>
+          <div class="columns" [class.arrange-mode]="store.arrangeMode()" cdkDropListGroup>
             @for (col of s.columns; track col.id) {
               <section class="column" [style.--col]="col.color" [attr.aria-label]="col.title">
                 <header class="column-head">
@@ -131,10 +133,10 @@ import { ClickOutside } from '../shared/click-outside';
                   <h2>{{ col.title }}</h2>
                   <span class="count">{{ (store.columnCards().get(col.id) ?? []).length }}</span>
                   <div class="spacer"></div>
-                  @if (perm().canWrite && auth.on('groups')) {
-                    <button type="button" class="icon-btn small no-print group-toggle" [class.on]="store.groupMode()"
-                            [attr.aria-pressed]="store.groupMode()" aria-label="Group Mode" (click)="store.groupMode.set(!store.groupMode())"
-                            [title]="store.groupMode() ? 'Group Mode is on. Click to turn it off (G)' : 'Group Mode: drag cards onto each other to group them (G)'">⧉</button>
+                  @if (perm().canWrite) {
+                    <button type="button" class="icon-btn small no-print arrange-toggle" [class.on]="store.arrangeMode()"
+                            [attr.aria-pressed]="store.arrangeMode()" aria-label="Arrange Mode" (click)="store.arrangeMode.set(!store.arrangeMode())"
+                            [title]="store.arrangeMode() ? 'Arrange Mode is on. Click to lock the cards again (A)' : 'Arrange Mode: drag cards to move' + (auth.on('groups') ? ' or group' : '') + ' them (A)'">✥</button>
                   }
                   <button type="button" class="icon-btn small no-print" (click)="focusColumn.set(col.id)"
                           [attr.aria-label]="'Focus on ' + col.title" title="Focus on this column (full screen)">⤢</button>
@@ -155,11 +157,11 @@ import { ClickOutside } from '../shared/click-outside';
                 }
 
                 <div class="card-list" cdkDropList [cdkDropListData]="col.id" [id]="'col-' + col.id" [cdkDropListEnterPredicate]="columnTakes"
-                     [cdkDropListSortingDisabled]="store.groupMode() || store.sort() !== 'position'"
-                     (cdkDropListDropped)="drop($event)">
+                     [cdkDropListSortingDisabled]="true" (cdkDropListDropped)="drop($event)">
                   @for (card of store.columnCards().get(col.id) ?? []; track card.id) {
-                    <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="!perm().canWrite" class="drag-wrap"
-                         (cdkDragMoved)="dragMoved($event)" (cdkDragEnded)="store.dropTarget.set(null)">
+                    <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="!perm().canWrite || !store.arrangeMode()" class="drag-wrap"
+                         [attr.data-wrap-id]="card.id" [class.drop-before]="spotAt(card.id, 'before')" [class.drop-after]="spotAt(card.id, 'after')"
+                         (cdkDragMoved)="dragMoved($event)" (cdkDragEnded)="store.dropSpot.set(null)">
                       <app-card [card]="card" [boardId]="s.board.id" />
                       <div *cdkDragPlaceholder class="drag-placeholder"></div>
                     </div>
@@ -187,7 +189,9 @@ import { ClickOutside } from '../shared/click-outside';
       </div>
 
       @if (focused(); as fc) {
-        <!-- one column, full screen: for going over it together. ‹ › (or the arrow keys) step through the columns -->
+        <!-- one column as a big popup, for going over it together. ‹ › (or the arrow keys) step through the columns;
+             clicking the dimmed margin around it closes it -->
+        <div class="column-focus-backdrop" (click)="$event.target === $event.currentTarget && focusColumn.set(null)">
         <div class="column-focus" role="dialog" aria-modal="true" [attr.aria-label]="fc.col.title" [style.--col]="fc.col.color">
           <header class="focus-head">
             <span class="col-bar"></span>
@@ -201,12 +205,6 @@ import { ClickOutside } from '../shared/click-outside';
           </header>
           <div class="focus-body">
             @if (fc.col.description) { <p class="col-desc">{{ fc.col.description }}</p> }
-            @if (perm().canWrite) {
-              <div class="focus-composer no-print">
-                <app-composer [boardId]="s.board.id" [allowAnonymous]="s.board.settings.allowAnonymous"
-                              (submitted)="add(fc.col.id, $event)" (typed)="store.sendTyping(fc.col.id)" />
-              </div>
-            }
             <div class="focus-cards">
               @for (card of fc.cards; track card.id) {
                 <app-card [card]="card" [boardId]="s.board.id" />
@@ -215,6 +213,7 @@ import { ClickOutside } from '../shared/click-outside';
               }
             </div>
           </div>
+        </div>
         </div>
       }
 
@@ -415,34 +414,34 @@ export class BoardPage implements OnDestroy {
     }
     if (e.key === 'Escape') {
       this.store.pickingGroupFor.set(null);
-      this.store.groupMode.set(false);
+      this.store.arrangeMode.set(false);
     }
-    if (e.key.toLowerCase() === 'g' && this.perm().canWrite && this.auth.on('groups')) this.store.groupMode.update(v => !v);
+    if (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey && this.perm().canWrite) this.store.arrangeMode.update(v => !v);
   }
 
   add(columnId: string, r: ComposerResult) {
     void this.store.addCard(columnId, r.body, r.anonymous, r.attachmentIds);
   }
 
+  /** Only in Arrange Mode (cards don't drag otherwise): group, place before or after a card, or move to a column's end */
   drop(e: CdkDragDrop<string, string, CardDto>) {
     const card = e.item.data;
-    const targetColumn = e.container.data;
-    if (this.store.groupMode()) {
-      const target = this.cardUnder(e.dropPoint, card.id);
-      if (target) {
-        void this.store.groupInto(card.id, target);
-        return;
-      }
-      if (targetColumn === card.columnId) return;
-      const list = this.store.columnCards().get(targetColumn) ?? [];
-      void this.store.moveCard(card, targetColumn, list.length);
-      return;
-    }
     // A card dragged out of a group leaves it on its own; the rest of the group stays put
     const outOfGroup = e.previousContainer.id.startsWith('grp-');
-    // Newest First and Most Liked are computed orders: dragging only moves a card to another column
-    if (this.store.sort() !== 'position' && targetColumn === card.columnId && !outOfGroup) return;
-    void this.store.moveCard(card, targetColumn, e.currentIndex, outOfGroup);
+    const spot = dropSpotAt(this.store, e.dropPoint, card, this.auth.on('groups'));
+    if (spot?.mode === 'group') {
+      void this.store.groupInto(card.id, spot.id);
+      return;
+    }
+    if (spot) {
+      void this.store.moveCard(card, spot.columnId, spot.index, outOfGroup);
+      return;
+    }
+    // Dropped on an empty part of a column: to its end, unless it's already in that column
+    const targetColumn = e.container.data;
+    if (targetColumn === card.columnId && !outOfGroup) return;
+    const list = (this.store.columnCards().get(targetColumn) ?? []).filter(c => c.id !== card.id);
+    void this.store.moveCard(card, targetColumn, list.length, outOfGroup);
   }
 
   /**
@@ -455,25 +454,15 @@ export class BoardPage implements OnDestroy {
     return !document.elementsFromPoint(p.x, p.y).some(el => el.classList.contains('group-cards'));
   };
 
-  /** In Group Mode, light up the card or group the dragged card would join. */
+  /** Light up where the dragged card would land */
   dragMoved(e: CdkDragMove<CardDto>) {
-    if (!this.store.groupMode()) return;
-    const target = this.cardUnder(e.pointerPosition, e.source.data.id);
-    if (target !== this.store.dropTarget()) this.store.dropTarget.set(target);
+    const spot = dropSpotAt(this.store, e.pointerPosition, e.source.data, this.auth.on('groups'));
+    if (!sameSpot(spot, this.store.dropSpot())) this.store.dropSpot.set(spot);
   }
 
-  /** In group mode sorting is off, so whatever card sits under the pointer is the drop target. */
-  private cardUnder(point: { x: number; y: number }, exclude: string): string | null {
-    for (const el of document.elementsFromPoint(point.x, point.y)) {
-      if (el.closest('.cdk-drag-preview')) continue;
-      const card = el.closest<HTMLElement>('[data-card-id]');
-      const id = card?.dataset['cardId'];
-      if (id && id !== exclude) {
-        const head = this.store.cards().find(c => c.id === id);
-        return head?.parentId ?? id;
-      }
-    }
-    return null;
+  protected spotAt(id: string, mode: DropSpot['mode']) {
+    const s = this.store.dropSpot();
+    return s?.id === id && s.mode === mode;
   }
 
   rename(e: Event) {
@@ -551,4 +540,8 @@ export class BoardPage implements OnDestroy {
 function localDate(d = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function sameSpot(a: DropSpot | null, b: DropSpot | null) {
+  return a?.id === b?.id && a?.mode === b?.mode && a?.index === b?.index;
 }

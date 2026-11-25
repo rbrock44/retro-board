@@ -29,7 +29,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'likes', group: 'Cards', label: 'Likes',
     info: 'Everyone can like every card once, and boards can be sorted by Most Liked. When off, likes are hidden and can\'t be given.' },
   { key: 'groups', group: 'Cards', label: 'Groups',
-    info: 'Putting related cards together with Create Group or Group Mode. When off, no new groups can be made; groups that already exist still show.' },
+    info: 'Putting related cards together with Create Group or by dragging in Arrange Mode. When off, no new groups can be made; groups that already exist still show.' },
   { key: 'actions', group: 'Retros', label: 'Action Items',
     info: 'Follow-ups with an owner and due date that show on every board until done. When off, the Actions panel and Create Action Item are hidden.' },
   { key: 'carryOver', group: 'Retros', label: 'Carry Over',

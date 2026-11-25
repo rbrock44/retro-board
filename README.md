@@ -95,14 +95,17 @@ its default template), so people always land in the right place.
 ### Likes, Grouping and Marking
 
 - `Like` - 👍 on a card likes it, click again to unlike. Everyone can like every card, once. No budget, no limits
-- `Group` - Click `⧉` in any column header (or press `G`) to turn on Group Mode: a strip explains it, and the card
-  or group you'd drop onto lights up as you drag. Drag a card onto another card or group, then `Done`. Or use a card's `⋯` →
+- `Arrange` - Cards are locked in place until you click `✥` in any column header (or press `A`) for Arrange Mode:
+  a strip explains it, cards show a grab cursor, and where you'd drop lights up as you drag. Drop on a card's top or
+  bottom edge to place it there (across columns too), on its middle to group with it, or on an empty part of a
+  column to move it to the end. `Done` (or `Esc`) locks them again
+- `Group` - In Arrange Mode, drag a card onto the middle of another card or group. Or use a card's `⋯` →
   `Create Group` (or `Add to Group` on a grouped card) and click the target. A group shows as a box with its name, then every card in it at full size; click the name to rename it. The box shows how many cards are in it and their combined likes.
-  Drag the group's header to move the whole group; drag a card inside it to reorder the group, move it to another
-  group, or pull it out on its own (the first card leads the group and keeps its name)
-- `Focus` - `⤢` in a column header shows that column full screen, its cards in a roomy grid, to go over it
-  together. `‹` `›` or the arrow keys step to the next column; `Esc` closes
-- `Sort` - `Oldest First` (the order cards were added; drag to rearrange, including across columns), `Newest First`
+  In Arrange Mode, drag the group's header to move the whole group; drag a card inside it to reorder the group, move
+  it to another group, or pull it out on its own (the first card leads the group and keeps its name)
+- `Focus` - `⤢` in a column header shows that column in a big popup over the dimmed board, its cards in a roomy
+  grid, to go over it together. `‹` `›` or the arrow keys step to the next column; `Esc` or a click outside closes
+- `Sort` - `Oldest First` (the order cards were added; rearrange in Arrange Mode, including across columns), `Newest First`
   or `Most Liked`
 - `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`. Filter the board by mark with `Show`
 
@@ -161,8 +164,8 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 | Key | Where | Does |
 |---|---|---|
 | `Ctrl/⌘ + Enter` | Any composer | Submit the card or reply |
-| `Esc` | Composer, menus, group picking | Cancel |
-| `G` | Board | Toggle Group Mode (also `⧉` in a column header) |
+| `Esc` | Composer, menus, group picking, Arrange Mode, column popup | Cancel or close |
+| `A` | Board | Toggle Arrange Mode (also `✥` in a column header) |
 
 ---
 

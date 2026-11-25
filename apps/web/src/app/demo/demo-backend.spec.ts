@@ -80,10 +80,10 @@ describe('demo backend', () => {
     expect(await b.handle('POST', '/api/teams/t-platform/current')).toEqual({ boardId: r.board.id });
   });
 
-  it('refuses writes on a closed board', async () => {
+  it('refuses writes on an archived board', async () => {
     const { b } = backend();
     const past = (await b.handle('GET', '/api/boards/b-s41')) as BoardStateDto;
-    await expect(b.handle('POST', '/api/boards/b-s41/cards', { columnId: past.columns[0].id, body: 'late' })).rejects.toThrow(/closed/);
+    await expect(b.handle('POST', '/api/boards/b-s41/cards', { columnId: past.columns[0].id, body: 'late' })).rejects.toThrow(/archived/);
   });
 
   it('lets you switch to another person', async () => {

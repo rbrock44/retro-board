@@ -34,7 +34,7 @@ describe('board access', () => {
     expect(canWriteBoard({ ...base, locked: true, isCreator: true })).toBe(true);
   });
   it('makes closed boards read-only for everyone', () => {
-    expect(canWriteBoard({ ...base, role: 'admin', status: 'closed' })).toBe(false);
+    expect(canWriteBoard({ ...base, role: 'admin', status: 'archived' })).toBe(false);
   });
 });
 

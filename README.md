@@ -76,7 +76,7 @@ its default template), so people always land in the right place.
   boards start with, anonymous cards, `Lock` (no new or edited cards; likes and reactions stay open) and the team's
   colors. Changes reach the current board live and carry on to the next ones; boards in History keep exactly what
   they had
-- `Board Settings` - What's about one board: `Close` / `Reopen`, `Archive`, `Delete` and `Save Columns as Template`
+- `Board Settings` - What's about one board: `Archive Board`, `Delete` and `Save Columns as Template`
 - `Live` - Every change appears for everyone instantly. Avatars in the header show who is on the board, and a
   "typing…" hint shows under columns where someone is writing
 
@@ -134,7 +134,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 ### History, Search and Export
 
 - `History` - The link next to the team name on a board. `Past Boards` lists every board the team has saved,
-  filterable by open, closed and archived; open any of them to read it. Saved boards are read-only, with a button
+  filterable by current and archived; open any of them to read it. Saved boards are read-only, with a button
   back to the current board
 - `Search` - Searches every card, group name and action item the team has ever written
 - `Export` - The `Current` board has no Export button of its own; export it, and any past boards, from the Export popup:

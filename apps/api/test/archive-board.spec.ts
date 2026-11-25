@@ -54,7 +54,7 @@ describe('saving a board and the current board', () => {
     const { owner, team, board } = await teamWithBoard(t.app);
     expect((await owner.client.post(`/api/teams/${team.id}/current`)).body).toEqual({ boardId: board.id });
 
-    await owner.client.patch(`/api/boards/${board.id}`, { status: 'closed' });
+    await owner.client.patch(`/api/boards/${board.id}`, { status: 'archived' });
     const viewer = await addMember(t.app, owner.client, team.id, 'viewer');
     expect((await viewer.client.post(`/api/teams/${team.id}/current`)).body).toEqual({ boardId: null });
 

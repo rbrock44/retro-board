@@ -78,7 +78,7 @@ export class DemoBackend {
     const ok = need === 'read' || (need === 'write' && ctx.canWrite) || (need === 'vote' && ctx.canVote) ||
       (need === 'facilitate' && ctx.canFacilitate) || (need === 'admin' && ctx.role === 'admin');
     if (!ok) {
-      if (ctx.board.status !== 'open') fail(403, 'This board is closed');
+      if (ctx.board.status !== 'open') fail(403, 'This board is archived');
       if (ctx.board.settings.locked && need === 'write') fail(403, 'This board is locked');
       fail(403, 'Not allowed');
     }

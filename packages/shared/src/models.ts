@@ -1,7 +1,8 @@
 import type { Features } from './features';
 export type InstanceRole = 'admin' | 'user';
 export type TeamRole = 'admin' | 'member' | 'viewer';
-export type BoardStatus = 'open' | 'closed' | 'archived';
+/** open: the team's Current board. archived: in the history, read-only. */
+export type BoardStatus = 'open' | 'archived';
 export type CardStatus = 'none' | 'discussed' | 'resolved' | 'carry_over';
 export type ActionStatus = 'open' | 'done';
 export type AttachmentKind = 'image' | 'gif' | 'video';

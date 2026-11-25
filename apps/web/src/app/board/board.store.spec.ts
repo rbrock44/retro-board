@@ -63,7 +63,7 @@ describe('boardTabTitle', () => {
   });
 
   it('uses the title for history boards', () => {
-    expect(boardTabTitle({ title: '2026-11-24 · Sprint 42', status: 'closed' }, 'Platform Team', 'Retro Board'))
+    expect(boardTabTitle({ title: '2026-11-24 · Sprint 42', status: 'archived' }, 'Platform Team', 'Retro Board'))
       .toBe('2026-11-24 · Sprint 42 - Platform Team - Retro Board');
     expect(boardTabTitle({ title: 'Current retro', status: 'archived' }, 'Platform Team', 'Retro Board'))
       .toBe('Current retro - Platform Team - Retro Board');

@@ -243,7 +243,7 @@ import { ClickOutside } from '../shared/click-outside';
               <dd class="col-chips">
                 @for (c of s.columns; track c.id) { <span class="col-chip" [style.border-color]="c.color">{{ c.title }}</span> }
               </dd>
-              <dt>Status</dt><dd>{{ s.board.status === 'open' ? 'Open' : s.board.status === 'closed' ? 'Closed' : 'Archived' }}</dd>
+              <dt>Status</dt><dd>{{ s.board.status === 'open' ? 'Current' : 'Archived' }}</dd>
             </dl>
             <hr>
             <div class="row wrap">
@@ -251,11 +251,8 @@ import { ClickOutside } from '../shared/click-outside';
                 <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
               }
               @if (s.board.status === 'open') {
-                <button type="button" class="btn" (click)="setStatus('closed')">Close Board</button>
-              } @else {
-                <button type="button" class="btn" (click)="setStatus('open')">Reopen Board</button>
+                <button type="button" class="btn" (click)="settingsOpen.set(false); openArchive()">Archive Board</button>
               }
-              @if (s.board.status !== 'archived') { <button type="button" class="btn ghost" (click)="setStatus('archived')">Archive</button> }
               @if (s.permissions.role === 'admin') { <button type="button" class="btn ghost danger" (click)="deleteBoard()">Delete Board</button> }
             </div>
             <p class="settings-foot muted small">
@@ -454,10 +451,6 @@ export class BoardPage implements OnDestroy {
     this.settingsOpen.set(true);
   }
 
-  async setStatus(status: 'open' | 'closed' | 'archived') {
-    await this.store.updateBoard({ status });
-    this.settingsOpen.set(false);
-  }
 
   async saveTemplate() {
     const name = prompt('Template name', this.store.board()?.title);

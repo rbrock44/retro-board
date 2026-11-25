@@ -280,7 +280,7 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
     const status = (req.query as { status?: string }).status;
-    const where = status && ['open', 'closed', 'archived'].includes(status)
+    const where = status && ['open', 'archived'].includes(status)
       ? and(eq(boards.teamId, team.id), eq(boards.status, status as 'open'))
       : eq(boards.teamId, team.id);
     return boardDtos(db, await db.select().from(boards).where(where).orderBy(desc(boards.createdAt)));

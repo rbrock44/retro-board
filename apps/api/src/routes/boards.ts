@@ -164,7 +164,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'facilitate');
     const body = parse(z.object({
       title: z.string().trim().min(1).max(120).optional(),
-      status: z.enum(['open', 'closed', 'archived']).optional(),
+      status: z.enum(['open', 'archived']).optional(),
     }), req.body);
     const status = body.status ?? board.status;
     const [updated] = await db.update(boards).set({

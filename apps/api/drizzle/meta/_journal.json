@@ -43,6 +43,13 @@
       "when": 1795567964661,
       "tag": "0005_current_board_title",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795568024661,
+      "tag": "0006_no_closed_boards",
+      "breakpoints": true
     }
   ]
 }

@@ -144,10 +144,10 @@ describe('boards, columns and cards', () => {
     await owner.client.patch(`/api/teams/${team.id}`, { settings: { locked: true } });
     expect((await member.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'y' })).status).toBe(403);
     expect((await member.client.post(`/api/cards/${card.id}/vote`)).status).toBe(200);
-    await owner.client.patch(`/api/boards/${board.id}`, { status: 'closed' });
+    await owner.client.patch(`/api/boards/${board.id}`, { status: 'archived' });
     expect((await member.client.post(`/api/cards/${card.id}/vote`)).status).toBe(403);
     const closed = (await owner.client.get(`/api/teams/${team.id}/boards?status=closed`)).body;
-    expect(closed[0]).toMatchObject({ id: board.id, status: 'closed', cardCount: 1 });
+    expect(closed[0]).toMatchObject({ id: board.id, status: 'archived', cardCount: 1 });
     expect(closed[0].closedAt).toBeTruthy();
   });
 
@@ -221,7 +221,7 @@ describe('carry over, actions and history', () => {
     expect(action).toMatchObject({ boardId: board.id, owner: { name: 'Owner' } });
     expect((await owner.client.get(`/api/teams/${team.id}/carry-over`)).body).toEqual({ cards: 1, openActions: 1 });
 
-    await owner.client.patch(`/api/boards/${board.id}`, { status: 'closed' });
+    await owner.client.patch(`/api/boards/${board.id}`, { status: 'archived' });
     const next = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Sprint 2' })).body;
     const ns = await state(owner.client, next.id);
     expect(ns.columns[0].title).toBe('Carried Over');

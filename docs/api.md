@@ -50,7 +50,7 @@ curl -b jar http://localhost:8080/api/teams
 | GET / POST | `/api/teams/:teamId/templates` | POST: `name, description?, columns[{title,color,description?}]` | viewer / admin |
 | DELETE | `/api/templates/:templateId` | | admin |
 | POST | `/api/teams/:teamId/current` | | viewer. The team's current (newest open) board as `{ boardId }`, created from the default template if there is none and you're a member or admin; `null` for viewers |
-| GET | `/api/teams/:teamId/boards` | `?status=open\|closed\|archived` | viewer |
+| GET | `/api/teams/:teamId/boards` | `?status=open\|archived` | viewer |
 | POST | `/api/teams/:teamId/boards` | `title, templateId? \| columns?, settings?, carryOver?` | member |
 | GET | `/api/teams/:teamId/actions` | `?status=open\|done` | viewer |
 | POST | `/api/teams/:teamId/actions` | `title, ownerId?, dueDate? (YYYY-MM-DD), boardId?, cardId?` | member |

@@ -265,7 +265,7 @@ export class TeamPage {
   protected results = signal<SearchResultDto | null>(null);
   protected lastQuery = signal('');
   protected tab = signal<Tab>('boards');
-  protected boardFilter = signal<'all' | 'open' | 'closed' | 'archived'>('all');
+  protected boardFilter = signal<'all' | 'open' | 'archived'>('all');
   protected actionFilter = signal<'open' | 'done' | 'all'>('open');
   protected newBoardOpen = signal(false);
   /** The Export popup: which boards start ticked (all of the team's history when empty) */
@@ -278,8 +278,7 @@ export class TeamPage {
   protected statusLabels = CARD_STATUS_LABELS;
   protected roles: TeamRole[] = ['admin', 'member', 'viewer'];
   protected boardFilters = [
-    { id: 'all' as const, label: 'All' }, { id: 'open' as const, label: 'Open' },
-    { id: 'closed' as const, label: 'Closed' }, { id: 'archived' as const, label: 'Archived' },
+    { id: 'all' as const, label: 'All' }, { id: 'open' as const, label: 'Current' }, { id: 'archived' as const, label: 'Archived' },
   ];
   protected actionFilters = ['open', 'done', 'all'] as const;
 

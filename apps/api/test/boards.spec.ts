@@ -139,8 +139,9 @@ describe('boards, columns and cards', () => {
     const { owner, team, board, state: s } = await teamWithBoard(t.app);
     const member = await addMember(t.app, owner.client, team.id);
     const card = (await member.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'x' })).body;
-    expect((await member.client.patch(`/api/boards/${board.id}`, { settings: { locked: true } })).status).toBe(403);
-    await owner.client.patch(`/api/boards/${board.id}`, { settings: { locked: true } });
+    // locking is a team setting, so only a team admin can do it
+    expect((await member.client.patch(`/api/teams/${team.id}`, { settings: { locked: true } })).status).toBe(403);
+    await owner.client.patch(`/api/teams/${team.id}`, { settings: { locked: true } });
     expect((await member.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'y' })).status).toBe(403);
     expect((await member.client.post(`/api/cards/${card.id}/vote`)).status).toBe(200);
     await owner.client.patch(`/api/boards/${board.id}`, { status: 'closed' });
@@ -148,6 +149,24 @@ describe('boards, columns and cards', () => {
     const closed = (await owner.client.get(`/api/teams/${team.id}/boards?status=closed`)).body;
     expect(closed[0]).toMatchObject({ id: board.id, status: 'closed', cardCount: 1 });
     expect(closed[0].closedAt).toBeTruthy();
+  });
+
+  it('applies team settings (anonymous, lock, colors) to every board of the team, new ones too', async () => {
+    const { owner, team, board, state: s } = await teamWithBoard(t.app);
+    const other = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Second' })).body;
+    const res = await owner.client.patch(`/api/teams/${team.id}`, { settings: { allowAnonymous: false, theme: { accent: '#ffcd00' } } });
+    expect(res.body.settings).toMatchObject({ allowAnonymous: false, theme: { accent: '#ffcd00' } });
+    for (const id of [board.id, other.id]) {
+      const b = (await owner.client.get(`/api/boards/${id}`)).body as BoardStateDto;
+      expect(b.board.settings).toMatchObject({ allowAnonymous: false, locked: false });
+      expect(b.board.settings.theme?.accent).toBe('#ffcd00');
+    }
+    expect((await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'hi', anonymous: true })).status).toBe(403);
+    const fresh = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Third' })).body;
+    expect(((await owner.client.get(`/api/boards/${fresh.id}`)).body as BoardStateDto).board.settings.allowAnonymous).toBe(false);
+    // a board's own update can't change them any more
+    await owner.client.patch(`/api/boards/${board.id}`, { settings: { allowAnonymous: true } });
+    expect(((await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto).board.settings.allowAnonymous).toBe(false);
   });
 
   it('threads replies one level deep and toggles reactions', async () => {

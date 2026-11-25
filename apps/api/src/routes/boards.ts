@@ -14,21 +14,8 @@ import { requireBoard, requireTeam } from '../lib/access';
 import { featureOn, getSettings, newBoardSettings, requireFeature, templateFor } from '../lib/instance';
 import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
 import { newId } from '../lib/ids';
-import { boardDto, boardSettings, columnDto, loadActions, loadCards } from '../lib/serialize';
-
-const zSettings = z.object({
-  allowAnonymous: z.boolean().optional(),
-  locked: z.boolean().optional(),
-  theme: z.record(z.string(), z.string()).nullable().optional(),
-});
-
-function mergeSettings(base: BoardSettings, patch: z.infer<typeof zSettings>): BoardSettings {
-  const next: BoardSettings = { ...base };
-  if (patch.allowAnonymous !== undefined) next.allowAnonymous = patch.allowAnonymous;
-  if (patch.locked !== undefined) next.locked = patch.locked;
-  if (patch.theme !== undefined) next.theme = patch.theme ? sanitizeTokens(patch.theme) : null;
-  return next;
-}
+import { boardDto, columnDto, loadActions, loadCards } from '../lib/serialize';
+import { teamBoardOverlay } from './teams';
 
 /** Emits fresh copies of the given cards to everyone on the board, shaped per viewer. */
 export async function broadcastCards(ctx: Ctx, boardId: string, ids: string[]) {
@@ -113,7 +100,6 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       title: z.string().trim().min(1).max(120),
       templateId: z.string().max(64).optional(),
       columns: z.array(z.object({ title: z.string().trim().min(1).max(80), color: zColor, description: z.string().max(300).optional() })).max(12).optional(),
-      settings: zSettings.optional(),
       carryOver: z.boolean().default(true),
     }), req.body);
 
@@ -131,7 +117,8 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     }
 
     const carry = await featureOn(ctx, 'carryOver');
-    const settings = mergeSettings(newBoardSettings(site), body.settings ?? {});
+    // Anonymous cards, lock and colors belong to the team (team Settings); a new board just follows them.
+    const settings = { ...newBoardSettings(site), ...teamBoardOverlay(team.settings) };
 
     const boardId = newId();
     await db.transaction(async tx => {
@@ -178,13 +165,11 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(z.object({
       title: z.string().trim().min(1).max(120).optional(),
       status: z.enum(['open', 'closed', 'archived']).optional(),
-      settings: zSettings.optional(),
     }), req.body);
     const status = body.status ?? board.status;
     const [updated] = await db.update(boards).set({
       title: body.title ?? board.title,
       status,
-      settings: body.settings ? mergeSettings(boardSettings(board.settings), body.settings) : board.settings,
       closedAt: status === 'open' ? null : board.closedAt ?? new Date(),
     }).where(eq(boards.id, board.id)).returning();
     const dto = await boardDto(db, updated);
@@ -210,12 +195,13 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const savedTitle = savedBoardTitle(body.date ?? new Date().toISOString().slice(0, 10), body.name);
 
     const carry = await featureOn(ctx, 'carryOver');
+    const [teamRow] = await db.select().from(teams).where(eq(teams.id, board.teamId));
     const nextId = newId();
     await db.transaction(async tx => {
       await tx.update(boards).set({ title: savedTitle, status: 'archived', closedAt: new Date() }).where(eq(boards.id, board.id));
       await tx.insert(boards).values({
         id: nextId, teamId: board.teamId, title: CURRENT_BOARD_TITLE, createdBy: user.id,
-        settings: { ...boardSettings(board.settings), locked: false },
+        settings: { ...newBoardSettings(await getSettings(ctx)), ...teamBoardOverlay(teamRow?.settings) },
       });
       const carriedPos = positionAfter(null);
       let pos = carriedPos;
@@ -258,7 +244,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     await db.transaction(async tx => {
       await tx.insert(boards).values({
         id: boardId, teamId: team.id, title: CURRENT_BOARD_TITLE, createdBy: user.id,
-        settings: newBoardSettings(site),
+        settings: { ...newBoardSettings(site), ...teamBoardOverlay(team.settings) },
       });
       const carriedPos = positionAfter(null);
       let pos = carriedPos;

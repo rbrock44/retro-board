@@ -2,8 +2,8 @@ import {
   BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
-  type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
-  ALL_FEATURES_ON, exportSlug, formatExport, withFeatureDefaults, type ExportBoard, type ExportFormat, type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
+  type BoardSettings, type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
+  ALL_FEATURES_ON, TEAM_BOARD_SETTING_KEYS, exportSlug, formatExport, withFeatureDefaults, type ExportBoard, type ExportFormat, type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamSettings, type TeamRole, type TemplateDto, type UserDto,
 } from '@retro/shared';
 import { ApiError } from '../core/api.service';
 import { DEMO_ME, newId, seedDemo, type DemoCard, type DemoState } from './demo-data';
@@ -95,11 +95,29 @@ export class DemoBackend {
     };
   }
 
+  /** Only the settings teams still have (a demo saved by an older version may carry vote limits or older names). */
+  private teamSettings(t: DemoState['teams'][number]): TeamSettings {
+    const raw = t.settings as TeamSettings & { anonymousByDefault?: boolean };
+    const out: TeamSettings = {};
+    if (raw.defaultTemplateId !== undefined) out.defaultTemplateId = raw.defaultTemplateId;
+    const anon = raw.allowAnonymous ?? raw.anonymousByDefault;
+    if (anon !== undefined) out.allowAnonymous = anon;
+    if (raw.locked !== undefined) out.locked = raw.locked;
+    if (raw.theme !== undefined) out.theme = raw.theme;
+    return out;
+  }
+
+  /** The team settings every one of its boards carries */
+  private teamOverlay(t: DemoState['teams'][number]): Partial<BoardSettings> {
+    const s = this.teamSettings(t);
+    return Object.fromEntries(TEAM_BOARD_SETTING_KEYS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
+  }
+
   private teamDto(t: DemoState['teams'][number]): TeamDto {
     return {
       id: t.id, name: t.name, description: t.description, createdAt: t.createdAt,
       // Only the settings teams still have (a demo saved by an older version may carry vote limits).
-      settings: { defaultTemplateId: t.settings.defaultTemplateId, anonymousByDefault: t.settings.anonymousByDefault },
+      settings: this.teamSettings(t),
       myRole: this.role(t.id), memberCount: this.state.members.filter(m => m.teamId === t.id).length,
     };
   }
@@ -432,7 +450,16 @@ export class DemoBackend {
       const { team } = this.requireTeam(id, 'admin');
       if (b.name) team.name = String(b.name).trim().slice(0, 80);
       if (b.description !== undefined) team.description = String(b.description);
-      if (b.settings) team.settings = { ...team.settings, ...b.settings };
+      if (b.settings) {
+        team.settings = { ...this.teamSettings(team), ...b.settings };
+        // Anonymous cards, lock and colors are the team's: every board of the team follows, live.
+        if (TEAM_BOARD_SETTING_KEYS.some(k => k in b.settings)) {
+          for (const board of this.state.boards.filter(x => x.teamId === team.id)) {
+            board.settings = { ...board.settings, ...this.teamOverlay(team) };
+            if (board.status === 'open') this.emitBoard(board.id);
+          }
+        }
+      }
       return this.teamDto(team);
     }],
     ['DELETE', /^\/api\/teams\/([^/]+)$/, ([id]) => {
@@ -585,7 +612,6 @@ export class DemoBackend {
         board.status = b.status;
         board.closedAt = b.status === 'open' ? null : nowIso();
       }
-      if (b.settings) board.settings = { ...DEFAULT_BOARD_SETTINGS, ...board.settings, ...b.settings };
       this.emitBoard(id);
       return this.boardDto(board);
     }],
@@ -816,11 +842,7 @@ export class DemoBackend {
     const specs = b.columns?.length ? b.columns : this.templates(teamId).find(t => t.id === templateId)?.columns ?? fail(400, 'Unknown template');
     const board = {
       id: newId(), teamId, title: title.slice(0, 120), status: 'open' as const, createdAt: nowIso(), closedAt: null, createdBy: this.state.meId,
-      settings: {
-        ...DEFAULT_BOARD_SETTINGS,
-        allowAnonymous: site.allowAnonymous,
-        ...(b.settings ?? {}),
-      },
+      settings: { ...DEFAULT_BOARD_SETTINGS, allowAnonymous: site.allowAnonymous, ...this.teamOverlay(team) },
     };
     this.state.boards.push(board);
     const carriedPos = positionAfter(null);
@@ -874,7 +896,7 @@ export class DemoBackend {
     board.closedAt = nowIso();
     const next = {
       id: newId(), teamId: board.teamId, title: CURRENT_BOARD_TITLE, status: 'open' as const, createdAt: nowIso(), closedAt: null,
-      createdBy: this.state.meId, settings: { ...board.settings, locked: false },
+      createdBy: this.state.meId, settings: { ...DEFAULT_BOARD_SETTINGS, allowAnonymous: this.site().allowAnonymous, ...this.teamOverlay(this.team(board.teamId)) },
     };
     this.state.boards.push(next);
     const carriedPos = positionAfter(null);

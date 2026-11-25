@@ -117,10 +117,22 @@ export interface TeamDto {
   createdAt: string;
 }
 
+/**
+ * Set once per team and applied to all its boards. Unset ones fall back to the instance's defaults.
+ * (Boards used to carry their own copy of these; they now follow the team.)
+ */
 export interface TeamSettings {
+  /** The columns a fresh board starts with */
   defaultTemplateId?: string;
-  anonymousByDefault?: boolean;
+  allowAnonymous?: boolean;
+  /** No new or edited cards on the team's boards (likes and reactions still work) */
+  locked?: boolean;
+  /** The team's colors on its boards; null for the site's look */
+  theme?: ThemeTokens | null;
 }
+
+/** The parts of TeamSettings that every board of the team carries */
+export const TEAM_BOARD_SETTING_KEYS = ['allowAnonymous', 'locked', 'theme'] as const;
 
 export interface TeamMemberDto {
   user: UserDto;

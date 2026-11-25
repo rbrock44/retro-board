@@ -2,8 +2,8 @@ import { and, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  BUILT_IN_TEMPLATES, TEAM_ROLES, type InviteDto, type SearchResultDto, type TeamDto, type TeamMemberDto,
-  type TeamSettings, type TemplateDto,
+  BUILT_IN_TEMPLATES, TEAM_BOARD_SETTING_KEYS, TEAM_ROLES, sanitizeTokens, type BoardSettings, type InviteDto,
+  type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamSettings, type TemplateDto,
 } from '@retro/shared';
 import { findUserByEmail, toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
@@ -14,19 +14,44 @@ import { requireTeam, teamRole } from '../lib/access';
 import { badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
 import { newId, newToken } from '../lib/ids';
 import { acceptInvite, findValidInvite } from '../lib/invites';
-import { boardDtos, loadActions } from '../lib/serialize';
+import { boardDto, boardDtos, loadActions } from '../lib/serialize';
 
 const zRole = z.enum(TEAM_ROLES as [string, ...string[]]).transform(r => r as (typeof TEAM_ROLES)[number]);
 const zTeamSettings = z.object({
   defaultTemplateId: z.string().max(64).optional(),
-  anonymousByDefault: z.boolean().optional(),
+  allowAnonymous: z.boolean().optional(),
+  locked: z.boolean().optional(),
+  theme: z.record(z.string(), z.string()).nullable().optional(),
 });
 
 /** Only the settings teams still have; older rows may carry keys that are gone (like vote limits). */
-function teamSettings(stored: TeamSettings | null | undefined): TeamSettings {
+export function teamSettings(stored: (TeamSettings & { anonymousByDefault?: boolean }) | null | undefined): TeamSettings {
   const out: TeamSettings = {};
   if (stored?.defaultTemplateId !== undefined) out.defaultTemplateId = stored.defaultTemplateId;
-  if (stored?.anonymousByDefault !== undefined) out.anonymousByDefault = stored.anonymousByDefault;
+  const anon = stored?.allowAnonymous ?? stored?.anonymousByDefault; // older name
+  if (anon !== undefined) out.allowAnonymous = anon;
+  if (stored?.locked !== undefined) out.locked = stored.locked;
+  if (stored?.theme !== undefined) out.theme = stored.theme ? sanitizeTokens(stored.theme) : null;
+  return out;
+}
+
+/** Puts the team's board settings on all its boards, and tells anyone looking at one. */
+async function applyToBoards(ctx: Ctx, team: Team) {
+  const overlay = teamBoardOverlay(team.settings);
+  const rows = await ctx.db.select().from(boards).where(eq(boards.teamId, team.id));
+  for (const b of rows) {
+    const [next] = await ctx.db.update(boards).set({ settings: { ...b.settings, ...overlay } }).where(eq(boards.id, b.id)).returning();
+    if (next.status === 'open') ctx.hub.emitBoard(next.id, { type: 'board.update', board: await boardDto(ctx.db, next) });
+  }
+}
+
+/** The team settings a board carries (only the ones the team has set) */
+export function teamBoardOverlay(stored: TeamSettings | null | undefined): Partial<BoardSettings> {
+  const t = teamSettings(stored);
+  const out: Partial<BoardSettings> = {};
+  if (t.allowAnonymous !== undefined) out.allowAnonymous = t.allowAnonymous;
+  if (t.locked !== undefined) out.locked = t.locked;
+  if (t.theme !== undefined) out.theme = t.theme;
   return out;
 }
 
@@ -91,11 +116,16 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
       description: z.string().max(500).optional(),
       settings: zTeamSettings.optional(),
     }), req.body);
+    const settings = body.settings
+      ? teamSettings({ ...teamSettings(team.settings), ...body.settings, theme: body.settings.theme === undefined ? team.settings?.theme : body.settings.theme ? sanitizeTokens(body.settings.theme) : null } as TeamSettings)
+      : team.settings;
     const [updated] = await db.update(teams).set({
       name: body.name ?? team.name,
       description: body.description ?? team.description,
-      settings: body.settings ? { ...teamSettings(team.settings), ...body.settings } : team.settings,
+      settings,
     }).where(eq(teams.id, team.id)).returning();
+    // Anonymous cards, lock and colors are the team's: every board of the team follows, live.
+    if (body.settings && TEAM_BOARD_SETTING_KEYS.some(k => k in body.settings!)) await applyToBoards(ctx, updated);
     return teamDto(ctx, updated, user);
   });
 

@@ -121,6 +121,7 @@ export class DemoBackend {
       // Only the settings teams still have (a demo saved by an older version may carry vote limits).
       settings: this.teamSettings(t),
       myRole: this.role(t.id), memberCount: this.state.members.filter(m => m.teamId === t.id).length,
+      photoUrl: t.photoUrl ?? null,
     };
   }
 
@@ -363,7 +364,9 @@ export class DemoBackend {
 
   // ---------------------------------------------------------------- uploads
 
-  async upload(url: string, file: File, onProgress?: (f: number) => void): Promise<AttachmentDto> {
+  async upload(url: string, file: File, onProgress?: (f: number) => void): Promise<AttachmentDto | TeamDto> {
+    const photo = url.match(/^\/api\/teams\/([^/]+)\/photo$/);
+    if (photo) return this.uploadTeamPhoto(photo[1], file);
     const m = url.match(/^\/api\/boards\/([^/]+)\/attachments$/) ?? notFound();
     this.requireBoard(m[1], 'write');
     const kind = file.type.startsWith('video/') ? 'video' : file.type === 'image/gif' ? 'gif' : file.type.startsWith('image/') ? 'image' : null;
@@ -386,6 +389,20 @@ export class DemoBackend {
     this.state.attachments[a.id] = a;
     this.onChange();
     return a;
+  }
+
+  /** Like the server: a 256px square webp, kept as a small data URL so it survives reloads and share links */
+  private async uploadTeamPhoto(teamId: string, file: File): Promise<TeamDto> {
+    const { team } = this.requireTeam(teamId, 'admin');
+    if (!file.type.startsWith('image/')) fail(400, 'A team photo has to be an image (jpg, png, webp, gif or avif)');
+    const bitmap = await createImageBitmap(file).catch(() => fail(400, 'A team photo has to be an image (jpg, png, webp, gif or avif)'));
+    const side = Math.min(bitmap.width, bitmap.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    canvas.getContext('2d')!.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 256, 256);
+    team.photoUrl = canvas.toDataURL('image/webp', 0.85);
+    this.onChange();
+    return this.teamDto(team);
   }
 
   // ---------------------------------------------------------------- the API
@@ -463,6 +480,11 @@ export class DemoBackend {
           }
         }
       }
+      return this.teamDto(team);
+    }],
+    ['DELETE', /^\/api\/teams\/([^/]+)\/photo$/, ([id]) => {
+      const { team } = this.requireTeam(id, 'admin');
+      team.photoUrl = null;
       return this.teamDto(team);
     }],
     ['DELETE', /^\/api\/teams\/([^/]+)$/, ([id]) => {
@@ -600,7 +622,7 @@ export class DemoBackend {
       const team = this.team(ctx.board.teamId);
       return {
         board: this.boardDto(ctx.board),
-        team: { id: team.id, name: team.name },
+        team: { id: team.id, name: team.name, photoUrl: team.photoUrl ?? null },
         columns: this.state.columns.filter(c => c.boardId === id).sort(byPosition),
         cards: this.state.cards.filter(c => c.boardId === id).map(c => this.cardDto(c)),
         actions: this.teamActions(team.id),

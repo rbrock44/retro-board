@@ -58,7 +58,12 @@ export function teamBoardOverlay(stored: TeamSettings | null | undefined): Parti
   return out;
 }
 
-async function teamDto(ctx: Ctx, team: Team, user: User): Promise<TeamDto> {
+/** A new key gives a new URL, so a replaced photo is never served stale from a cache */
+export function teamPhotoUrl(team: { id: string; photoKey: string | null }): string | null {
+  return team.photoKey ? `/api/teams/${team.id}/photo?v=${team.photoKey.split('/').pop()!.split('.')[0]}` : null;
+}
+
+export async function teamDto(ctx: Ctx, team: Team, user: User): Promise<TeamDto> {
   const [m] = await ctx.db.select({ n: count() }).from(teamMembers).where(eq(teamMembers.teamId, team.id));
   return {
     id: team.id,
@@ -66,6 +71,7 @@ async function teamDto(ctx: Ctx, team: Team, user: User): Promise<TeamDto> {
     description: team.description,
     myRole: await teamRole(ctx.db, user, team.id),
     memberCount: Number(m.n),
+    photoUrl: teamPhotoUrl(team),
     settings: teamSettings(team.settings),
     createdAt: team.createdAt.toISOString(),
   };
@@ -136,6 +142,7 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin');
     await db.delete(teams).where(eq(teams.id, team.id));
+    if (team.photoKey) await ctx.storage.remove(team.photoKey).catch(() => undefined);
     return noContent(reply);
   });
 

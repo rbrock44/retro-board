@@ -4,12 +4,13 @@ import sharp, { type Metadata } from 'sharp';
 import { z } from 'zod';
 import { FEATURE_FOR_ATTACHMENT, type AttachmentKind, type GifResultDto } from '@retro/shared';
 import type { Ctx } from '../context';
-import { attachments } from '../db/schema';
-import { canEditOwn, requireBoard } from '../lib/access';
+import { attachments, teams } from '../db/schema';
+import { canEditOwn, requireBoard, requireTeam } from '../lib/access';
 import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser } from '../lib/http';
 import { featureOn, requireFeature } from '../lib/instance';
 import { newId } from '../lib/ids';
 import { attachmentDto } from '../lib/serialize';
+import { teamDto } from './teams';
 
 const IMAGE_FORMATS: Record<string, { mime: string; ext: string }> = {
   jpeg: { mime: 'image/jpeg', ext: 'jpg' },
@@ -190,6 +191,55 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
     if (got.size !== null) reply.header('content-length', got.size);
     return reply.send(got.stream);
   }
+
+  // ---- team photo: any image, stored as a 256px square webp (re-encoding drops EXIF and anything hidden in it) ----
+
+  app.post('/api/teams/:teamId/photo', async req => {
+    const user = requireUser(req);
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin');
+    const file = await req.file({ limits: { fileSize: config.maxUploadBytes, files: 1 } });
+    if (!file) throw badRequest('No file was sent');
+    let buf: Buffer;
+    try {
+      buf = await file.toBuffer();
+    } catch {
+      throw new HttpError(413, `Files can be at most ${Math.round(config.maxUploadBytes / 1048576)} MB`);
+    }
+    let meta: Metadata;
+    try {
+      meta = await sharp(buf).metadata();
+    } catch {
+      throw badRequest('A team photo has to be an image (jpg, png, webp, gif or avif)');
+    }
+    if (!meta.format || !IMAGE_FORMATS[meta.format]) throw badRequest(`${meta.format ?? 'That'} images are not supported`);
+    const photo = await sharp(buf).rotate().resize(256, 256, { fit: 'cover' }).webp({ quality: 85 }).toBuffer();
+    const key = `teams/${team.id}/${newId()}.webp`;
+    await storage.put(key, photo, 'image/webp');
+    const [updated] = await db.update(teams).set({ photoKey: key }).where(eq(teams.id, team.id)).returning();
+    if (team.photoKey) await storage.remove(team.photoKey).catch(() => undefined);
+    return teamDto(ctx, updated, user);
+  });
+
+  app.delete('/api/teams/:teamId/photo', async req => {
+    const user = requireUser(req);
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin');
+    const [updated] = await db.update(teams).set({ photoKey: null }).where(eq(teams.id, team.id)).returning();
+    if (team.photoKey) await storage.remove(team.photoKey).catch(() => undefined);
+    return teamDto(ctx, updated, user);
+  });
+
+  app.get('/api/teams/:teamId/photo', async (req, reply) => {
+    const user = requireUser(req);
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
+    const got = team.photoKey ? await storage.get(team.photoKey) : null;
+    if (!got) throw notFound('Photo');
+    reply.header('content-type', 'image/webp')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; sandbox")
+      .header('cache-control', 'private, max-age=31536000, immutable');
+    if (got.size !== null) reply.header('content-length', got.size);
+    return reply.send(got.stream);
+  });
 
   app.get('/api/media/:id', (req, reply) => serve(req, reply, false));
   app.get('/api/media/:id/thumb', (req, reply) => serve(req, reply, true));

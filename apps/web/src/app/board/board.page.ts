@@ -20,6 +20,7 @@ import { ColorPicker } from '../shared/color-picker';
 import { Modal } from '../shared/modal';
 import { BoardStore, boardTabTitle, type DropSpot } from './board.store';
 import { dropSpotAt } from './drop-spot';
+import { TeamPhoto } from '../shared/team-photo';
 import { Card } from './card';
 import { Composer, type ComposerResult } from './composer';
 import { ClickOutside } from '../shared/click-outside';
@@ -27,7 +28,7 @@ import { ClickOutside } from '../shared/click-outside';
 @Component({
   selector: 'app-board-page',
   providers: [BoardStore],
-  imports: [ClickOutside, 
+  imports: [TeamPhoto, ClickOutside, 
     FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragPlaceholder,
     Card, Composer, Avatar, ActionList, Modal, ColorPicker, DatePipe,
   ],
@@ -41,7 +42,7 @@ import { ClickOutside } from '../shared/click-outside';
       <div class="board-root" [style]="boardStyle()">
         <header class="board-bar">
           <div class="board-title">
-            <p class="crumbs">{{ s.team.name }} · <a [routerLink]="['/teams', s.team.id, 'history']">History</a></p>
+            <p class="crumbs"><app-team-photo [team]="s.team" [size]="18" /> {{ s.team.name }} · <a [routerLink]="['/teams', s.team.id, 'history']">History</a></p>
             @if (editingTitle()) {
               <input class="title-edit" [value]="s.board.title" (change)="rename($event)" (blur)="editingTitle.set(false)"
                      (keydown.enter)="$any($event.target).blur()" autofocus aria-label="Board title">

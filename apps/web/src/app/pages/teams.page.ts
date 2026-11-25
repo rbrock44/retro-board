@@ -7,9 +7,10 @@ import { AuthService } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
 import { Modal } from '../shared/modal';
 
+import { TeamPhoto } from '../shared/team-photo';
 @Component({
   selector: 'app-teams-page',
-  imports: [RouterLink, FormsModule, Modal],
+  imports: [RouterLink, FormsModule, Modal, TeamPhoto],
   template: `
     <div class="page">
       <div class="page-head">
@@ -35,7 +36,7 @@ import { Modal } from '../shared/modal';
           @for (t of teams(); track t.id) {
             <li>
               <a class="team-tile card-surface" [routerLink]="['/teams', t.id]">
-                <h2>{{ t.name }}</h2>
+                <div class="team-tile-head"><app-team-photo [team]="t" [size]="44" /><h2>{{ t.name }}</h2></div>
                 @if (t.description) { <p class="muted">{{ t.description }}</p> }
                 <p class="meta">{{ t.memberCount }} {{ t.memberCount === 1 ? 'member' : 'members' }} · {{ t.myRole ?? 'not a member' }}</p>
               </a>

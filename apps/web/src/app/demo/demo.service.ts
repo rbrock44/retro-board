@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import type { AttachmentDto, BoardEvent, UserDto } from '@retro/shared';
+import type { AttachmentDto, BoardEvent, TeamDto, UserDto } from '@retro/shared';
 import type { DemoBackend } from './demo-backend';
 import type { DemoState } from './demo-data';
 
@@ -121,7 +121,7 @@ export class DemoService {
     return this.backend!.handle(method, url, body);
   }
 
-  upload(url: string, file: File, onProgress?: (f: number) => void): Promise<AttachmentDto> {
+  upload(url: string, file: File, onProgress?: (f: number) => void): Promise<AttachmentDto | TeamDto> {
     return this.backend!.upload(url, file, onProgress);
   }
 

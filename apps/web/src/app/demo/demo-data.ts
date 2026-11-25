@@ -10,7 +10,7 @@ export interface DemoState {
   meId: string;
   prefs: UserPrefs;
   users: (UserDto & { email: string })[];
-  teams: { id: string; name: string; description: string; settings: TeamSettings; createdAt: string }[];
+  teams: { id: string; name: string; description: string; settings: TeamSettings; createdAt: string; photoUrl?: string | null }[];
   members: { teamId: string; userId: string; role: TeamRole; joinedAt: string }[];
   invites: InviteDto[];
   templates: (TemplateDto & { teamId: string })[];

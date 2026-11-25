@@ -114,6 +114,8 @@ export interface TeamDto {
   description: string;
   myRole: TeamRole | null;
   memberCount: number;
+  /** The team's display photo, or null for its initials */
+  photoUrl: string | null;
   settings: TeamSettings;
   createdAt: string;
 }
@@ -286,7 +288,7 @@ export interface BoardPermissions {
 
 export interface BoardStateDto {
   board: BoardDto;
-  team: { id: string; name: string };
+  team: { id: string; name: string; photoUrl: string | null };
   columns: ColumnDto[];
   cards: CardDto[];
   actions: ActionItemDto[];

@@ -18,13 +18,15 @@ import { RelativeTimePipe } from '../shared/relative-time.pipe';
 
 type Tab = 'boards' | 'actions' | 'members' | 'settings';
 
+import { TeamPhoto } from '../shared/team-photo';
 @Component({
   selector: 'app-team-page',
-  imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList, ExportDialog, ThemeEditor],
+  imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList, ExportDialog, ThemeEditor, TeamPhoto],
   template: `
     @if (team(); as t) {
       <div class="page">
         <div class="page-head">
+          <app-team-photo class="page-head-photo" [team]="t" [size]="56" />
           <div>
             <p class="crumbs"><a routerLink="/">Teams</a> / {{ t.name }}</p>
             <h1>History</h1>
@@ -155,6 +157,18 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
           @case ('settings') {
             <section class="stack narrow">
               <h2>Team</h2>
+              <div class="team-photo-edit">
+                <app-team-photo [team]="t" [size]="72" />
+                <div class="stack-tight">
+                  <span class="token-label">Photo</span>
+                  <div class="row wrap">
+                    <label class="btn small" [class.disabled]="photoBusy()">{{ t.photoUrl ? 'Change Photo' : 'Upload Photo' }}
+                      <input type="file" accept="image/*" hidden [disabled]="photoBusy()" (change)="uploadPhoto($event)"></label>
+                    @if (t.photoUrl) { <button type="button" class="btn ghost small" [disabled]="photoBusy()" (click)="removePhoto()">Remove</button> }
+                  </div>
+                  <span class="muted small">Shown next to the team's name. Cropped to a square.</span>
+                </div>
+              </div>
               <label>Name <input [(ngModel)]="edit.name" maxlength="80"></label>
               <label>Description <textarea [(ngModel)]="edit.description" rows="2" maxlength="500"></textarea></label>
               <h2 id="board-settings">Boards</h2>
@@ -460,6 +474,34 @@ export class TeamPage {
       this.toast.show('Invite link copied');
     } catch {
       prompt('Copy this link', text);
+    }
+  }
+
+  protected photoBusy = signal(false);
+
+  async uploadPhoto(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.photoBusy.set(true);
+    try {
+      this.team.set(await this.api.upload<TeamDto>(`${this.base()}/photo`, file));
+    } catch (err) {
+      this.toast.error(err);
+    } finally {
+      this.photoBusy.set(false);
+    }
+  }
+
+  async removePhoto() {
+    this.photoBusy.set(true);
+    try {
+      this.team.set(await this.api.delete<TeamDto>(`${this.base()}/photo`));
+    } catch (err) {
+      this.toast.error(err);
+    } finally {
+      this.photoBusy.set(false);
     }
   }
 

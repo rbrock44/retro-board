@@ -15,7 +15,7 @@ import { featureOn, getSettings, newBoardSettings, requireFeature, templateFor }
 import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
 import { newId } from '../lib/ids';
 import { boardDto, columnDto, loadActions, loadCards } from '../lib/serialize';
-import { teamBoardOverlay } from './teams';
+import { teamBoardOverlay, teamPhotoUrl } from './teams';
 
 /** Emits fresh copies of the given cards to everyone on the board, shaped per viewer. */
 export async function broadcastCards(ctx: Ctx, boardId: string, ids: string[]) {
@@ -147,10 +147,10 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       loadActions(db, and(eq(actionItems.teamId, board.teamId), or(eq(actionItems.status, 'open'), eq(actionItems.boardId, board.id)))),
       db.select({ u: users }).from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, board.teamId)),
     ]);
-    const [team] = await db.select({ id: teams.id, name: teams.name }).from(teams).where(eq(teams.id, board.teamId));
+    const [team] = await db.select({ id: teams.id, name: teams.name, photoKey: teams.photoKey }).from(teams).where(eq(teams.id, board.teamId));
     return {
       board: await boardDto(db, board),
-      team,
+      team: { id: team.id, name: team.name, photoUrl: teamPhotoUrl(team) },
       columns: cols.map(columnDto).sort(byPosition),
       cards: shape(user.id).sort(byPosition),
       actions,

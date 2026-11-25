@@ -48,7 +48,9 @@ plain email and password).
 
 ### Teams and Roles
 
-- `Teams` - Everything lives in a team: its retros, history, action items and custom templates
+- `Teams` - Everything lives in a team: its retros, history, action items and custom templates. A team admin can
+  give it a photo (History → Settings → Team), shown on the team list, the team's pages and its boards; without one
+  it shows the team's initials
 - `Invite links` - Team admins create links (optionally locked to one email, with an expiry) or add existing
   accounts by email
 - `Team roles`

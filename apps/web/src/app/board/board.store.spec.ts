@@ -10,7 +10,7 @@ const card = (id: string, extra: Partial<CardDto> = {}): CardDto => ({
 const state = (): BoardStateDto => ({
   board: { id: 'b', teamId: 't', title: 'B', status: 'open', createdAt: '', closedAt: null, createdBy: null, cardCount: 0, actionCount: 0,
     settings: { allowAnonymous: true, locked: false } },
-  team: { id: 't', name: 'T' },
+  team: { id: 't', name: 'T', photoUrl: null },
   columns: [{ id: 'c1', boardId: 'b', title: 'One', description: '', color: '#000000', position: 'a0' }],
   cards: [card('x')],
   actions: [],

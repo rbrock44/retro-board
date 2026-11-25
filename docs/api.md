@@ -39,6 +39,8 @@ curl -b jar http://localhost:8080/api/teams
 | GET | `/api/teams` | `?all=1` (instance admins) | |
 | POST | `/api/teams` | `name, description?` | any user; creator becomes admin |
 | GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme}`. `allowAnonymous`, `locked` and `theme` are copied onto the team's open boards (sent live) and used for new ones; archived and closed boards keep theirs | viewer / admin / admin |
+| POST / DELETE | `/api/teams/:teamId/photo` | POST: `multipart/form-data` with one image `file`, stored as a 256px square webp. Both return the team, whose `photoUrl` changes with each new photo | admin |
+| GET | `/api/teams/:teamId/photo` | The photo (`image/webp`); 404 when there is none | viewer |
 | GET | `/api/teams/:teamId/members` | | viewer (emails shown to admins) |
 | POST | `/api/teams/:teamId/members` | `email, role` | admin; adds an existing account |
 | PATCH | `/api/teams/:teamId/members/:userId` | `role` | admin; last admin can't be demoted |

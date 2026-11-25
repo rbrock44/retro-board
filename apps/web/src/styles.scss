@@ -263,6 +263,16 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem;
 
 .avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; display: inline-block; }
 .avatar.initials { display: inline-grid; place-items: center; color: #fff; font-weight: 600; }
+/* A team's photo: a rounded square (people are round), initials when it has none */
+app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
+.team-photo { border-radius: 22%; object-fit: cover; flex-shrink: 0; display: inline-block; max-width: none; }
+.team-photo.initials { display: inline-grid; place-items: center; color: #fff; font-weight: 700; letter-spacing: 0.02em; }
+.crumbs app-team-photo { vertical-align: -0.3em; margin-right: 0.15rem; }
+.team-tile-head { display: flex; align-items: center; gap: 0.7rem; h2 { min-width: 0; overflow-wrap: anywhere; } }
+.page-head-photo { align-self: center; }
+.team-photo-edit { display: flex; align-items: center; gap: 1rem;
+  label.btn { display: inline-flex; flex-direction: row; cursor: pointer; }
+  label.btn.disabled { opacity: 0.6; pointer-events: none; } }
 
 /* ---------- color picker & theme editor ---------- */
 

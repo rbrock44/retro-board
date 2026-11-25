@@ -48,6 +48,8 @@ export const teams = pgTable('teams', {
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
   settings: jsonb('settings').$type<TeamSettings>().notNull().default(sql`'{}'::jsonb`),
+  /** The team's display photo in storage: a square webp, re-encoded on upload */
+  photoKey: text('photo_key'),
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
 });

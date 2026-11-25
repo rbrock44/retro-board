@@ -67,9 +67,9 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Every open action item from the team shows here, on every board, until it\'s done.',
   },
   {
-    route: '/teams/t-platform', target: '[data-tour="save"]',
-    title: 'Save Board',
-    body: 'When the retro is over, save it to the team\'s history under today\'s date. A fresh board takes its place, and cards marked Carry over come along.',
+    route: '/teams/t-platform', target: '[data-tour="archive"]',
+    title: 'Archive Board',
+    body: 'When the retro is over, archive the board: it moves to the team\'s history under today\'s date, and a fresh board takes its place. Cards marked Carry Over come along.',
   },
   {
     route: '/teams/t-platform', target: '.crumbs a',

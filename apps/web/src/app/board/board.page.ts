@@ -61,7 +61,7 @@ import { ClickOutside } from '../shared/click-outside';
 
         @if (s.board.status !== 'open') {
           <div class="history-note no-print" role="note">
-            <span>📚 This board is in the team's history{{ s.board.closedAt ? ', saved ' + (s.board.closedAt | date: 'mediumDate') : '' }}. It's read-only.</span>
+            <span>📚 This board is in the team's history{{ s.board.closedAt ? ', archived ' + (s.board.closedAt | date: 'mediumDate') : '' }}. It's read-only.</span>
             <a class="btn small" [routerLink]="['/teams', s.team.id]">Go to the Current Board</a>
             <a class="btn small ghost" [routerLink]="['/teams', s.team.id, 'history']">All Past Boards</a>
           </div>
@@ -84,6 +84,7 @@ import { ClickOutside } from '../shared/click-outside';
           <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
             ✅ Actions ({{ store.openActions().length }})
           </button>
+          @if (s.board.status !== 'open') {
           <span class="menu-wrap" (clickOutside)="exportOpen.set(false)">
             <button type="button" class="btn ghost" (click)="exportOpen.set(!exportOpen())" [attr.aria-expanded]="exportOpen()">Export</button>
             @if (exportOpen()) {
@@ -94,8 +95,9 @@ import { ClickOutside } from '../shared/click-outside';
               </div>
             }
           </span>
+          }
           @if (perm().canFacilitate && s.board.status === 'open') {
-            <button type="button" class="btn primary" data-tour="save" (click)="openSave()" title="File this board in the history and start a fresh one">💾 Save Board</button>
+            <button type="button" class="btn primary" data-tour="archive" (click)="openArchive()" title="Move this board to the history and start a fresh one">🗄 Archive Board</button>
           }
           @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board Settings</button> }
         </div>
@@ -197,22 +199,23 @@ import { ClickOutside } from '../shared/click-outside';
         </app-modal>
       }
 
-      @if (saveOpen()) {
-        <app-modal heading="Save Board" (closed)="saveOpen.set(false)">
-          <form class="stack" (ngSubmit)="saveBoard()">
-            <p>This board goes into the team's history as it is now, and a fresh board with the same columns takes its place.</p>
+      @if (archiveOpen()) {
+        <app-modal heading="Archive Board" (closed)="archiveOpen.set(false)">
+          <form class="stack" (ngSubmit)="archiveBoard()">
+            <p>This board moves to the team's history, kept exactly as it is now, and a fresh board with the same
+              columns takes its place. You can open, read and export it from History any time.</p>
             <label>Name <span class="muted">(optional)</span>
-              <input name="saveName" [(ngModel)]="saveName" maxlength="80" placeholder="e.g. Sprint 42" autofocus>
+              <input name="archiveName" [(ngModel)]="archiveName" maxlength="80" placeholder="e.g. Sprint 42" autofocus>
             </label>
-            <p class="muted">Saved as <strong>{{ today }}{{ saveName.trim() ? ' · ' + saveName.trim() : '' }}</strong></p>
+            <p class="muted">Filed as <strong>{{ today }}{{ archiveName.trim() ? ' · ' + archiveName.trim() : '' }}</strong></p>
             <p class="muted">
               @if (carryCount()) { {{ carryCount() }} card{{ carryCount() === 1 ? '' : 's' }} marked <em>Carry Over</em> will move to the fresh board. }
               @else { No cards are marked <em>Carry Over</em>, so the fresh board starts empty. }
               Open action items show on it too.
             </p>
             <div class="row end">
-              <button type="button" class="btn ghost" (click)="saveOpen.set(false)">Cancel</button>
-              <button type="submit" class="btn primary" [disabled]="saving()">Save and Start Fresh</button>
+              <button type="button" class="btn ghost" (click)="archiveOpen.set(false)">Cancel</button>
+              <button type="submit" class="btn primary" [disabled]="archiving()">Archive and Start Fresh</button>
             </div>
           </form>
         </app-modal>
@@ -283,29 +286,29 @@ export class BoardPage implements OnDestroy {
     return t ? themeStyle(t) : {};
   });
 
-  protected saveOpen = signal(false);
-  protected saveName = '';
-  protected saving = signal(false);
+  protected archiveOpen = signal(false);
+  protected archiveName = '';
+  protected archiving = signal(false);
   protected today = localDate();
   protected carryCount = computed(() => this.store.cards().filter(c => c.status === 'carry_over').length);
 
-  openSave() {
-    this.saveName = '';
+  openArchive() {
+    this.archiveName = '';
     this.today = localDate();
-    this.saveOpen.set(true);
+    this.archiveOpen.set(true);
   }
 
-  async saveBoard() {
-    this.saving.set(true);
+  async archiveBoard() {
+    this.archiving.set(true);
     try {
-      const r = await this.api.post<{ saved: BoardDto; board: BoardDto }>(`/api/boards/${this.boardId()}/save`, { name: this.saveName.trim() || undefined, date: this.today });
-      this.saveOpen.set(false);
-      this.toast.show(`Saved “${r.saved.title}” to the history. This is the fresh board.`);
+      const r = await this.api.post<{ saved: BoardDto; board: BoardDto }>(`/api/boards/${this.boardId()}/archive`, { name: this.archiveName.trim() || undefined, date: this.today });
+      this.archiveOpen.set(false);
+      this.toast.show(`Archived “${r.saved.title}” to the history. This is the fresh board.`);
       await this.router.navigate(['/boards', r.board.id], { replaceUrl: true });
     } catch (err) {
       this.toast.error(err);
     } finally {
-      this.saving.set(false);
+      this.archiving.set(false);
     }
   }
 
@@ -317,11 +320,11 @@ export class BoardPage implements OnDestroy {
   }
 
   constructor() {
-    // Someone else saved the board: follow them to the fresh one.
+    // Someone else archived the board: follow them to the fresh one.
     effect(() => {
       const next = this.store.next();
-      if (!next || this.saving()) return;
-      this.toast.show(`The board was saved as “${next.savedTitle}”. Moved you to the fresh board.`);
+      if (!next || this.archiving()) return;
+      this.toast.show(`The board was archived as “${next.savedTitle}”. Moved you to the fresh board.`);
       void this.router.navigate(['/boards', next.boardId], { replaceUrl: true });
     });
     effect(() => {

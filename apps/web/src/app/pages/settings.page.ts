@@ -7,10 +7,11 @@ import { ThemeService } from '../core/theme.service';
 import { ToastService } from '../core/toast.service';
 import { Avatar } from '../shared/avatar';
 import { ThemeEditor } from '../shared/theme-editor';
+import { ExportDialog } from '../shared/export-dialog';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [FormsModule, Avatar, ThemeEditor],
+  imports: [FormsModule, Avatar, ThemeEditor, ExportDialog],
   template: `
     @if (auth.me(); as me) {
       <div class="page narrow stack">
@@ -56,11 +57,19 @@ import { ThemeEditor } from '../shared/theme-editor';
             </ul>
           </section>
         }
+
+        <section class="card-surface stack">
+          <h2>Export</h2>
+          <p class="muted">Download past retros from any of your teams' history as one Markdown or spreadsheet file.</p>
+          <div class="row"><button class="btn" type="button" (click)="exportOpen.set(true)">Export Retros…</button></div>
+        </section>
       </div>
+      @if (exportOpen()) { <app-export-dialog (closed)="exportOpen.set(false)" /> }
     }
   `,
 })
 export class SettingsPage {
+  protected exportOpen = signal(false);
   protected auth = inject(AuthService);
   protected theme = inject(ThemeService);
   private api = inject(Api);

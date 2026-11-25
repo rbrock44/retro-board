@@ -551,3 +551,12 @@ button.likes { cursor: pointer;
   .card.in-group { outline: none; } }
 .card.drop-target, .group-box.drop-target { outline: 3px solid var(--accent) !important; outline-offset: 2px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+
+/* ---- Export Retros ---- */
+.export-format { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem;
+  legend { font-weight: 600; margin-bottom: 0.3rem; } }
+.export-all { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.export-teams { display: flex; flex-direction: column; gap: 0.6rem; max-height: 50vh; overflow: auto; }
+.export-team { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.7rem; }
+.export-boards { list-style: none; margin: 0.35rem 0 0; padding: 0 0 0 1.6rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.board-list li .board-export { margin-left: auto; }

@@ -3,7 +3,7 @@ import {
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
-  type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
+  exportSlug, formatExport, type ExportBoard, type ExportFormat, type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
 } from '@retro/shared';
 import { ApiError } from '../core/api.service';
 import { DEMO_ME, newId, seedDemo, type DemoCard, type DemoState } from './demo-data';
@@ -317,50 +317,27 @@ export class DemoBackend {
 
   // ---------------------------------------------------------------- export (no server to download from)
 
-  exportBoard(boardId: string, format: 'md' | 'csv'): { name: string; type: string; text: string } {
-    const board = this.board(boardId);
-    const cols = this.state.columns.filter(c => c.boardId === boardId).sort(byPosition);
-    const all = this.state.cards.filter(c => c.boardId === boardId).map(c => this.cardDto(c)).sort(byPosition);
-    const actions = this.state.actions.filter(a => a.boardId === boardId).map(a => this.actionDto(a));
-    const slug = board.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'board';
-    const who = (c: CardDto) => (c.anonymous ? 'Anonymous' : c.author?.name ?? 'Someone');
-    const likes = (n: number) => `${n} ${n === 1 ? 'like' : 'likes'}`;
-    if (format === 'csv') {
-      const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const lines = [['column', 'group', 'card', 'author', 'likes', 'status', 'replies', 'created'].join(',')];
-      for (const col of cols) {
-        for (const c of all.filter(x => x.columnId === col.id)) {
-          const head = c.parentId ? all.find(x => x.id === c.parentId) : null;
-          lines.push([col.title, head ? head.groupTitle ?? head.body.slice(0, 40) : c.groupTitle ?? '', c.body, who(c), c.likes,
-            CARD_STATUS_LABELS[c.status], c.replies.length, c.createdAt].map(esc).join(','));
-        }
-      }
-      lines.push('', ['action', 'owner', 'due', 'status'].join(','));
-      for (const a of actions) lines.push([a.title, a.owner?.name ?? '', a.dueDate ?? '', a.status].map(esc).join(','));
-      return { name: `${slug}.csv`, type: 'text/csv', text: lines.join('\n') };
-    }
-    const md: string[] = [`# ${board.title}`, '', `_${new Date(board.createdAt).toDateString()} · ${board.status}_`, ''];
-    for (const col of cols) {
-      md.push(`## ${col.title}`, '');
-      const heads = all.filter(c => c.columnId === col.id && !c.parentId).sort((a, b) => b.likes - a.likes);
-      if (!heads.length) md.push('_No cards_', '');
-      for (const h of heads) {
-        const kids = all.filter(c => c.parentId === h.id);
-        const tag = h.status !== 'none' ? ` \`${CARD_STATUS_LABELS[h.status]}\`` : '';
-        if (kids.length) {
-          md.push(`- **${h.groupTitle ?? 'Group'}** (${likes(h.likes + kids.reduce((n, k) => n + k.likes, 0))})${tag}`);
-          for (const c of [h, ...kids]) md.push(`  - ${c.body.replace(/\n+/g, ' ')} — ${who(c)} (${c.likes})`);
-        } else {
-          md.push(`- ${h.body.replace(/\n+/g, ' ')} — ${who(h)} (${likes(h.likes)})${tag}`);
-        }
-        for (const r of [h, ...kids].flatMap(c => c.replies)) md.push(`  - ↳ ${r.author?.name ?? 'Someone'}: ${r.body.replace(/\n+/g, ' ')}`);
-      }
-      md.push('');
-    }
-    md.push('## Action items', '');
-    if (!actions.length) md.push('_None_');
-    for (const a of actions) md.push(`- [${a.status === 'done' ? 'x' : ' '}] ${a.title}${a.owner ? ` — @${a.owner.name}` : ''}${a.dueDate ? ` (due ${a.dueDate})` : ''}`);
-    return { name: `${slug}.md`, type: 'text/markdown', text: md.join('\n') + '\n' };
+  /** Same shape as the server's export: one board, or many grouped by team (Settings > Export). */
+  exportBoards(boardIds: string[], format: ExportFormat): { name: string; type: string; text: string } {
+    const picked: ExportBoard[] = [...new Set(boardIds)].map(id => {
+      const { board } = this.requireBoard(id, 'read');
+      return {
+        teamName: this.team(board.teamId).name,
+        board: { title: board.title, status: board.status, createdAt: board.createdAt },
+        columns: this.state.columns.filter(c => c.boardId === id),
+        cards: this.state.cards.filter(c => c.boardId === id).map(c => this.cardDto(c)),
+        actions: this.state.actions.filter(a => a.boardId === id).map(a => this.actionDto(a)),
+      };
+    });
+    if (!picked.length) fail(400, 'pick at least one board');
+    picked.sort((x, y) => x.teamName.localeCompare(y.teamName) || x.board.createdAt.localeCompare(y.board.createdAt));
+    const base = picked.length === 1 ? exportSlug(picked[0].board.title) : `retro-export-${nowIso().slice(0, 10)}`;
+    const text = formatExport(picked, format);
+    return { name: `${base}.${format}`, type: format === 'csv' ? 'text/csv' : 'text/markdown', text: format === 'csv' ? text : text + '\n' };
+  }
+
+  exportBoard(boardId: string, format: ExportFormat) {
+    return this.exportBoards([boardId], format);
   }
 
   // ---------------------------------------------------------------- uploads
@@ -548,7 +525,7 @@ export class DemoBackend {
     }],
     ['POST', /^\/api\/teams\/([^/]+)\/boards$/, ([id], b) => this.createBoard(id, b)],
     ['POST', /^\/api\/teams\/([^/]+)\/current$/, ([id]) => this.currentBoard(id)],
-    ['POST', /^\/api\/boards\/([^/]+)\/save$/, ([id], b) => this.saveBoard(id, b)],
+    ['POST', /^\/api\/boards\/([^/]+)\/archive$/, ([id], b) => this.archiveBoard(id, b)],
     ['GET', /^\/api\/teams\/([^/]+)\/actions$/, ([id], _b, q) => {
       this.requireTeam(id);
       const status = q.get('status');
@@ -884,14 +861,14 @@ export class DemoBackend {
     }
   }
 
-  /** "Save Board": file it in the history under the date (and name), start a fresh one with the same columns. */
-  private saveBoard(boardId: string, b: any) {
+  /** "Archive Board": file it in the history under the date (and name), start a fresh one with the same columns. */
+  private archiveBoard(boardId: string, b: any) {
     const { board } = this.requireBoard(boardId, 'facilitate');
     if (board.status !== 'open') fail(400, 'This board is already in the history');
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date ?? '') ? b.date : nowIso().slice(0, 10);
     const name = String(b.name ?? '').trim().slice(0, 80);
     board.title = name ? `${date} · ${name}` : date;
-    board.status = 'closed';
+    board.status = 'archived';
     board.closedAt = nowIso();
     const next = {
       id: newId(), teamId: board.teamId, title: CURRENT_BOARD_TITLE, status: 'open' as const, createdAt: nowIso(), closedAt: null,

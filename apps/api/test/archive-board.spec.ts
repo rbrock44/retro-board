@@ -14,9 +14,9 @@ describe('saving a board and the current board', () => {
     await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: start.id, body: 'pairing' });
     await owner.client.patch(`/api/cards/${keep.id}`, { status: 'carry_over' });
 
-    const res = await owner.client.post(`/api/boards/${board.id}/save`, { name: 'Sprint 1', date: '2026-11-24' });
+    const res = await owner.client.post(`/api/boards/${board.id}/archive`, { name: 'Sprint 1', date: '2026-11-24' });
     expect(res.status).toBe(200);
-    expect(res.body.saved).toMatchObject({ id: board.id, title: '2026-11-24 · Sprint 1', status: 'closed' });
+    expect(res.body.saved).toMatchObject({ id: board.id, title: '2026-11-24 · Sprint 1', status: 'archived' });
     expect(res.body.board).toMatchObject({ title: 'Current', status: 'open' });
 
     const next = (await owner.client.get(`/api/boards/${res.body.board.id}`)).body as BoardStateDto;
@@ -28,16 +28,16 @@ describe('saving a board and the current board', () => {
 
     // the old board is in the history, read-only
     const history = (await owner.client.get(`/api/teams/${team.id}/boards`)).body as BoardSummaryDto[];
-    expect(history.map(b => [b.title, b.status])).toEqual(expect.arrayContaining([['2026-11-24 · Sprint 1', 'closed'], ['Current', 'open']]));
+    expect(history.map(b => [b.title, b.status])).toEqual(expect.arrayContaining([['2026-11-24 · Sprint 1', 'archived'], ['Current', 'open']]));
     expect((await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: start.id, body: 'late' })).status).toBe(403);
-    expect((await owner.client.post(`/api/boards/${board.id}/save`, {})).status).toBe(400);
+    expect((await owner.client.post(`/api/boards/${board.id}/archive`, {})).status).toBe(400);
   });
 
   it('recognises an older lowercase "Carried over" column when saving', async () => {
     t = await makeApp();
     const { owner, board } = await teamWithBoard(t.app);
     await owner.client.post(`/api/boards/${board.id}/columns`, { title: 'Carried over', color: '#a855f7' });
-    const res = await owner.client.post(`/api/boards/${board.id}/save`, {});
+    const res = await owner.client.post(`/api/boards/${board.id}/archive`, {});
     const next = (await owner.client.get(`/api/boards/${res.body.board.id}`)).body as BoardStateDto;
     expect(next.columns.map(c => c.title.toLowerCase())).not.toContain('carried over');
   });
@@ -46,7 +46,7 @@ describe('saving a board and the current board', () => {
     t = await makeApp();
     const { owner, team, board } = await teamWithBoard(t.app);
     const member = await addMember(t.app, owner.client, team.id, 'member');
-    expect((await member.client.post(`/api/boards/${board.id}/save`, {})).status).toBe(403);
+    expect((await member.client.post(`/api/boards/${board.id}/archive`, {})).status).toBe(403);
   });
 
   it('opens a team on its current board, making one when there is none', async () => {

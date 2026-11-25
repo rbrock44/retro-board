@@ -67,8 +67,8 @@ describe('demo backend', () => {
     const target = live.cards.find(c => !c.carriedFrom && !c.parentId && live.columns.find(col => col.id === c.columnId)?.title === 'To Improve')!;
     await b.handle('PATCH', `/api/cards/${target.id}`, { status: 'carry_over' });
 
-    const r = (await b.handle('POST', '/api/boards/b-s42/save', { name: 'Sprint 42', date: '2026-11-24' })) as { saved: BoardDto; board: BoardDto };
-    expect(r.saved).toMatchObject({ title: '2026-11-24 · Sprint 42', status: 'closed' });
+    const r = (await b.handle('POST', '/api/boards/b-s42/archive', { name: 'Sprint 42', date: '2026-11-24' })) as { saved: BoardDto; board: BoardDto };
+    expect(r.saved).toMatchObject({ title: '2026-11-24 · Sprint 42', status: 'archived' });
     expect(events.some(e => e.type === 'board.next' && e.boardId === r.board.id)).toBe(true);
 
     const next = (await b.handle('GET', `/api/boards/${r.board.id}`)) as BoardStateDto;

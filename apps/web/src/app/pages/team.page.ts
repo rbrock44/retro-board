@@ -9,6 +9,7 @@ import { Api } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
 import { ActionList } from '../shared/action-list';
+import { ExportDialog } from '../shared/export-dialog';
 import { Avatar } from '../shared/avatar';
 import { ColorPicker } from '../shared/color-picker';
 import { Modal } from '../shared/modal';
@@ -18,7 +19,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
 
 @Component({
   selector: 'app-team-page',
-  imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList],
+  imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList, ExportDialog],
   template: `
     @if (team(); as t) {
       <div class="page">
@@ -30,6 +31,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
           </div>
           <div class="spacer"></div>
           <a class="btn primary" [routerLink]="['/teams', t.id]">Current Board</a>
+          <button class="btn" type="button" (click)="openExport()">Export</button>
           @if (canCreate()) { <button class="btn" type="button" (click)="openNewBoard()">New Board</button> }
         </div>
 
@@ -75,6 +77,9 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
                   </a>
                   <span class="meta">{{ b.cardCount }} cards · {{ b.actionCount }} actions · {{ b.createdAt | ago }}
                     @if (b.createdBy) { · by {{ b.createdBy.name }} }</span>
+                  @if (b.status !== 'open') {
+                    <button type="button" class="btn ghost small board-export" (click)="openExport([b.id])">Export</button>
+                  }
                 </li>
               }
             </ul>
@@ -191,6 +196,9 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
         }
       </div>
 
+      @if (exportFor(); as pre) {
+        <app-export-dialog [teamId]="t.id" [preselect]="pre" (closed)="exportFor.set(null)" />
+      }
       @if (newBoardOpen()) {
         <app-modal heading="Start a Retro" [wide]="true" (closed)="newBoardOpen.set(false)">
           <form class="stack" (ngSubmit)="createBoard()">
@@ -244,6 +252,12 @@ export class TeamPage {
   protected boardFilter = signal<'all' | 'open' | 'closed' | 'archived'>('all');
   protected actionFilter = signal<'open' | 'done' | 'all'>('open');
   protected newBoardOpen = signal(false);
+  /** The Export popup: which boards start ticked (all of the team's history when empty) */
+  protected exportFor = signal<string[] | null>(null);
+
+  openExport(boardIds: string[] = []) {
+    this.exportFor.set(boardIds);
+  }
 
   protected statusLabels = CARD_STATUS_LABELS;
   protected roles: TeamRole[] = ['admin', 'member', 'viewer'];

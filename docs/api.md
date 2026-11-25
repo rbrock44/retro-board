@@ -63,10 +63,11 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards (each with `likes` and whether you `liked` it), actions, members and your permissions |
 | PATCH | `/api/boards/:boardId` | `title?, status?, settings?{allowAnonymous, locked, theme}` | facilitate |
-| POST | `/api/boards/:boardId/save` | `name?, date? (YYYY-MM-DD)` | facilitate. Files the board in the history as `date · name` (closed) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
+| POST | `/api/boards/:boardId/archive` | `name?, date? (YYYY-MM-DD)` | facilitate. Archives the board into the history as `date · name` (status `archived`) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
 | DELETE | `/api/boards/:boardId` | | team admin |
 | POST | `/api/boards/:boardId/save-template` | `name, description?` | team admin |
 | GET | `/api/boards/:boardId/export` | `?format=md\|csv` | read |
+| POST | `/api/export` | `boardIds[] (1-500), format: md\|csv` | read on every board. One file for many boards, grouped by team (spreadsheet gains `team` and `board` columns). Used by Settings → Export and a team's History |
 | POST | `/api/boards/:boardId/columns` | `title, color, description?` | facilitate |
 | PATCH | `/api/columns/:columnId` | `title?, color?, description?, position?` | facilitate |
 | DELETE | `/api/columns/:columnId` | | facilitate; deletes its cards |
@@ -140,5 +141,5 @@ type BoardEvent =
   | { type: 'card.upsert'; card }     | { type: 'card.delete'; id }
   | { type: 'action.upsert'; action } | { type: 'action.delete'; id }
   | { type: 'presence'; users }         // everyone currently on the board
-  | { type: 'board.next'; boardId; savedTitle };  // board was saved; move to the fresh one
+  | { type: 'board.next'; boardId; savedTitle };  // board was archived; move to the fresh one
 ```

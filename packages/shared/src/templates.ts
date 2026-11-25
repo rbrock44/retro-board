@@ -69,7 +69,7 @@ export const BUILT_IN_TEMPLATES: TemplateDto[] = [
 
 export const CARRIED_OVER_COLUMN = { title: 'Carried Over', color: '#a855f7' };
 
-/** What a team's fresh board is called (after Save Board, or when a team has no board yet) */
+/** What a team's fresh board is called (after Archive Board, or when a team has no board yet) */
 export const CURRENT_BOARD_TITLE = 'Current';
 /** What it was called before; open boards with this name are renamed on start-up / load */
 export const OLD_CURRENT_BOARD_TITLE = 'Current retro';

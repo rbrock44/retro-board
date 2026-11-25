@@ -1,9 +1,9 @@
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, isCarriedOverColumn, byPosition, positionAfter,
-  sanitizeTokens, type BoardSettings, type BoardStateDto, type CardDto, type ColumnSpec,
+  exportSlug, formatExport, sanitizeTokens, type BoardSettings, type ExportBoard, type ExportFormat, type BoardStateDto, type CardDto, type ColumnSpec,
 } from '@retro/shared';
 import { toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
@@ -192,12 +192,12 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   });
 
   /**
-   * "Save board": the board as it stands goes into the team's history (closed, titled with the date and an
+   * "Archive Board": the board as it stands goes into the team's history (closed, titled with the date and an
    * optional name) and a fresh current board takes its place with the same columns and settings. Cards marked
    * "carry over" move to the fresh board, in the column of the same name. Everyone on the old board is sent to
    * the new one.
    */
-  app.post('/api/boards/:boardId/save', async req => {
+  app.post('/api/boards/:boardId/archive', async req => {
     const user = requireUser(req);
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'facilitate');
     if (board.status !== 'open') throw badRequest('This board is already in the history');
@@ -210,7 +210,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
 
     const nextId = newId();
     await db.transaction(async tx => {
-      await tx.update(boards).set({ title: savedTitle, status: 'closed', closedAt: new Date() }).where(eq(boards.id, board.id));
+      await tx.update(boards).set({ title: savedTitle, status: 'archived', closedAt: new Date() }).where(eq(boards.id, board.id));
       await tx.insert(boards).values({
         id: nextId, teamId: board.teamId, title: CURRENT_BOARD_TITLE, createdBy: user.id,
         settings: { ...boardSettings(board.settings), locked: false },
@@ -338,58 +338,45 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
 
   // ---- export ----
 
+  /** What an export needs from one board, as this person sees it (anonymous authors stay hidden). */
+  async function exportData(board: typeof boards.$inferSelect, userId: string): Promise<ExportBoard> {
+    const [team] = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, board.teamId));
+    return {
+      teamName: team?.name ?? '',
+      board: { title: board.title, status: board.status, createdAt: board.createdAt.toISOString() },
+      columns: (await db.select().from(columns).where(eq(columns.boardId, board.id))).map(columnDto),
+      cards: (await loadCards(db, board.id))(userId),
+      actions: await loadActions(db, eq(actionItems.boardId, board.id)),
+    };
+  }
+
+  const sendExport = (reply: FastifyReply, text: string, format: ExportFormat, name: string) =>
+    reply.header('content-type', format === 'csv' ? 'text/csv; charset=utf-8' : 'text/markdown; charset=utf-8')
+      .header('content-disposition', `attachment; filename="${name}.${format}"`)
+      .send(format === 'csv' ? text : text + '\n');
+
   app.get('/api/boards/:boardId/export', async (req, reply) => {
     const user = requireUser(req);
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId);
-    const format = (req.query as { format?: string }).format === 'csv' ? 'csv' : 'md';
-    const cols = (await db.select().from(columns).where(eq(columns.boardId, board.id))).sort(byPosition);
-    const all = (await loadCards(db, board.id))(user.id).sort(byPosition);
-    const actions = await loadActions(db, eq(actionItems.boardId, board.id));
-    const slug = board.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'board';
-    const who = (c: CardDto) => (c.anonymous ? 'Anonymous' : c.author?.name ?? 'Someone');
-    const likes = (n: number) => `${n} ${n === 1 ? 'like' : 'likes'}`;
+    const format: ExportFormat = (req.query as { format?: string }).format === 'csv' ? 'csv' : 'md';
+    return sendExport(reply, formatExport([await exportData(board, user.id)], format), format, exportSlug(board.title));
+  });
 
-    if (format === 'csv') {
-      const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const lines = [['column', 'group', 'card', 'author', 'likes', 'status', 'replies', 'created'].join(',')];
-      for (const col of cols) {
-        for (const c of all.filter(x => x.columnId === col.id)) {
-          const head = c.parentId ? all.find(x => x.id === c.parentId) : null;
-          lines.push([col.title, head ? head.groupTitle ?? head.body.slice(0, 40) : c.groupTitle ?? '', c.body, who(c), c.likes,
-            CARD_STATUS_LABELS[c.status], c.replies.length, c.createdAt].map(esc).join(','));
-        }
-      }
-      lines.push('', ['action', 'owner', 'due', 'status'].join(','));
-      for (const a of actions) lines.push([a.title, a.owner?.name ?? '', a.dueDate ?? '', a.status].map(esc).join(','));
-      return reply.header('content-type', 'text/csv; charset=utf-8')
-        .header('content-disposition', `attachment; filename="${slug}.csv"`).send(lines.join('\n'));
+  /** Many boards in one file: Settings > Export, and Export on a team's History. */
+  app.post('/api/export', async (req, reply) => {
+    const user = requireUser(req);
+    const body = parse(z.object({
+      boardIds: z.array(z.string().min(1).max(64)).min(1, 'pick at least one board').max(500),
+      format: z.enum(['md', 'csv']).default('md'),
+    }), req.body);
+    const picked: ExportBoard[] = [];
+    for (const id of [...new Set(body.boardIds)]) {
+      const { board } = await requireBoard(db, user, id);
+      picked.push(await exportData(board, user.id));
     }
-
-    const md: string[] = [`# ${board.title}`, '', `_${new Date(board.createdAt).toDateString()} · ${board.status}_`, ''];
-    for (const col of cols) {
-      md.push(`## ${col.title}`, '');
-      const heads = all.filter(c => c.columnId === col.id && !c.parentId).sort((a, b) => b.likes - a.likes);
-      if (!heads.length) md.push('_No cards_', '');
-      for (const h of heads) {
-        const kids = all.filter(c => c.parentId === h.id);
-        const total = h.likes + kids.reduce((n, k) => n + k.likes, 0);
-        const tag = h.status !== 'none' ? ` \`${CARD_STATUS_LABELS[h.status]}\`` : '';
-        if (kids.length) {
-          md.push(`- **${h.groupTitle ?? 'Group'}** (${likes(total)})${tag}`);
-          for (const c of [h, ...kids]) md.push(`  - ${c.body.replace(/\n+/g, ' ')} — ${who(c)} (${c.likes})`);
-        } else {
-          md.push(`- ${h.body.replace(/\n+/g, ' ')} — ${who(h)} (${likes(h.likes)})${tag}`);
-        }
-        for (const r of [h, ...kids].flatMap(c => c.replies)) md.push(`  - ↳ ${r.author?.name ?? 'Someone'}: ${r.body.replace(/\n+/g, ' ')}`);
-      }
-      md.push('');
-    }
-    md.push('## Action items', '');
-    if (!actions.length) md.push('_None_');
-    for (const a of actions) {
-      md.push(`- [${a.status === 'done' ? 'x' : ' '}] ${a.title}${a.owner ? ` — @${a.owner.name}` : ''}${a.dueDate ? ` (due ${a.dueDate})` : ''}`);
-    }
-    return reply.header('content-type', 'text/markdown; charset=utf-8')
-      .header('content-disposition', `attachment; filename="${slug}.md"`).send(md.join('\n') + '\n');
+    // Grouped by team, oldest board first within a team, so the file reads like a history.
+    picked.sort((x, y) => x.teamName.localeCompare(y.teamName) || x.board.createdAt.localeCompare(y.board.createdAt));
+    const name = picked.length === 1 ? exportSlug(picked[0].board.title) : `retro-export-${new Date().toISOString().slice(0, 10)}`;
+    return sendExport(reply, formatExport(picked, body.format), body.format, name);
   });
 }

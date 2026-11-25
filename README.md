@@ -64,10 +64,10 @@ plain email and password).
 Each team has one **current board**. Clicking a team opens it straight away (a team with no board gets one from
 its default template), so people always land in the right place.
 
-- `💾 Save Board` - When the retro is done, a facilitator saves it. The board goes into the team's history as it
-  is, titled with the date and an optional name (`2026-11-24 · Sprint 42`), and a fresh current board takes its
-  place with the same columns and settings. Cards marked `Carry Over` move to the fresh board, back in the column
-  they came from. Everyone on the board is moved over automatically
+- `🗄 Archive Board` - When the retro is done, a facilitator archives it. The board moves to the team's history as
+  it is, titled with the date and an optional name (`2026-11-24 · Sprint 42`), and a fresh `Current` board takes
+  its place with the same columns and settings. Cards marked `Carry Over` move to the fresh board, back in the
+  column they came from. Everyone on the board is moved over automatically
 - `New Board` (on the History page) - Pick a template (Went Well / To Improve / Actions, Start / Stop / Continue, Mad / Sad / Glad,
   4Ls, Sailboat, Blank, or one your team saved) and whether anonymous cards are allowed
 - `Columns` - Facilitators add, rename, recolor (color picker with presets), describe, reorder and delete columns.
@@ -130,7 +130,12 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
   filterable by open, closed and archived; open any of them to read it. Saved boards are read-only, with a button
   back to the current board
 - `Search` - Searches every card, group name and action item the team has ever written
-- `Export` - Markdown, CSV, or `Print / PDF` for a clean printed summary
+- `Export` - Exporting is for the history, so the `Current` board has no Export button. Ways to export:
+  - **Settings → Export → `Export Retros…`** opens a popup with every team you're on and each team's past boards.
+    Tick whole teams or single boards, pick Markdown (a readable summary) or a spreadsheet (one row per card), and
+    get one file, grouped by team
+  - A team's **History** has an `Export` button for that team's boards, and each past board has its own `Export`
+  - A past board, opened from History, also has `Export` with `Print / PDF` for a clean printout
 
 ### Themes
 

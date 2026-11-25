@@ -130,7 +130,12 @@ export class DemoService {
   }
 
   exportBoard(boardId: string, format: 'md' | 'csv') {
-    const file = this.backend!.exportBoard(boardId, format);
+    this.exportBoards([boardId], format);
+  }
+
+  /** Builds the file in the browser (there's no server in the demo) and downloads it. */
+  exportBoards(boardIds: string[], format: 'md' | 'csv') {
+    const file = this.backend!.exportBoards(boardIds, format);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([file.text], { type: `${file.type};charset=utf-8` }));
     a.download = file.name;

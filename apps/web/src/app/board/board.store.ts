@@ -76,6 +76,8 @@ export class BoardStore {
   readonly sort = signal<SortMode>('position');
   readonly statusFilter = signal<CardStatus | 'all'>('all');
   readonly groupMode = signal(false);
+  /** In Group Mode, the card or group a dragged card would join if dropped now (highlighted) */
+  readonly dropTarget = signal<string | null>(null);
   readonly pickingGroupFor = signal<string | null>(null);
 
   readonly board = computed(() => this.state()?.board ?? null);

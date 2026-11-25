@@ -535,3 +535,19 @@ button.likes { cursor: pointer;
   span.on { background: var(--accent); } }
 .tour-actions { display: flex; align-items: center; gap: 0.4rem; }
 @media print { .tour-layer, .tour-offer { display: none !important; } }
+
+/* ---- Group Mode ---- */
+.group-toggle { color: var(--muted);
+  &.on { background: var(--accent); color: var(--accent-text); } }
+.group-mode-strip { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0 1rem 0.5rem; padding: 0.55rem 0.8rem;
+  border-radius: var(--radius-sm); border: 2px dashed var(--accent); font-size: 0.9rem;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  span:not(.gm-icon) { flex: 1 1 18rem; }
+  .gm-icon { font-size: 1.2rem; color: var(--accent); } }
+/* While it's on, cards read as draggable pieces, and the one you'd drop onto lights up */
+.columns.group-mode {
+  .drag-wrap { cursor: grab; }
+  .card, .group-box { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+  .card.in-group { outline: none; } }
+.card.drop-target, .group-box.drop-target { outline: 3px solid var(--accent) !important; outline-offset: 2px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }

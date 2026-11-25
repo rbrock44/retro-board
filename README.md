@@ -89,7 +89,8 @@ its default template), so people always land in the right place.
 ### Likes, Grouping and Marking
 
 - `Like` - 👍 on a card likes it, click again to unlike. Everyone can like every card, once. No budget, no limits
-- `Group` - Turn on `Group Mode` (or press `G`) and drag a card onto another card, or use a card's `⋯` →
+- `Group` - Click `⧉` in any column header (or press `G`) to turn on Group Mode: a strip explains it, and the card
+  or group you'd drop onto lights up as you drag. Drag a card onto another card or group, then `Done`. Or use a card's `⋯` →
   `Create Group` (or `Add to Group` on a grouped card) and click the target. A group shows as a box with its name, then every card in it at full size; click the name to rename it. The box shows how many cards are in it and their combined likes
 - `Sort` - `Manual` (drag to reorder, including across columns) or `Most Liked`
 - `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`. Filter the board by mark with `Show`
@@ -145,7 +146,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 |---|---|---|
 | `Ctrl/⌘ + Enter` | Any composer | Submit the card or reply |
 | `Esc` | Composer, menus, group picking | Cancel |
-| `G` | Board | Toggle group mode |
+| `G` | Board | Toggle Group Mode (also `⧉` in a column header) |
 
 ---
 

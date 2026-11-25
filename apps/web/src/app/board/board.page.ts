@@ -1,4 +1,4 @@
-import { CdkDrag, CdkDragPlaceholder, CdkDropList, CdkDropListGroup, type CdkDragDrop } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragPlaceholder, CdkDropList, CdkDropListGroup, type CdkDragDrop, type CdkDragMove } from '@angular/cdk/drag-drop';
 import { Component, computed, effect, inject, input, OnDestroy, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -80,10 +80,6 @@ import { ClickOutside } from '../shared/click-outside';
               <option value="likes">Most Liked</option>
             </select>
           </label>
-          @if (perm().canWrite) {
-            <button type="button" class="chip" [class.active]="store.groupMode()" (click)="store.groupMode.set(!store.groupMode())"
-                    title="Drag a card onto another card to group them (G)">⧉ Group Mode</button>
-          }
           <div class="spacer"></div>
           <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
             ✅ Actions ({{ store.openActions().length }})
@@ -104,6 +100,14 @@ import { ClickOutside } from '../shared/click-outside';
           @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board Settings</button> }
         </div>
 
+        @if (store.groupMode()) {
+          <div class="group-mode-strip no-print" role="status">
+            <span class="gm-icon" aria-hidden="true">⧉</span>
+            <span><strong>Group Mode is on.</strong> Drag a card onto another card or group to group them. Drop it in an
+              empty spot to move it instead.</span>
+            <button type="button" class="btn small primary" (click)="store.groupMode.set(false)">Done</button>
+          </div>
+        }
         @if (store.pickingGroupFor()) {
           <div class="banner" role="status">Click a card to create a group with it, or a group to add to it. <button type="button" class="link-btn" (click)="store.pickingGroupFor.set(null)">Cancel</button></div>
         }
@@ -113,7 +117,7 @@ import { ClickOutside } from '../shared/click-outside';
         }
 
         <div class="board-body">
-          <div class="columns" cdkDropListGroup>
+          <div class="columns" [class.group-mode]="store.groupMode()" cdkDropListGroup>
             @for (col of s.columns; track col.id) {
               <section class="column" [style.--col]="col.color" [attr.aria-label]="col.title">
                 <header class="column-head">
@@ -121,6 +125,11 @@ import { ClickOutside } from '../shared/click-outside';
                   <h2>{{ col.title }}</h2>
                   <span class="count">{{ (store.columnCards().get(col.id) ?? []).length }}</span>
                   <div class="spacer"></div>
+                  @if (perm().canWrite) {
+                    <button type="button" class="icon-btn small no-print group-toggle" [class.on]="store.groupMode()"
+                            [attr.aria-pressed]="store.groupMode()" aria-label="Group Mode" (click)="store.groupMode.set(!store.groupMode())"
+                            [title]="store.groupMode() ? 'Group Mode is on. Click to turn it off (G)' : 'Group Mode: drag cards onto each other to group them (G)'">⧉</button>
+                  }
                   @if (perm().canFacilitate) {
                     <button type="button" class="icon-btn small no-print" (click)="editColumn(col)" [attr.aria-label]="'Edit column ' + col.title">✎</button>
                   }
@@ -141,7 +150,8 @@ import { ClickOutside } from '../shared/click-outside';
                      [cdkDropListSortingDisabled]="store.groupMode() || store.sort() === 'likes'"
                      (cdkDropListDropped)="drop($event)">
                   @for (card of store.columnCards().get(col.id) ?? []; track card.id) {
-                    <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="!perm().canWrite" class="drag-wrap">
+                    <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="!perm().canWrite" class="drag-wrap"
+                         (cdkDragMoved)="dragMoved($event)" (cdkDragEnded)="store.dropTarget.set(null)">
                       <app-card [card]="card" [boardId]="s.board.id" />
                       <div *cdkDragPlaceholder class="drag-placeholder"></div>
                     </div>
@@ -339,7 +349,10 @@ export class BoardPage implements OnDestroy {
   onKey(e: KeyboardEvent) {
     const typing = (e.target as HTMLElement)?.closest('input, textarea, select, [contenteditable]');
     if (typing) return;
-    if (e.key === 'Escape') this.store.pickingGroupFor.set(null);
+    if (e.key === 'Escape') {
+      this.store.pickingGroupFor.set(null);
+      this.store.groupMode.set(false);
+    }
     if (e.key.toLowerCase() === 'g' && this.perm().canWrite) this.store.groupMode.update(v => !v);
   }
 
@@ -363,6 +376,13 @@ export class BoardPage implements OnDestroy {
     }
     if (this.store.sort() === 'likes' && targetColumn === card.columnId) return;
     void this.store.moveCard(card, targetColumn, e.currentIndex);
+  }
+
+  /** In Group Mode, light up the card or group the dragged card would join. */
+  dragMoved(e: CdkDragMove<CardDto>) {
+    if (!this.store.groupMode()) return;
+    const target = this.cardUnder(e.pointerPosition, e.source.data.id);
+    if (target !== this.store.dropTarget()) this.store.dropTarget.set(target);
   }
 
   /** In group mode sorting is off, so whatever card sits under the pointer is the drop target. */

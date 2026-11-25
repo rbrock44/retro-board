@@ -22,6 +22,7 @@ import { ClickOutside } from '../shared/click-outside';
   template: `
     @if (kids().length) {
       <section class="group-box" [attr.data-card-id]="card().id" [class.pick-target]="picking() && !sourceInGroup()"
+               [class.drop-target]="store.dropTarget() === card().id"
                (click)="onPickClick($event)" [attr.aria-label]="'Group: ' + groupName()">
         <header class="group-head">
           @if (editingTitle()) {
@@ -40,6 +41,7 @@ import { ClickOutside } from '../shared/click-outside';
       </section>
     } @else {
     <article class="card" [class.in-group]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
+             [class.drop-target]="!nested() && store.dropTarget() === card().id"
              [class.pick-target]="picking() && !nested() && store.pickingGroupFor() !== card().id"
              (click)="onPickClick($event)" [attr.aria-label]="'Card: ' + card().body.slice(0, 60)">
 

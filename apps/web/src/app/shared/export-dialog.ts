@@ -27,21 +27,21 @@ interface TeamHistory { team: TeamDto; boards: BoardSummaryDto[] }
         } @else {
           <fieldset class="export-format">
             <legend>Format</legend>
-            <label class="row"><input type="radio" name="fmt" value="md" [(ngModel)]="format"> Markdown (.md): a readable summary</label>
-            <label class="row"><input type="radio" name="fmt" value="csv" [(ngModel)]="format"> Spreadsheet (.csv): one row per card</label>
+            <label class="check"><input type="radio" name="fmt" value="md" [(ngModel)]="format"> Markdown (.md): a readable summary</label>
+            <label class="check"><input type="radio" name="fmt" value="csv" [(ngModel)]="format"> Spreadsheet (.csv): one row per card</label>
           </fieldset>
 
           @if (teams().length > 1) {
-            <label class="row export-all">
+            <label class="check export-all">
               <input type="checkbox" [checked]="allChosen()" [indeterminate]="someChosen() && !allChosen()" (change)="chooseAll($any($event.target).checked)">
-              <strong>All Teams</strong> <span class="muted">({{ total() }} boards)</span>
+              <strong>All Teams</strong> <span class="muted">({{ total() }} {{ total() === 1 ? 'board' : 'boards' }})</span>
             </label>
           }
 
           <div class="export-teams">
             @for (t of teams(); track t.team.id) {
               <section class="export-team">
-                <label class="row">
+                <label class="check">
                   <input type="checkbox" [checked]="teamChosen(t) === 'all'" [indeterminate]="teamChosen(t) === 'some'"
                          [disabled]="!t.boards.length" (change)="chooseTeam(t, $any($event.target).checked)">
                   <strong>{{ t.team.name }}</strong>
@@ -50,7 +50,7 @@ interface TeamHistory { team: TeamDto; boards: BoardSummaryDto[] }
                 @if (t.boards.length) {
                   <ul class="export-boards">
                     @for (b of t.boards; track b.id) {
-                      <li><label class="row">
+                      <li><label class="check export-board">
                         <input type="checkbox" [checked]="chosen().has(b.id)" (change)="toggle(b.id)">
                         <span class="grow">{{ b.title }}</span>
                         <span class="muted small">{{ b.cardCount }} cards · {{ (b.closedAt ?? b.createdAt) | date: 'mediumDate' }}</span>

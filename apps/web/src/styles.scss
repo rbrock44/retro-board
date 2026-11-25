@@ -564,6 +564,9 @@ button.likes { cursor: pointer;
 .export-teams { display: flex; flex-direction: column; gap: 0.6rem; max-height: 50vh; overflow: auto; }
 .export-team { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.7rem; }
 .export-boards { list-style: none; margin: 0.35rem 0 0; padding: 0 0 0 1.6rem; display: flex; flex-direction: column; gap: 0.2rem; }
+/* each board: checkbox, title, then its size and date pushed to the right, all on one line */
+.export-board { width: 100%; .grow { flex: 1; min-width: 0; } .small { white-space: nowrap; } }
+.export-team > label.check { font-weight: 600; }
 .board-list li .board-export { margin-left: auto; }
 
 /* ---- person shades ---- */

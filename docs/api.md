@@ -79,8 +79,9 @@ curl -b jar http://localhost:8080/api/teams
 | POST | `/api/boards/:boardId/cards` | `columnId, body, anonymous?, attachmentIds?` | write |
 | PATCH | `/api/cards/:cardId` | `body?, anonymous?, attachmentIds?, removeAttachmentIds?` (author or facilitator); `status?, groupTitle?` (anyone who can like) | |
 | DELETE | `/api/cards/:cardId` | | write + author or facilitator |
-| POST | `/api/cards/:cardId/move` | `columnId, position` | write. `position` is a fractional key; see `positionBetween()` in shared |
+| POST | `/api/cards/:cardId/move` | `columnId, position, alone?` (`alone`: a grouped card leaves on its own, the rest stay grouped) | write. `position` is a fractional key; see `positionBetween()` in shared |
 | POST | `/api/cards/:cardId/group` | `targetId` | write |
+| POST | `/api/cards/:cardId/arrange` | `order: cardId[]`: the group's cards in order, the first leads it; a card listed from elsewhere leaves there and joins | write |
 | POST | `/api/cards/:cardId/ungroup` | | write |
 | POST / DELETE | `/api/cards/:cardId/vote` | | vote (like). POST likes the card, DELETE unlikes it; one like per person per card, so repeating either is harmless. Returns `{ ok: true }`; the card arrives as `card.upsert` |
 | POST | `/api/reactions` | `targetType: card\|reply, targetId, emoji` | vote. Toggles |

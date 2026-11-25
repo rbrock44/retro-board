@@ -697,10 +697,40 @@ export class DemoBackend {
       const c = this.card(id);
       this.requireBoard(c.boardId, 'write');
       const col = this.state.columns.find(x => x.id === b.columnId && x.boardId === c.boardId) ?? notFound('Column');
+      const left = b.alone ? this.detachAlone(c) : [];
       c.columnId = col.id; c.position = b.position; c.parentId = null;
       const kids = this.state.cards.filter(k => k.parentId === c.id);
       for (const k of kids) k.columnId = col.id;
-      this.emitCards(c.boardId, [c.id, ...kids.map(k => k.id)]);
+      this.emitCards(c.boardId, [c.id, ...kids.map(k => k.id), ...left]);
+      return { ok: true };
+    }],
+    ['POST', /^\/api\/cards\/([^/]+)\/arrange$/, ([id], b) => {
+      // Same as the server: the group in this order, the first card leading it; other cards listed join.
+      const c = this.card(id);
+      this.requireBoard(c.boardId, 'write');
+      const order: string[] = b.order ?? [];
+      if (!order.length || new Set(order).size !== order.length) fail(400, 'A card is listed twice');
+      const headId = c.parentId ?? c.id;
+      const members = this.state.cards.filter(x => x.id === headId || x.parentId === headId);
+      if (!members.every(m => order.includes(m.id))) fail(400, 'List every card in the group');
+      const touched = new Set(order);
+      for (const oid of order) {
+        if (members.some(m => m.id === oid)) continue;
+        const joining = this.card(oid);
+        if (joining.boardId !== c.boardId) fail(400, 'Cards are on different boards');
+        for (const t of this.detachAlone(joining)) touched.add(t);
+      }
+      const oldHead = members.find(m => m.id === headId)!;
+      const [lead, ...rest] = order.map(oid => this.card(oid));
+      const at = { columnId: oldHead.columnId, position: oldHead.position, title: oldHead.groupTitle };
+      let pos: string | null = null;
+      for (const r of rest) {
+        pos = positionAfter(pos);
+        r.parentId = lead.id; r.columnId = at.columnId; r.position = pos;
+        if (r.id === headId) r.groupTitle = null;
+      }
+      lead.parentId = null; lead.columnId = at.columnId; lead.position = at.position; lead.groupTitle = at.title;
+      this.emitCards(c.boardId, [...touched]);
       return { ok: true };
     }],
     ['POST', /^\/api\/cards\/([^/]+)\/group$/, ([id], b) => {
@@ -856,6 +886,18 @@ export class DemoBackend {
     }
     if (b.carryOver !== false) this.carryPending(teamId, board.id, carriedPos, false);
     return this.boardDto(board);
+  }
+
+  /** Takes one card out of its group, leaving the others grouped; returns the other cards it changed. */
+  private detachAlone(card: DemoState['cards'][number]): string[] {
+    if (card.parentId) { const old = card.parentId; card.parentId = null; return [old]; }
+    const kids = this.state.cards.filter(k => k.parentId === card.id).sort(byPosition);
+    if (!kids.length) return [];
+    const [lead, ...rest] = kids;
+    lead.parentId = null; lead.columnId = card.columnId; lead.position = card.position; lead.groupTitle = card.groupTitle;
+    for (const r of rest) r.parentId = lead.id;
+    card.groupTitle = null;
+    return kids.map(k => k.id);
   }
 
   /** Same as the server: marked cards move once, into the same-named column when `matchColumns`. */

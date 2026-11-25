@@ -98,13 +98,15 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     const user = requireUser(req);
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     await requireBoard(db, user, card.boardId, 'write');
-    const body = parse(z.object({ columnId: zId, position: zPosition }), req.body);
+    const body = parse(z.object({ columnId: zId, position: zPosition, alone: z.boolean().optional() }), req.body);
     const [col] = await db.select().from(columns).where(and(eq(columns.id, body.columnId), eq(columns.boardId, card.boardId)));
     if (!col) throw notFound('Column');
-    // Moving a grouped card on its own pulls it out of the group; moving a group head brings its group along.
+    // Moving a grouped card on its own pulls it out of the group; moving a group head brings its group along,
+    // unless `alone`: then just that card leaves and the rest of the group stays where it was.
+    const left = body.alone ? await detachAlone(card) : [];
     await db.update(cards).set({ columnId: col.id, position: body.position, parentId: null }).where(eq(cards.id, card.id));
     const kids = await db.update(cards).set({ columnId: col.id }).where(eq(cards.parentId, card.id)).returning({ id: cards.id });
-    await emit(card.boardId, [card.id, ...kids.map(k => k.id)]);
+    await emit(card.boardId, [card.id, ...kids.map(k => k.id), ...left]);
     return { ok: true };
   });
 
@@ -124,6 +126,57 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     await emit(card.boardId, [head.id, ...moved.map(m => m.id)]);
     return { ok: true };
   });
+
+  /**
+   * Puts a group's cards in this order; the first one leads the group (takes its place and its name). A card from
+   * another group, or a loose one, can be listed too: it leaves where it was and joins.
+   */
+  app.post('/api/cards/:cardId/arrange', async req => {
+    const user = requireUser(req);
+    await requireFeature(ctx, 'groups');
+    const card = await loadCard(db, (req.params as { cardId: string }).cardId);
+    await requireBoard(db, user, card.boardId, 'write');
+    const { order } = parse(z.object({ order: z.array(zId).min(1).max(500) }), req.body);
+    if (new Set(order).size !== order.length) throw badRequest('A card is listed twice');
+    const headId = card.parentId ?? card.id;
+    const members = await db.select().from(cards).where(or(eq(cards.id, headId), eq(cards.parentId, headId)));
+    if (!members.every(m => order.includes(m.id))) throw badRequest('List every card in the group');
+    const touched = new Set<string>(order);
+    for (const id of order) {
+      if (members.some(m => m.id === id)) continue;
+      const joining = await loadCard(db, id);
+      if (joining.boardId !== card.boardId) throw badRequest('Cards are on different boards');
+      for (const t of await detachAlone(joining)) touched.add(t);
+    }
+    const oldHead = members.find(m => m.id === headId)!;
+    const [lead, ...rest] = order;
+    await db.update(cards).set({ parentId: null, columnId: oldHead.columnId, position: oldHead.position, groupTitle: oldHead.groupTitle })
+      .where(eq(cards.id, lead));
+    let pos: string | null = null;
+    for (const id of rest) {
+      pos = positionAfter(pos);
+      await db.update(cards).set({ parentId: lead, columnId: oldHead.columnId, position: pos, ...(id === headId ? { groupTitle: null } : {}) })
+        .where(eq(cards.id, id));
+    }
+    await emit(card.boardId, [...touched]);
+    return { ok: true };
+  });
+
+  /** Takes one card out of its group, leaving the others grouped. Returns the ids of the other cards it changed. */
+  async function detachAlone(card: typeof cards.$inferSelect): Promise<string[]> {
+    if (card.parentId) {
+      await db.update(cards).set({ parentId: null }).where(eq(cards.id, card.id));
+      return [card.parentId];
+    }
+    const kids = (await db.select().from(cards).where(eq(cards.parentId, card.id))).sort(byPosition);
+    if (!kids.length) return [];
+    const [lead, ...rest] = kids;
+    await db.update(cards).set({ parentId: null, columnId: card.columnId, position: card.position, groupTitle: card.groupTitle })
+      .where(eq(cards.id, lead.id));
+    if (rest.length) await db.update(cards).set({ parentId: lead.id }).where(inArray(cards.id, rest.map(r => r.id)));
+    await db.update(cards).set({ groupTitle: null }).where(eq(cards.id, card.id));
+    return kids.map(k => k.id);
+  }
 
   app.post('/api/cards/:cardId/ungroup', async req => {
     const user = requireUser(req);

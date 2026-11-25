@@ -106,6 +106,16 @@ export class BoardStore {
     return map;
   });
 
+  /** Where the pointer is while a card from a group is being dragged */
+  dragPointer: { x: number; y: number } | null = null;
+
+  /** Every drop list on the board (columns and groups), so a card can be dragged out of a group into any of them */
+  readonly dropListIds = computed(() => [
+    // groups first: a group sits inside a column, and the first list under the pointer wins
+    ...[...this.childrenOf().keys()].map(id => 'grp-' + id),
+    ...this.columns().map(c => 'col-' + c.id),
+  ]);
+
   /** Group heads and loose cards per column, in display order, with the status filter applied. */
   readonly columnCards = computed(() => {
     const filter = this.statusFilter();
@@ -248,15 +258,46 @@ export class BoardStore {
   }
 
   /** Moves a card to `index` within the visible list of `columnId` (which never contains the card itself). */
-  moveCard(card: CardDto, columnId: string, index: number) {
+  /** Moves a card (with its group, unless `alone`: then only that card leaves its group) to a spot in a column. */
+  moveCard(card: CardDto, columnId: string, index: number, alone = false) {
     const list = (this.columnCards().get(columnId) ?? []).filter(c => c.id !== card.id);
     const before = list[index - 1]?.position ?? null;
     const after = list[index]?.position ?? null;
     const position = positionBetween(before, after);
-    if (card.columnId === columnId && card.position === position) return undefined;
+    if (!alone && card.columnId === columnId && card.position === position) return undefined;
+    if (alone) this.detachLocal(card);
     this.patchCardLocal(card.id, { columnId, position, parentId: null });
     for (const k of this.childrenOf().get(card.id) ?? []) this.patchCardLocal(k.id, { columnId });
-    return this.run(this.api.post(`/api/cards/${card.id}/move`, { columnId, position }));
+    return this.run(this.api.post(`/api/cards/${card.id}/move`, { columnId, position, ...(alone ? { alone } : {}) }));
+  }
+
+  /** A group's cards in this order; the first leads it. Cards from elsewhere in `order` leave there and join. */
+  arrange(headId: string, order: string[]) {
+    const head = this.cards().find(c => c.id === headId);
+    if (!head || !order.length) return undefined;
+    for (const id of order) {
+      const c = this.cards().find(x => x.id === id);
+      if (c && c.id !== headId && c.parentId !== headId) this.detachLocal(c);
+    }
+    let pos: string | null = null;
+    order.forEach((id, i) => {
+      if (i === 0) this.patchCardLocal(id, { parentId: null, columnId: head.columnId, position: head.position, groupTitle: head.groupTitle });
+      else {
+        pos = positionBetween(pos, null);
+        this.patchCardLocal(id, { parentId: order[0], columnId: head.columnId, position: pos, ...(id === headId ? { groupTitle: null } : {}) });
+      }
+    });
+    return this.run(this.api.post(`/api/cards/${headId}/arrange`, { order }));
+  }
+
+  /** Local copy of the server's "take one card out of its group, the rest stay grouped". */
+  private detachLocal(card: CardDto) {
+    if (card.parentId) { this.patchCardLocal(card.id, { parentId: null }); return; }
+    const [lead, ...rest] = this.childrenOf().get(card.id) ?? [];
+    if (!lead) return;
+    this.patchCardLocal(lead.id, { parentId: null, columnId: card.columnId, position: card.position, groupTitle: card.groupTitle });
+    for (const r of rest) this.patchCardLocal(r.id, { parentId: lead.id });
+    this.patchCardLocal(card.id, { groupTitle: null });
   }
 
   groupInto(cardId: string, targetId: string) {

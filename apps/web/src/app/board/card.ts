@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CdkDrag, CdkDragHandle, CdkDragPlaceholder, CdkDropList, moveItemInArray, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CARD_STATUSES, CARD_STATUS_LABELS, type AttachmentDto, type CardDto, type CardStatus, type ReplyDto } from '@retro/shared';
 import { RouterLink } from '@angular/router';
 import { MarkdownPipe } from '../core/markdown.pipe';
@@ -20,13 +21,14 @@ import { AuthService } from '../core/auth.service';
  */
 @Component({
   selector: 'app-card',
-  imports: [ClickOutside, FormsModule, RouterLink, Avatar, MarkdownPipe, RelativeTimePipe, Composer, Media, Reactions, Reply],
+  imports: [ClickOutside, FormsModule, RouterLink, Avatar, MarkdownPipe, RelativeTimePipe, Composer, Media, Reactions, Reply,
+    CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder],
   template: `
     @if (kids().length) {
       <section class="group-box" [attr.data-card-id]="card().id" [class.pick-target]="picking() && !sourceInGroup()"
                [class.drop-target]="store.dropTarget() === card().id"
                (click)="onPickClick($event)" [attr.aria-label]="'Group: ' + groupName()">
-        <header class="group-head">
+        <header class="group-head" cdkDragHandle title="Drag here to move the whole group">
           @if (editingTitle()) {
             <input class="inline-edit" [value]="card().groupTitle ?? ''" placeholder="Name this group" (change)="saveTitle($event)"
                    (blur)="editingTitle.set(false)" (keydown.enter)="$any($event.target).blur()" autofocus aria-label="Group name">
@@ -36,10 +38,18 @@ import { AuthService } from '../core/auth.service';
           }
           <span class="group-meta">{{ kids().length + 1 }} cards · 👍 {{ totalLikes() }}</span>
         </header>
-        <app-card [card]="card()" [boardId]="boardId()" [nested]="true" />
-        @for (k of kids(); track k.id) {
-          <app-card [card]="k" [boardId]="boardId()" [nested]="true" />
-        }
+        <!-- each card in the group drags on its own: to a new spot in the group, into another group, or out -->
+        <div class="group-cards" cdkDropList [id]="'grp-' + card().id" [cdkDropListData]="card().id"
+             [cdkDropListEnterPredicate]="fromAGroup" [cdkDropListConnectedTo]="store.dropListIds()" [cdkDropListSortingDisabled]="store.groupMode()"
+             (cdkDropListDropped)="dropInGroup($event)">
+          @for (m of members(); track m.id) {
+            <div cdkDrag [cdkDragData]="m" [cdkDragDisabled]="!canWrite()" class="group-member"
+                 (cdkDragMoved)="store.dragPointer = $event.pointerPosition" (cdkDragEnded)="store.dragPointer = null">
+              <app-card [card]="m" [boardId]="boardId()" [nested]="true" />
+              <div *cdkDragPlaceholder class="drag-placeholder"></div>
+            </div>
+          }
+        </div>
       </section>
     } @else {
     <article class="card" [class.in-group]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
@@ -125,7 +135,10 @@ import { AuthService } from '../core/auth.service';
         <!-- A wide bar, not a small icon, so opening replies doesn't take careful aim -->
         <button type="button" class="replies-toggle no-print" [class.open]="repliesOpen()" (click)="repliesOpen.set(!repliesOpen())"
                 [attr.aria-expanded]="repliesOpen()" [attr.aria-label]="repliesLabel()" [title]="repliesLabel()">
-          <span aria-hidden="true">💬</span>
+          <svg class="bubble" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            <path d="M12 3.5c-4.97 0-9 3.36-9 7.5 0 2.2 1.14 4.17 2.95 5.55-.2 1.33-.85 2.6-1.85 3.6 1.9-.1 3.66-.8 5-1.9.94.22 1.91.25 2.9.25 4.97 0 9-3.36 9-7.5s-4.03-7.5-9-7.5Z"
+                  fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          </svg>
           @if (card().replies.length) { <span class="replies-count">{{ card().replies.length }}</span> }
           <span class="chev" aria-hidden="true">▾</span>
         </button>
@@ -166,6 +179,22 @@ export class Card {
   protected replyingTo = signal<ReplyDto | null>(null);
 
   protected kids = computed(() => (this.nested() ? [] : this.store.childrenOf().get(this.card().id) ?? []));
+  /** The group's cards as shown: the leading card, then the rest */
+  protected members = computed(() => [this.card(), ...this.kids()]);
+
+  /** Group lists take cards dragged out of a group; loose cards and whole groups go between columns' cards. */
+  protected fromAGroup = (drag: CdkDrag<CardDto>) => !!drag.dropContainer?.id?.startsWith('grp-');
+
+  protected dropInGroup(e: CdkDragDrop<string, string, CardDto>) {
+    const order = this.members().map(m => m.id);
+    if (e.previousContainer === e.container) {
+      if (this.store.groupMode() || e.previousIndex === e.currentIndex) return;
+      moveItemInArray(order, e.previousIndex, e.currentIndex);
+    } else {
+      order.splice(e.currentIndex, 0, e.item.data.id);
+    }
+    void this.store.arrange(this.card().id, order);
+  }
   /** In a group, whether drawn in a box or not: has a parent, or is the first card of one */
   protected inGroup = computed(() => !!this.card().parentId || !!this.store.childrenOf().get(this.card().id)?.length);
   protected groupName = computed(() => this.card().groupTitle || 'Group of ' + (this.kids().length + 1));

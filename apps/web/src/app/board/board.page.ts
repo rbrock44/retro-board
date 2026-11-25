@@ -152,7 +152,7 @@ import { ClickOutside } from '../shared/click-outside';
                   <p class="typing">{{ store.typingIn(col.id).join(', ') }} typing…</p>
                 }
 
-                <div class="card-list" cdkDropList [cdkDropListData]="col.id" [id]="'col-' + col.id"
+                <div class="card-list" cdkDropList [cdkDropListData]="col.id" [id]="'col-' + col.id" [cdkDropListEnterPredicate]="columnTakes"
                      [cdkDropListSortingDisabled]="store.groupMode() || store.sort() !== 'position'"
                      (cdkDropListDropped)="drop($event)">
                   @for (card of store.columnCards().get(col.id) ?? []; track card.id) {
@@ -382,10 +382,22 @@ export class BoardPage implements OnDestroy {
       void this.store.moveCard(card, targetColumn, list.length);
       return;
     }
+    // A card dragged out of a group leaves it on its own; the rest of the group stays put
+    const outOfGroup = e.previousContainer.id.startsWith('grp-');
     // Newest First and Most Liked are computed orders: dragging only moves a card to another column
-    if (this.store.sort() !== 'position' && targetColumn === card.columnId) return;
-    void this.store.moveCard(card, targetColumn, e.currentIndex);
+    if (this.store.sort() !== 'position' && targetColumn === card.columnId && !outOfGroup) return;
+    void this.store.moveCard(card, targetColumn, e.currentIndex, outOfGroup);
   }
+
+  /**
+   * A card dragged out of a group belongs to the column only once it's off every group: while it's over one, that
+   * group's own list gets it (CDK would otherwise hand it to the column the group sits in).
+   */
+  protected columnTakes = (drag: CdkDrag<CardDto>) => {
+    const p = this.store.dragPointer;
+    if (!p || !drag.dropContainer?.id?.startsWith('grp-')) return true;
+    return !document.elementsFromPoint(p.x, p.y).some(el => el.classList.contains('group-cards'));
+  };
 
   /** In Group Mode, light up the card or group the dragged card would join. */
   dragMoved(e: CdkDragMove<CardDto>) {

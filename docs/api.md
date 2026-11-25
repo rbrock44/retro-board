@@ -38,7 +38,7 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/teams` | `?all=1` (instance admins) | |
 | POST | `/api/teams` | `name, description?` | any user; creator becomes admin |
-| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?` | viewer / admin / admin |
+| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme}`. `allowAnonymous`, `locked` and `theme` are copied onto all the team's boards and sent live to open ones | viewer / admin / admin |
 | GET | `/api/teams/:teamId/members` | | viewer (emails shown to admins) |
 | POST | `/api/teams/:teamId/members` | `email, role` | admin; adds an existing account |
 | PATCH | `/api/teams/:teamId/members/:userId` | `role` | admin; last admin can't be demoted |
@@ -62,7 +62,7 @@ curl -b jar http://localhost:8080/api/teams
 | Method | Path | Body / query | Needs |
 |---|---|---|---|
 | GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards (each with `likes` and whether you `liked` it), actions, members and your permissions |
-| PATCH | `/api/boards/:boardId` | `title?, status?, settings?{allowAnonymous, locked, theme}` | facilitate |
+| PATCH | `/api/boards/:boardId` | `title?, status?` (anonymous cards, lock and colors are team settings) | facilitate |
 | POST | `/api/boards/:boardId/archive` | `name?, date? (YYYY-MM-DD)` | facilitate. Archives the board into the history as `date · name` (status `archived`) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
 | DELETE | `/api/boards/:boardId` | | team admin |
 | POST | `/api/boards/:boardId/save-template` | `name, description?` | team admin |

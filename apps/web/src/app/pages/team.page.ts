@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import {
+import { THEME_PRESETS, type ThemePreference,
   CARD_STATUS_LABELS, type ActionItemDto, type BoardSummaryDto, type ColumnSpec, type InviteDto, type SearchResultDto,
   type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto,
 } from '@retro/shared';
@@ -10,6 +10,7 @@ import { AuthService } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
 import { ActionList } from '../shared/action-list';
 import { ExportDialog } from '../shared/export-dialog';
+import { ThemeEditor } from '../shared/theme-editor';
 import { Avatar } from '../shared/avatar';
 import { ColorPicker } from '../shared/color-picker';
 import { Modal } from '../shared/modal';
@@ -19,7 +20,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
 
 @Component({
   selector: 'app-team-page',
-  imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList, ExportDialog],
+  imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList, ExportDialog, ThemeEditor],
   template: `
     @if (team(); as t) {
       <div class="page">
@@ -155,12 +156,24 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
               <h2>Team</h2>
               <label>Name <input [(ngModel)]="edit.name" maxlength="80"></label>
               <label>Description <textarea [(ngModel)]="edit.description" rows="2" maxlength="500"></textarea></label>
-              <h2>Defaults for New Retros</h2>
-              <label>Template
+              <h2 id="board-settings">Boards</h2>
+              <p class="muted">These apply to every board in this team, the current one and the history.</p>
+              <label>Columns for new boards
                 <select [(ngModel)]="edit.defaultTemplateId">
                   @for (tpl of templates(); track tpl.id) { <option [value]="tpl.id">{{ tpl.name }}</option> }
                 </select>
               </label>
+              @if (auth.on('anonymous')) {
+                <label class="check"><input type="checkbox" [(ngModel)]="edit.allowAnonymous"> Allow anonymous cards</label>
+              }
+              <label class="check"><input type="checkbox" [(ngModel)]="edit.locked"> Lock boards: no new or edited cards (likes and reactions still work)</label>
+              <fieldset class="stack">
+                <legend>Colors</legend>
+                <label class="check"><input type="checkbox" [(ngModel)]="edit.themed"> Give this team's boards their own colors (everyone sees them)</label>
+                @if (edit.themed) {
+                  <app-theme-editor [value]="edit.theme" (valueChange)="edit.theme = $event" [compact]="true" />
+                }
+              </fieldset>
               <div class="row"><button class="btn primary" type="button" (click)="saveTeam()">Save</button></div>
 
               <h2>Custom Templates</h2>
@@ -238,6 +251,8 @@ export class TeamPage {
   private toast = inject(ToastService);
 
   readonly teamId = input.required<string>();
+  /** ?tab=settings opens that tab (Board Settings links here) */
+  readonly tabParam = input<string | undefined>(undefined, { alias: 'tab' });
 
   protected team = signal<TeamDto | null>(null);
   protected boards = signal<BoardSummaryDto[]>([]);
@@ -271,7 +286,10 @@ export class TeamPage {
   protected inviteEmail = '';
   protected inviteRole: TeamRole = 'member';
   protected existingEmail = '';
-  protected edit = { name: '', description: '', defaultTemplateId: 'went-well' };
+  protected edit = {
+    name: '', description: '', defaultTemplateId: 'went-well', allowAnonymous: true, locked: false,
+    themed: false, theme: { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } } as ThemePreference,
+  };
   protected tplName = '';
   protected tplColumns = signal<ColumnSpec[]>([{ title: 'Went Well', color: '#22c55e' }]);
   protected boardTitle = '';
@@ -303,6 +321,8 @@ export class TeamPage {
       const id = this.teamId();
       this.results.set(null);
       void this.load(id).then(() => this.auth.welcome(id));
+      const want = this.tabParam();
+      if (want === 'settings' || want === 'actions' || want === 'members' || want === 'boards') this.tab.set(want as Tab);
     });
   }
 
@@ -316,6 +336,10 @@ export class TeamPage {
       this.edit = {
         name: team.name, description: team.description,
         defaultTemplateId: team.settings.defaultTemplateId ?? 'went-well',
+        allowAnonymous: team.settings.allowAnonymous ?? true,
+        locked: !!team.settings.locked,
+        themed: !!team.settings.theme,
+        theme: team.settings.theme ? { preset: 'custom', tokens: team.settings.theme } : { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } },
       };
       const [boards, members, templates] = await Promise.all([
         this.api.get<BoardSummaryDto[]>(`${this.base()}/boards`),
@@ -442,7 +466,12 @@ export class TeamPage {
     try {
       this.team.set(await this.api.patch<TeamDto>(this.base(), {
         name: this.edit.name, description: this.edit.description,
-        settings: { defaultTemplateId: this.edit.defaultTemplateId },
+        settings: {
+          defaultTemplateId: this.edit.defaultTemplateId,
+          ...(this.auth.on('anonymous') ? { allowAnonymous: this.edit.allowAnonymous } : {}),
+          locked: this.edit.locked,
+          theme: this.edit.themed ? this.edit.theme.tokens : null,
+        },
       }));
       this.toast.show('Saved');
     } catch (err) {

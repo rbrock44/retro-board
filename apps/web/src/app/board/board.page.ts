@@ -6,8 +6,8 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import {
-  CARD_STATUSES, CARD_STATUS_LABELS, COLOR_PRESETS, THEME_PRESETS, type CardDto, type CardStatus, type ColumnDto,
-  type ThemePreference, type BoardDto,
+  CARD_STATUSES, CARD_STATUS_LABELS, COLOR_PRESETS, type CardDto, type CardStatus, type ColumnDto,
+  type BoardDto,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { themeStyle } from '../core/theme.service';
@@ -18,7 +18,6 @@ import { ActionList } from '../shared/action-list';
 import { Avatar } from '../shared/avatar';
 import { ColorPicker } from '../shared/color-picker';
 import { Modal } from '../shared/modal';
-import { ThemeEditor } from '../shared/theme-editor';
 import { BoardStore, boardTabTitle } from './board.store';
 import { Card } from './card';
 import { Composer, type ComposerResult } from './composer';
@@ -29,7 +28,7 @@ import { ClickOutside } from '../shared/click-outside';
   providers: [BoardStore],
   imports: [ClickOutside, 
     FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragPlaceholder,
-    Card, Composer, Avatar, ActionList, Modal, ColorPicker, ThemeEditor, DatePipe,
+    Card, Composer, Avatar, ActionList, Modal, ColorPicker, DatePipe,
   ],
   host: {
     '(document:keydown)': 'onKey($event)',
@@ -226,27 +225,18 @@ import { ClickOutside } from '../shared/click-outside';
       }
       @if (settingsOpen()) {
         <app-modal heading="Board Settings" [wide]="true" (closed)="settingsOpen.set(false)">
-          <form class="stack" (ngSubmit)="saveSettings()">
-            @if (auth.on('anonymous')) {
-              <label class="check"><input name="anon" type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
-            }
-            <label class="check"><input name="lock" type="checkbox" [(ngModel)]="form.locked"> Lock board (no new or edited cards; likes and reactions stay open)</label>
-
-            <fieldset>
-              <legend>Board theme</legend>
-              <label class="check"><input name="themed" type="checkbox" [(ngModel)]="form.themed"> Give this board its own colors (everyone sees them)</label>
-              @if (form.themed) {
-                <app-theme-editor [value]="form.theme" (valueChange)="form.theme = $event" [compact]="true" />
-              }
-            </fieldset>
-
-            <div class="row wrap">
-              <button type="submit" class="btn primary">Save Settings</button>
-              <div class="spacer"></div>
+          <div class="stack">
+            <p class="muted">Anonymous cards, locking, colors and the columns new boards start with are set for the
+              whole team.
               @if (s.permissions.role === 'admin') {
+                <a [routerLink]="['/teams', s.team.id, 'history']" [queryParams]="{ tab: 'settings' }" (click)="settingsOpen.set(false)">Team Settings →</a>
+              } @else { A team admin can change them in the team's Settings. }
+            </p>
+            @if (s.permissions.role === 'admin') {
+              <div class="row wrap">
                 <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
-              }
-            </div>
+              </div>
+            }
             <hr>
             <div class="row wrap">
               @if (s.board.status === 'open') {
@@ -257,7 +247,7 @@ import { ClickOutside } from '../shared/click-outside';
               @if (s.board.status !== 'archived') { <button type="button" class="btn ghost" (click)="setStatus('archived')">Archive</button> }
               @if (s.permissions.role === 'admin') { <button type="button" class="btn ghost danger" (click)="deleteBoard()">Delete Board</button> }
             </div>
-          </form>
+          </div>
         </app-modal>
       }
     } @else {
@@ -281,10 +271,6 @@ export class BoardPage implements OnDestroy {
   protected editingTitle = signal(false);
   protected settingsOpen = signal(false);
   protected columnEdit = signal<{ id: string | null; title: string; color: string; description: string } | null>(null);
-  protected form = {
-    allowAnonymous: true, locked: false, themed: false,
-    theme: { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } } as ThemePreference,
-  };
 
   protected perm = computed(() => this.store.permissions() ?? { role: 'viewer', canWrite: false, canVote: false, canFacilitate: false });
   protected boardStyle = computed(() => {
@@ -448,23 +434,7 @@ export class BoardPage implements OnDestroy {
   }
 
   openSettings() {
-    const s = this.store.board()!.settings;
-    this.form = {
-      allowAnonymous: s.allowAnonymous, locked: s.locked,
-      themed: !!s.theme,
-      theme: s.theme ? { preset: 'custom', tokens: { ...s.theme } } : { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } },
-    };
     this.settingsOpen.set(true);
-  }
-
-  async saveSettings() {
-    await this.store.updateBoard({
-      settings: {
-        allowAnonymous: this.form.allowAnonymous, locked: this.form.locked,
-        theme: this.form.themed ? this.form.theme.tokens : null,
-      },
-    });
-    this.settingsOpen.set(false);
   }
 
   async setStatus(status: 'open' | 'closed' | 'archived') {

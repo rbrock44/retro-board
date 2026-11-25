@@ -72,8 +72,10 @@ its default template), so people always land in the right place.
   4Ls, Sailboat, Blank, or one your team saved) and whether anonymous cards are allowed
 - `Columns` - Facilitators add, rename, recolor (color picker with presets), describe, reorder and delete columns.
   `Save Columns as Template` keeps a layout for the team
-- `Board Settings` - Anonymous cards, `Lock` (no new or edited cards, likes and reactions stay open), a board-wide
-  color theme, and `Close` / `Reopen` / `Archive`
+- `Team Settings` - Set once per team (History → Settings → Boards) and applied to all its boards: the columns new
+  boards start with, anonymous cards, `Lock` (no new or edited cards; likes and reactions stay open) and the team's
+  colors. Changes reach open boards live
+- `Board Settings` - What's about one board: `Close` / `Reopen`, `Archive`, `Delete` and `Save Columns as Template`
 - `Live` - Every change appears for everyone instantly. Avatars in the header show who is on the board, and a
   "typing…" hint shows under columns where someone is writing
 
@@ -146,7 +148,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
   any of the nine colors with a color picker. Contrast warnings tell you when text gets hard to read. Your theme
   follows you to any device
 - `☀ / ☾` - Quick switch between light and dark in the top bar
-- `Board theme` - Facilitators can give a single board its own colors that everyone sees
+- `Team colors` - A team admin can give all of a team's boards their own colors that everyone sees (team Settings)
 
 ### Keyboard Shortcuts
 
@@ -269,8 +271,8 @@ Almost everything can be changed, at three levels:
 |---|---|---|
 | The person setting it up | `./launch.sh` questions or options | Site name, theme, accent color, default columns, sign-in, providers |
 | Instance admins | **Admin → Customize** | The same look and defaults, plus templates every team can use, who can sign up, and **Features**: switch off image, GIF or video uploads, anonymous cards, replies, reactions, likes, groups, action items, carry over, export, who's here, or Color by Person for everyone (each has an ⓘ explaining it). Off means hidden in the app and refused by the server, and media of a switched-off kind isn't served. Starts from the launch settings (`--disable videos,gifs`); **Reset** goes back to them |
-| Team admins | Team **History → Settings** | The team's default columns and saved column templates |
-| Facilitators | **⚙ Board settings** on a board | Columns (add, rename, recolor, reorder), anonymous cards, lock, and a theme just for that board |
+| Team admins | Team **History → Settings** | For all the team's boards: default columns, anonymous cards, lock, and the team's colors; plus saved column templates |
+| Facilitators | On a board | Columns (add, rename, recolor, reorder), and **⚙ Board Settings**: close, archive, delete, save columns as a template |
 | Everyone | **Profile & theme** | Their own theme: 7 presets or any colors, with a readability check |
 
 ### Share on Your Network

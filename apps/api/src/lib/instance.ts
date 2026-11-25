@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm';
 import {
-  BUILT_IN_TEMPLATES, DEFAULT_BOARD_SETTINGS, THEME_PRESETS, readableTextOn, sanitizeTokens,
-  type InstanceSettings, type ThemePreference,
+  BUILT_IN_TEMPLATES, DEFAULT_BOARD_SETTINGS, THEME_PRESETS, featureLabel, featuresFromDisabledList, readableTextOn,
+  sanitizeTokens, withFeatureDefaults, type FeatureKey, type InstanceSettings, type ThemePreference,
 } from '@retro/shared';
+import { forbidden } from './http';
 import type { Ctx } from '../context';
 import { instanceSettings } from '../db/schema';
 
@@ -20,6 +21,7 @@ export function launchDefaults(ctx: Pick<Ctx, 'config' | 'auth'>): InstanceSetti
     defaultTemplateId: env.templateId,
     allowAnonymous: env.allowAnonymous,
     signup: ctx.auth.local.signup,
+    features: featuresFromDisabledList(env.disabledFeatures),
   };
 }
 
@@ -40,7 +42,10 @@ export async function getSettings(ctx: Ctx): Promise<InstanceSettings> {
   const hit = cache.get(ctx);
   if (hit) return hit;
   const [row] = await ctx.db.select().from(instanceSettings).where(eq(instanceSettings.id, KEY));
-  const merged = { ...launchDefaults(ctx), ...cleanOverrides(row?.value ?? {}) };
+  const defaults = launchDefaults(ctx);
+  const overrides = cleanOverrides(row?.value ?? {});
+  // Feature switches merge one by one, so a new feature in a later version starts from its launch default
+  const merged = { ...defaults, ...overrides, features: withFeatureDefaults({ ...defaults.features, ...overrides.features }) };
   cache.set(ctx, merged);
   return merged;
 }
@@ -74,7 +79,17 @@ function cleanOverrides(raw: Record<string, unknown>): Partial<InstanceSettings>
   if (typeof raw['defaultTemplateId'] === 'string') out.defaultTemplateId = raw['defaultTemplateId'];
   if (typeof raw['allowAnonymous'] === 'boolean') out.allowAnonymous = raw['allowAnonymous'];
   if (raw['signup'] === 'open' || raw['signup'] === 'invite' || raw['signup'] === 'closed') out.signup = raw['signup'];
+  if (raw['features'] && typeof raw['features'] === 'object') out.features = raw['features'] as InstanceSettings['features'];
   return out;
+}
+
+/** Refuses with "<Feature> is turned off on this site" when an admin has switched a feature off. */
+export async function requireFeature(ctx: Ctx, key: FeatureKey) {
+  if (!(await getSettings(ctx)).features[key]) throw forbidden(`${featureLabel(key)} ${key.endsWith('s') ? 'are' : 'is'} turned off on this site`);
+}
+
+export async function featureOn(ctx: Ctx, key: FeatureKey): Promise<boolean> {
+  return (await getSettings(ctx)).features[key];
 }
 
 /** Board settings for a new board: built-in defaults, then the instance's. */

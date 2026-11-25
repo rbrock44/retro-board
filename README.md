@@ -268,7 +268,7 @@ Almost everything can be changed, at three levels:
 | Who | Where | What |
 |---|---|---|
 | The person setting it up | `./launch.sh` questions or options | Site name, theme, accent color, default columns, sign-in, providers |
-| Instance admins | **Admin → Customize** | The same look and defaults, plus templates every team can use and who can sign up. Starts from the launch settings; **Reset** goes back to them |
+| Instance admins | **Admin → Customize** | The same look and defaults, plus templates every team can use, who can sign up, and **Features**: switch off image, GIF or video uploads, anonymous cards, replies, reactions, likes, groups, action items, carry over, export, who's here, or Color by Person for everyone (each has an ⓘ explaining it). Off means hidden in the app and refused by the server, and media of a switched-off kind isn't served. Starts from the launch settings (`--disable videos,gifs`); **Reset** goes back to them |
 | Team admins | Team **History → Settings** | The team's default columns and saved column templates |
 | Facilitators | **⚙ Board settings** on a board | Columns (add, rename, recolor, reorder), anonymous cards, lock, and a theme just for that board |
 | Everyone | **Profile & theme** | Their own theme: 7 presets or any colors, with a readability check |

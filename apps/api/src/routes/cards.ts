@@ -7,6 +7,7 @@ import type { Db } from '../db';
 import { attachments, cards, columns, reactions, replies, votes, type User } from '../db/schema';
 import { canEditOwn, loadCard, loadReply, requireBoard } from '../lib/access';
 import { badRequest, forbidden, noContent, notFound, parse, requireNamed, requireUser, zBody, zId, zPosition } from '../lib/http';
+import { requireFeature } from '../lib/instance';
 import { newId } from '../lib/ids';
 import { loadCards } from '../lib/serialize';
 import { broadcastCards } from './boards';
@@ -43,6 +44,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
       attachmentIds: zAttachmentIds,
     }), req.body);
     if (!body.body.trim() && !body.attachmentIds.length) throw badRequest('A card needs text or an attachment');
+    if (body.anonymous) await requireFeature(ctx, 'anonymous');
     if (body.anonymous && !board.settings.allowAnonymous) throw forbidden('Anonymous cards are turned off on this board');
     const [col] = await db.select().from(columns).where(and(eq(columns.id, body.columnId), eq(columns.boardId, board.id)));
     if (!col) throw notFound('Column');
@@ -72,6 +74,9 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     const editsContent = body.body !== undefined || body.anonymous !== undefined || body.attachmentIds?.length || body.removeAttachmentIds?.length;
     const bctx = await requireBoard(db, user, card.boardId, editsContent ? 'write' : 'vote');
     if (editsContent && !canEditOwn(bctx, card.authorId, user.id)) throw forbidden('Only the author can edit this card');
+    if (body.anonymous && !card.anonymous) await requireFeature(ctx, 'anonymous');
+    if (body.status === 'carry_over') await requireFeature(ctx, 'carryOver');
+    if (body.groupTitle !== undefined) await requireFeature(ctx, 'groups');
     if (body.anonymous && !bctx.board.settings.allowAnonymous) throw forbidden('Anonymous cards are turned off on this board');
 
     await db.update(cards).set({
@@ -105,6 +110,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.post('/api/cards/:cardId/group', async req => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'groups');
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     await requireBoard(db, user, card.boardId, 'write');
     const { targetId } = parse(z.object({ targetId: zId }), req.body);
@@ -153,6 +159,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.post('/api/cards/:cardId/vote', async req => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'likes');
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     const { board } = await requireBoard(db, user, card.boardId, 'vote');
     await db.insert(votes).values({ boardId: board.id, cardId: card.id, userId: user.id, count: 1 }).onConflictDoNothing();
@@ -173,6 +180,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.post('/api/reactions', async req => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'reactions');
     const body = parse(z.object({
       targetType: z.enum(['card', 'reply']),
       targetId: zId,
@@ -194,6 +202,7 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.post('/api/cards/:cardId/replies', async req => {
     const user = requireNamed(req);
+    await requireFeature(ctx, 'replies');
     const card = await loadCard(db, (req.params as { cardId: string }).cardId);
     await requireBoard(db, user, card.boardId, 'write');
     const body = parse(z.object({ body: zBody, parentId: zId.nullable().optional(), attachmentIds: zAttachmentIds }), req.body);

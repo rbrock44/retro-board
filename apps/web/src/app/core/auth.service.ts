@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { AuthConfigDto, MeDto, TeamMemberDto } from '@retro/shared';
+import { withFeatureDefaults, type AuthConfigDto, type FeatureKey, type MeDto, type TeamMemberDto } from '@retro/shared';
 
 export type WhoMode = 'name' | 'switch' | 'welcome';
 export interface KnownGuest { id: string; name: string; onDevice: boolean }
@@ -75,6 +75,13 @@ export class AuthService {
   }
 
   readonly siteName = computed(() => this.config()?.site?.name || 'Retro Board');
+  /** What an admin has left switched on (Admin > Customize > Features) */
+  readonly features = computed(() => withFeatureDefaults(this.config()?.site?.features));
+
+  /** Is this feature switched on for the site? */
+  on(key: FeatureKey): boolean {
+    return this.features()[key];
+  }
 
   /** "Board · Retro Board" -> "Board · <site name>" */
   withSiteName(title: string): string {

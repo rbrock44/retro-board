@@ -1,13 +1,14 @@
-import { Component, input, output, signal } from '@angular/core';
-import type { AttachmentDto } from '@retro/shared';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { FEATURE_FOR_ATTACHMENT, type AttachmentDto } from '@retro/shared';
+import { AuthService } from '../core/auth.service';
 
 /** Attachment thumbnails on a card or reply; clicking opens the lightbox. */
 @Component({
   selector: 'app-media',
   template: `
-    @if (items().length) {
-      <div class="media-grid" [class.single]="items().length === 1">
-        @for (a of items(); track a.id) {
+    @if (shown().length) {
+      <div class="media-grid" [class.single]="shown().length === 1">
+        @for (a of shown(); track a.id) {
           <div class="media-cell">
             @if (a.kind === 'video') {
               <video [src]="a.url" controls preload="metadata" playsinline></video>
@@ -34,6 +35,9 @@ import type { AttachmentDto } from '@retro/shared';
 })
 export class Media {
   readonly items = input.required<AttachmentDto[]>();
+  private auth = inject(AuthService);
+  /** Kinds of media an admin has switched off aren't shown (the server stops serving them too) */
+  protected shown = computed(() => this.items().filter(a => this.auth.on(FEATURE_FOR_ATTACHMENT[a.kind])));
   readonly removable = input(false);
   readonly remove = output<AttachmentDto>();
   protected open = signal<AttachmentDto | null>(null);

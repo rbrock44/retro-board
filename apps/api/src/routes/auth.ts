@@ -60,7 +60,7 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     const local = { enabled: ctx.auth.local.enabled, signup: site.signup };
     return {
     mode: config.authMode,
-    site: { name: site.siteName, theme: site.theme },
+    site: { name: site.siteName, theme: site.theme, features: site.features },
     publicUrl: config.publicUrl,
     local: open ? { ...local, enabled: false } : local,
     providers: open ? [] : ctx.auth.list(),

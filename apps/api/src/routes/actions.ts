@@ -5,6 +5,7 @@ import type { Ctx } from '../context';
 import { actionItems, boards, cards, teamMembers } from '../db/schema';
 import { requireTeam } from '../lib/access';
 import { badRequest, noContent, notFound, parse, requireUser, zId } from '../lib/http';
+import { requireFeature } from '../lib/instance';
 import { newId } from '../lib/ids';
 import { loadActions } from '../lib/serialize';
 import { broadcastAction } from './boards';
@@ -22,6 +23,7 @@ export async function actionRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.post('/api/teams/:teamId/actions', async req => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'actions');
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'member');
     const body = parse(z.object({
       title: z.string().trim().min(1).max(300),

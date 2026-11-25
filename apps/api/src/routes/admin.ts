@@ -1,7 +1,7 @@
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { BUILT_IN_TEMPLATES, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
+import { BUILT_IN_TEMPLATES, withFeatureDefaults, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
 import { getOverrides, getSettings, launchDefaults, saveOverrides } from '../lib/instance';
 import { newId } from '../lib/ids';
 import { badRequest, noContent, notFound, parse, requireAdmin, zColor } from '../lib/http';
@@ -71,15 +71,17 @@ export async function adminRoutes(app: FastifyInstance, ctx: Ctx) {
       theme: zTheme.nullable().optional(),
       defaultTemplateId: z.string().max(64).optional(),
       allowAnonymous: z.boolean().optional(),
+      features: z.record(z.string(), z.boolean()).optional(),
       signup: z.enum(['open', 'invite', 'closed']).optional(),
       /** Settings to put back to their launch default */
-      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'allowAnonymous', 'signup'])).default([]),
+      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'features', 'allowAnonymous', 'signup'])).default([]),
     }), req.body);
     const { reset, ...set } = body;
     if (set.defaultTemplateId && !(await adminDto()).templates.some(t => t.id === set.defaultTemplateId)) {
       throw badRequest('Unknown template');
     }
     const clean = Object.fromEntries(Object.entries(set).filter(([, v]) => v !== undefined)) as Partial<InstanceSettings>;
+    if (clean.features) clean.features = withFeatureDefaults({ ...(await getSettings(ctx)).features, ...clean.features });
     await saveOverrides(ctx, clean, reset);
     return adminDto();
   });

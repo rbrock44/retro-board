@@ -13,6 +13,7 @@ import { eq } from 'drizzle-orm';
 import { openDatabase } from './db';
 import { users } from './db/schema';
 import { HttpError } from './lib/http';
+import { featureOn } from './lib/instance';
 import { createStorage, type Storage } from './lib/storage';
 import { createHub, noopHub, type Hub } from './realtime';
 import { actionRoutes } from './routes/actions';
@@ -109,7 +110,7 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
   }
 
   if (opts.realtime !== false) {
-    hubRef.current = createHub(app.server, ctx.db);
+    hubRef.current = createHub(app.server, ctx.db, () => featureOn(ctx, 'presence'));
   }
 
   const prune = setInterval(() => void pruneSessions(ctx.db).catch(() => {}), 6 * 3600_000);

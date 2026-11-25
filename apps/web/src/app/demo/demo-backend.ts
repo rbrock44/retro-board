@@ -3,7 +3,7 @@ import {
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
-  exportSlug, formatExport, type ExportBoard, type ExportFormat, type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
+  ALL_FEATURES_ON, exportSlug, formatExport, withFeatureDefaults, type ExportBoard, type ExportFormat, type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TemplateDto, type UserDto,
 } from '@retro/shared';
 import { ApiError } from '../core/api.service';
 import { DEMO_ME, newId, seedDemo, type DemoCard, type DemoState } from './demo-data';
@@ -196,13 +196,14 @@ export class DemoBackend {
 
   private static readonly SITE_DEFAULTS: InstanceSettings = {
     siteName: 'Retro Board', theme: null, defaultTemplateId: 'went-well',
-    allowAnonymous: true, signup: 'open',
+    allowAnonymous: true, signup: 'open', features: ALL_FEATURES_ON,
   };
 
   private site(): InstanceSettings {
     // Only known keys: a demo saved by an older version may carry settings that are gone.
     const saved = Object.entries(this.state.site ?? {}).filter(([k]) => k in DemoBackend.SITE_DEFAULTS);
-    return { ...DemoBackend.SITE_DEFAULTS, ...Object.fromEntries(saved) };
+    const site = { ...DemoBackend.SITE_DEFAULTS, ...Object.fromEntries(saved) } as InstanceSettings;
+    return { ...site, features: withFeatureDefaults(site.features) };
   }
 
   private siteAdminDto(): InstanceSettingsAdminDto {
@@ -388,7 +389,7 @@ export class DemoBackend {
   private routes: [string, RegExp, (p: string[], body: any, q: URLSearchParams) => unknown][] = [
     // ---- auth ----
     ['GET', /^\/api\/auth\/config$/, (): AuthConfigDto => ({
-      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: false, needsSetup: false,
+      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: false, needsSetup: false,
     })],
     ['GET', /^\/api\/auth\/me$/, () => this.meDto()],
     ['POST', /^\/api\/auth\/guest$/, () => this.meDto()],
@@ -508,6 +509,7 @@ export class DemoBackend {
     ['PATCH', /^\/api\/admin\/settings$/, (_p, b) => {
       const { reset = [], ...set } = b as Partial<InstanceSettings> & { reset?: (keyof InstanceSettings)[] };
       const next: Record<string, unknown> = { ...(this.state.site ?? {}), ...set };
+      if (set.features) next['features'] = withFeatureDefaults({ ...this.site().features, ...set.features });
       for (const k of reset) delete next[k];
       this.state.site = next as Partial<InstanceSettings>;
       return this.siteAdminDto();

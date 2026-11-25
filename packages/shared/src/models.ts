@@ -1,3 +1,4 @@
+import type { Features } from './features';
 export type InstanceRole = 'admin' | 'user';
 export type TeamRole = 'admin' | 'member' | 'viewer';
 export type BoardStatus = 'open' | 'closed' | 'archived';
@@ -78,6 +79,8 @@ export interface InstanceSettings {
   allowAnonymous: boolean;
   /** Who can create an email/password account */
   signup: 'open' | 'invite' | 'closed';
+  /** What's switched on for everyone (Admin > Customize > Features) */
+  features: Features;
 }
 
 export interface InstanceSettingsAdminDto {
@@ -95,7 +98,7 @@ export interface InstanceSettingsAdminDto {
 export interface AuthConfigDto {
   mode: AuthMode;
   /** Public bits of the instance settings */
-  site: { name: string; theme: ThemePreference | null };
+  site: { name: string; theme: ThemePreference | null; features: Features };
   /** PUBLIC_URL: the address people are meant to use (links that get shared are built from it) */
   publicUrl: string;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };

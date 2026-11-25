@@ -18,7 +18,7 @@ curl -b jar http://localhost:8080/api/teams
 
 | Method | Path | Body / query | Notes |
 |---|---|---|---|
-| GET | `/api/auth/config` | | `mode` (`accounts` or `none`), enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install |
+| GET | `/api/auth/config` | | `mode` (`accounts` or `none`), `site` (name, theme, `features` switched on), enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install |
 | POST | `/api/auth/guest` | | `AUTH_MODE=none` only: gives the browser a guest session (or returns the current one) |
 | POST | `/api/auth/guest/claim` | `userId` | `AUTH_MODE=none` only: "that's me", switch this browser to an existing named guest |
 | POST | `/api/auth/guest/new` | | `AUTH_MODE=none` only: start over as a new, unnamed guest |
@@ -113,7 +113,7 @@ Unused uploads (never attached to a card or reply) stay in storage; they are sma
 | Method | Path | Body |
 |---|---|---|
 | GET | `/api/admin/settings` | Instance settings in effect, the launch defaults, which ones were changed, templates, and where data is stored |
-| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, allowAnonymous, signup`, plus `reset: [keys]` to go back to launch defaults |
+| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, features: { videos: false, … }, allowAnonymous, signup`, plus `reset: [keys]` to go back to launch defaults |
 | POST | `/api/admin/templates` | `name, description?, columns[{title,color,description?}]`. A template every team can use; delete with `DELETE /api/templates/:id` |
 | GET | `/api/admin/users` | |
 | PATCH | `/api/admin/users/:userId` | `role?: admin\|user, disabled?` |

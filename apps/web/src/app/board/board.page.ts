@@ -54,10 +54,12 @@ import { ClickOutside } from '../shared/click-outside';
             @if (!store.connected()) { <span class="tag danger" title="Reconnecting for live updates">offline</span> }
           </div>
           <div class="spacer"></div>
-          <div class="presence" aria-label="People here now">
-            @for (u of store.presence().slice(0, 8); track u.id) { <app-avatar [user]="u" [size]="26" /> }
-            @if (store.presence().length > 8) { <span class="more">+{{ store.presence().length - 8 }}</span> }
-          </div>
+          @if (auth.on('presence')) {
+            <div class="presence" aria-label="People here now">
+              @for (u of store.presence().slice(0, 8); track u.id) { <app-avatar [user]="u" [size]="26" /> }
+              @if (store.presence().length > 8) { <span class="more">+{{ store.presence().length - 8 }}</span> }
+            </div>
+          }
         </header>
 
         @if (s.board.status !== 'open') {
@@ -72,22 +74,26 @@ import { ClickOutside } from '../shared/click-outside';
           <label>Show
             <select [ngModel]="store.statusFilter()" (ngModelChange)="store.statusFilter.set($event)">
               <option value="all">All Cards</option>
-              @for (st of statuses; track st) { <option [value]="st">{{ labels[st] }}</option> }
+              @for (st of statuses; track st) { @if (st !== 'carry_over' || auth.on('carryOver')) { <option [value]="st">{{ labels[st] }}</option> } }
             </select>
           </label>
           <label>Sort
             <select [ngModel]="store.sort()" (ngModelChange)="store.sort.set($event)">
               <option value="position">Manual</option>
-              <option value="likes">Most Liked</option>
+              @if (auth.on('likes')) { <option value="likes">Most Liked</option> }
             </select>
           </label>
-          <button type="button" class="chip person-shades-toggle" [class.active]="shades.enabled()" [attr.aria-pressed]="shades.enabled()"
-                  (click)="shades.toggle()" title="Give each person's cards their own light shade">🎨 Color by Person</button>
+          @if (auth.on('personShades')) {
+            <button type="button" class="chip person-shades-toggle" [class.active]="shades.enabled()" [attr.aria-pressed]="shades.enabled()"
+                    (click)="shades.toggle()" title="Give each person's cards their own light shade">🎨 Color by Person</button>
+          }
           <div class="spacer"></div>
-          <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
-            ✅ Actions ({{ store.openActions().length }})
-          </button>
-          @if (s.board.status !== 'open') {
+          @if (auth.on('actions')) {
+            <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
+              ✅ Actions ({{ store.openActions().length }})
+            </button>
+          }
+          @if (s.board.status !== 'open' && auth.on('export')) {
           <span class="menu-wrap" (clickOutside)="exportOpen.set(false)">
             <button type="button" class="btn ghost" (click)="exportOpen.set(!exportOpen())" [attr.aria-expanded]="exportOpen()">Export</button>
             @if (exportOpen()) {
@@ -130,7 +136,7 @@ import { ClickOutside } from '../shared/click-outside';
                   <h2>{{ col.title }}</h2>
                   <span class="count">{{ (store.columnCards().get(col.id) ?? []).length }}</span>
                   <div class="spacer"></div>
-                  @if (perm().canWrite) {
+                  @if (perm().canWrite && auth.on('groups')) {
                     <button type="button" class="icon-btn small no-print group-toggle" [class.on]="store.groupMode()"
                             [attr.aria-pressed]="store.groupMode()" aria-label="Group Mode" (click)="store.groupMode.set(!store.groupMode())"
                             [title]="store.groupMode() ? 'Group Mode is on. Click to turn it off (G)' : 'Group Mode: drag cards onto each other to group them (G)'">⧉</button>
@@ -147,7 +153,7 @@ import { ClickOutside } from '../shared/click-outside';
                                   (submitted)="add(col.id, $event)" (typed)="store.sendTyping(col.id)" />
                   </div>
                 }
-                @if (store.typingIn(col.id).length) {
+                @if (auth.on('presence') && store.typingIn(col.id).length) {
                   <p class="typing">{{ store.typingIn(col.id).join(', ') }} typing…</p>
                 }
 
@@ -171,7 +177,7 @@ import { ClickOutside } from '../shared/click-outside';
             }
           </div>
 
-          @if (sidebar()) {
+          @if (sidebar() && auth.on('actions')) {
             <aside class="sidebar card-surface" aria-label="Action Items">
               <div class="row"><h2>Action Items</h2><div class="spacer"></div>
                 <button type="button" class="icon-btn" (click)="sidebar.set(false)" aria-label="Close action items">✕</button></div>
@@ -226,7 +232,9 @@ import { ClickOutside } from '../shared/click-outside';
       @if (settingsOpen()) {
         <app-modal heading="Board Settings" [wide]="true" (closed)="settingsOpen.set(false)">
           <form class="stack" (ngSubmit)="saveSettings()">
-            <label class="check"><input name="anon" type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
+            @if (auth.on('anonymous')) {
+              <label class="check"><input name="anon" type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
+            }
             <label class="check"><input name="lock" type="checkbox" [(ngModel)]="form.locked"> Lock board (no new or edited cards; likes and reactions stay open)</label>
 
             <fieldset>
@@ -268,7 +276,7 @@ export class BoardPage implements OnDestroy {
   private router = inject(Router);
   private toast = inject(ToastService);
   private demo = inject(DemoService);
-  private auth = inject(AuthService);
+  protected auth = inject(AuthService);
   protected shades = inject(PersonShades);
   readonly boardId = input.required<string>();
 
@@ -360,7 +368,7 @@ export class BoardPage implements OnDestroy {
       this.store.pickingGroupFor.set(null);
       this.store.groupMode.set(false);
     }
-    if (e.key.toLowerCase() === 'g' && this.perm().canWrite) this.store.groupMode.update(v => !v);
+    if (e.key.toLowerCase() === 'g' && this.perm().canWrite && this.auth.on('groups')) this.store.groupMode.update(v => !v);
   }
 
   add(columnId: string, r: ComposerResult) {

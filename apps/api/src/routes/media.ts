@@ -2,11 +2,12 @@ import { and, eq, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import sharp, { type Metadata } from 'sharp';
 import { z } from 'zod';
-import type { AttachmentKind, GifResultDto } from '@retro/shared';
+import { FEATURE_FOR_ATTACHMENT, type AttachmentKind, type GifResultDto } from '@retro/shared';
 import type { Ctx } from '../context';
 import { attachments } from '../db/schema';
 import { canEditOwn, requireBoard } from '../lib/access';
 import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser } from '../lib/http';
+import { featureOn, requireFeature } from '../lib/instance';
 import { newId } from '../lib/ids';
 import { attachmentDto } from '../lib/serialize';
 
@@ -57,6 +58,7 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
 
     const video = sniffVideo(buf);
     if (video) {
+      await requireFeature(ctx, 'videos');
       kind = 'video';
       mime = video.mime;
       key = `${base}.${video.ext}`;
@@ -74,8 +76,10 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
       height = meta.pageHeight ?? meta.height ?? null;
       key = `${base}.${fmt.ext}`;
       if (meta.format === 'gif') {
+        await requireFeature(ctx, 'gifs');
         kind = 'gif';
       } else {
+        await requireFeature(ctx, 'images');
         kind = 'image';
         // Re-encode to drop EXIF (GPS, camera details) and bake in the rotation.
         const img = sharp(buf).rotate();
@@ -101,6 +105,7 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.post('/api/boards/:boardId/attachments/gif', async req => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'gifs');
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'write');
     const body = parse(z.object({
       url: z.string().url().max(1000),
@@ -123,6 +128,7 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.get('/api/gifs', async (req): Promise<GifResultDto[]> => {
     requireUser(req);
+    await requireFeature(ctx, 'gifs');
     if (!config.tenorApiKey) throw notFound('GIF search');
     const q = String((req.query as { q?: string }).q ?? '').trim().slice(0, 100);
     const url = new URL(q ? 'https://tenor.googleapis.com/v2/search' : 'https://tenor.googleapis.com/v2/featured');
@@ -152,6 +158,8 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
     const [a] = await db.select().from(attachments).where(eq(attachments.id, (req.params as { id: string }).id));
     if (!a) throw notFound('File');
     await requireBoard(db, user, a.boardId, 'read');
+    // A kind of media an admin has switched off isn't served, including what was uploaded before
+    if (!(await featureOn(ctx, FEATURE_FOR_ATTACHMENT[a.kind]))) throw notFound('File');
     if (a.externalUrl) return reply.redirect(thumb && a.externalPreviewUrl ? a.externalPreviewUrl : a.externalUrl);
     const key = thumb && a.thumbKey ? a.thumbKey : a.storageKey;
     if (!key) throw notFound('File');

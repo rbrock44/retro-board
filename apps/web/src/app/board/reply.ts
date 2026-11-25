@@ -7,6 +7,7 @@ import { BoardStore } from './board.store';
 import { Composer, type ComposerResult } from './composer';
 import { Media } from './media';
 import { Reactions } from './reactions';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-reply',
@@ -27,7 +28,9 @@ import { Reactions } from './reactions';
           <app-media [items]="reply().attachments" />
         }
         <div class="reply-actions">
-          <app-reactions [items]="reply().reactions" [enabled]="canReact()" (toggle)="store.react('reply', reply().id, $event)" />
+          @if (auth.on('reactions')) {
+            <app-reactions [items]="reply().reactions" [enabled]="canReact()" (toggle)="store.react('reply', reply().id, $event)" />
+          }
           @if (canWrite()) { <button type="button" class="link-btn" (click)="replyTo.emit(reply())">Reply</button> }
           @if (canEdit()) {
             <button type="button" class="link-btn" (click)="editing.set(true)">Edit</button>
@@ -39,6 +42,7 @@ import { Reactions } from './reactions';
   `,
 })
 export class Reply {
+  protected auth = inject(AuthService);
   protected store = inject(BoardStore);
   readonly reply = input.required<ReplyDto>();
   readonly boardId = input.required<string>();

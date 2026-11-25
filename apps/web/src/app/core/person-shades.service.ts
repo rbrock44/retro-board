@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { AuthService } from './auth.service';
 import { personHue, type UserDto } from '@retro/shared';
 
 export const PERSON_SHADES_STORAGE_KEY = 'retro.personShades';
@@ -9,6 +10,7 @@ export const PERSON_SHADES_STORAGE_KEY = 'retro.personShades';
  */
 @Injectable({ providedIn: 'root' })
 export class PersonShades {
+  private auth = inject(AuthService);
   readonly enabled = signal(this.stored());
 
   toggle() {
@@ -26,7 +28,7 @@ export class PersonShades {
 
   /** The hue to shade this person with, or null when shades are off or there's no known person */
   hueFor(user: Pick<UserDto, 'id'> | null | undefined): number | null {
-    return this.enabled() && user?.id ? personHue(user.id) : null;
+    return this.enabled() && this.auth.on('personShades') && user?.id ? personHue(user.id) : null;
   }
 
   private stored(): boolean {

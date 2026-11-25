@@ -53,6 +53,8 @@ Look and defaults (admins can change these later in the app: Admin > Customize)
   --theme NAME              auto (light/dark per device), light, dark, midnight, forest, sunset, grape, high-contrast
   --accent #RRGGBB          accent color on top of the theme
   --columns TEMPLATE        went-well, start-stop-continue, mad-sad-glad, 4ls, sailboat, blank
+  --disable LIST            features to switch off for everyone, comma separated, e.g. videos,gifs
+                            (images, gifs, videos, anonymous, replies, reactions, likes, groups, actions, carryOver, export, presence, personShades)
 
 Other
   --tenor-key KEY           turns on GIF search (searches go to Tenor)
@@ -96,6 +98,14 @@ lan_ip() {
   case "$found" in *.*.*.*) printf '%s' "$found" ;; esac
 }
 
+# "videos,gifs" -> ok when every name is a known feature (empty is fine)
+valid_features() {
+  [ -z "$1" ] && return 0
+  printf '%s\n' "$1" | tr ',' '\n' | while IFS= read -r f; do
+    case "$f" in images|gifs|videos|anonymous|replies|reactions|likes|groups|actions|carryOver|export|presence|personShades) ;; *) exit 1 ;; esac
+  done
+}
+
 # ---- arguments ---------------------------------------------------------------
 
 cmd=up
@@ -121,7 +131,7 @@ while [ $# -gt 0 ]; do
     -y|--yes) ask=0; shift; continue ;;
     --network) add_set ACCESS network; shift; continue ;;
     --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--tenor-key) ;;
-    --data|--site-name|--theme|--accent|--columns) ;;
+    --data|--site-name|--theme|--accent|--columns|--disable) ;;
     *) warn "Unknown option $opt (see ./launch.sh --help)"; exit 2 ;;
   esac
   [ $# -ge 2 ] || { warn "$opt needs a value (see ./launch.sh --help)"; exit 2; }
@@ -165,6 +175,10 @@ while [ $# -gt 0 ]; do
     --columns)
       case "$val" in went-well|start-stop-continue|mad-sad-glad|4ls|sailboat|blank) ;; *) warn "--columns is went-well, start-stop-continue, mad-sad-glad, 4ls, sailboat or blank"; exit 2 ;; esac
       add_set DEFAULT_TEMPLATE "$val" ;;
+    --disable)
+      val=$(printf '%s' "$val" | tr -d ' ')
+      if ! valid_features "$val"; then warn "--disable takes a comma separated list of: images, gifs, videos, anonymous, replies, reactions, likes, groups, actions, carryOver, export, presence, personShades"; exit 2; fi
+      add_set DISABLED_FEATURES "$val" ;;
   esac
   shift 2
 done
@@ -436,6 +450,14 @@ if [ "$ask" = 1 ]; then
     say "   mad-sad-glad, 4ls (Liked / Learned / Lacked / Longed for), sailboat, blank"
     choose cols "   Columns" "${cols:-went-well}" "went-well|start-stop-continue|mad-sad-glad|4ls|sailboat|blank"
     set_env DEFAULT_TEMPLATE "$cols"
+    say "   Features you can switch off for everyone: images, gifs, videos, anonymous, replies, reactions, likes, groups, actions, carryOver, export, presence, personShades"
+    while :; do
+      off=$(get_env DISABLED_FEATURES); prompt off "   Switch off (comma separated, Enter for none)" "$off"
+      off=$(printf '%s' "$off" | tr -d ' ')
+      if valid_features "$off"; then break; fi
+      say "   use names from the list, separated by commas"
+    done
+    set_env DISABLED_FEATURES "$off"
   fi
 
   say ""

@@ -51,6 +51,8 @@ Look and defaults (admins can change these later in the app: Admin > Customize)
   --theme NAME              auto (light/dark per device), light, dark, midnight, forest, sunset, grape, high-contrast
   --accent #RRGGBB          accent color on top of the theme
   --columns TEMPLATE        went-well, start-stop-continue, mad-sad-glad, 4ls, sailboat, blank
+  --disable LIST            features to switch off for everyone, comma separated, e.g. videos,gifs
+                            (images, gifs, videos, anonymous, replies, reactions, likes, groups, actions, carryOver, export, presence, personShades)
 
 Other
   --tenor-key KEY           turns on GIF search (searches go to Tenor)
@@ -98,6 +100,14 @@ function Get-LanIp {
   return ''
 }
 
+$featureNames = @('images', 'gifs', 'videos', 'anonymous', 'replies', 'reactions', 'likes', 'groups', 'actions', 'carryOver', 'export', 'presence', 'personShades')
+# "videos,gifs" -> true when every name is a known feature (empty is fine)
+function Test-Features([string]$list) {
+  if (-not $list) { return $true }
+  foreach ($f in $list.Split(',')) { if ($featureNames -cnotcontains $f) { return $false } }
+  return $true
+}
+
 # ---- arguments ---------------------------------------------------------------
 
 $argList = @($args)
@@ -123,7 +133,7 @@ $optionKeys = [ordered]@{
   '--port' = 'PORT'; '--url' = 'PUBLIC_URL'; '--tenor-key' = 'TENOR_API_KEY'
   '--auth' = 'AUTH_MODE'; '--signup' = 'LOCAL_SIGNUP'; '--access' = 'ACCESS'
   '--data' = 'DATA_STORAGE'; '--site-name' = 'SITE_NAME'; '--theme' = 'DEFAULT_THEME'; '--accent' = 'DEFAULT_ACCENT'
-  '--columns' = 'DEFAULT_TEMPLATE'
+  '--columns' = 'DEFAULT_TEMPLATE'; '--disable' = 'DISABLED_FEATURES'
 }
 $choices = @{
   '--auth' = @('accounts', 'none'); '--signup' = @('open', 'invite', 'closed'); '--access' = @('local', 'network', 'domain')
@@ -144,6 +154,10 @@ for ($i = 0; $i -lt $argList.Count; $i++) {
   if ($choices.ContainsKey($opt) -and $choices[$opt] -notcontains $val) { Fail "$opt is one of: $($choices[$opt] -join ', ')" 2 }
   if ($opt -eq '--port' -and $val -notmatch '^\d+$') { Fail "$opt is a number" 2 }
   if ($opt -eq '--accent' -and $val -notmatch '^#[0-9a-fA-F]{6}$') { Fail '--accent is a color like #3b82f6' 2 }
+  if ($opt -eq '--disable') {
+    $val = $val -replace '\s', ''
+    if (-not (Test-Features $val)) { Fail "--disable takes a comma separated list of: $($featureNames -join ', ')" 2 }
+  }
   if ($opt -eq '--url') { $val = $val.TrimEnd('/'); $sets['ACCESS'] = 'domain' }
   $sets[$optionKeys[$opt]] = $val
   $ask = $false
@@ -390,6 +404,13 @@ if ($ask) {
     Write-Host '   Columns for new boards: went-well (Went well / To improve / Action ideas), start-stop-continue,'
     Write-Host '   mad-sad-glad, 4ls (Liked / Learned / Lacked / Longed for), sailboat, blank'
     Set-EnvValue 'DEFAULT_TEMPLATE' (Ask-Choice '   Columns' (Or (Get-EnvValue 'DEFAULT_TEMPLATE') 'went-well') $choices['--columns'])
+    Write-Host "   Features you can switch off for everyone: $($featureNames -join ', ')"
+    while ($true) {
+      $off = (Ask '   Switch off (comma separated, Enter for none)' (Get-EnvValue 'DISABLED_FEATURES')) -replace '\s', ''
+      if (Test-Features $off) { break }
+      Write-Host '   use names from the list, separated by commas'
+    }
+    Set-EnvValue 'DISABLED_FEATURES' $off
   }
 
   Write-Host ''

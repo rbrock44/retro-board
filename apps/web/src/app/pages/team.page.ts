@@ -31,7 +31,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
           </div>
           <div class="spacer"></div>
           <a class="btn primary" [routerLink]="['/teams', t.id]">Current Board</a>
-          <button class="btn" type="button" (click)="openExport()">Export</button>
+          @if (auth.on('export')) { <button class="btn" type="button" (click)="openExport()">Export</button> }
           @if (canCreate()) { <button class="btn" type="button" (click)="openNewBoard()">New Board</button> }
         </div>
 
@@ -77,7 +77,7 @@ type Tab = 'boards' | 'actions' | 'members' | 'settings';
                   </a>
                   <span class="meta">{{ b.cardCount }} cards · {{ b.actionCount }} actions · {{ b.createdAt | ago }}
                     @if (b.createdBy) { · by {{ b.createdBy.name }} }</span>
-                  @if (b.status !== 'open') {
+                  @if (b.status !== 'open' && auth.on('export')) {
                     <button type="button" class="btn ghost small board-export" (click)="openExport([b.id])">Export</button>
                   }
                 </li>
@@ -283,7 +283,7 @@ export class TeamPage {
   protected canCreate = computed(() => this.team()?.myRole === 'admin' || this.team()?.myRole === 'member');
   protected tabs = computed(() => [
     { id: 'boards' as Tab, label: 'Past Boards' },
-    { id: 'actions' as Tab, label: 'Action Items' },
+    ...(this.auth.on('actions') ? [{ id: 'actions' as Tab, label: 'Action Items' }] : []),
     { id: 'members' as Tab, label: `Members (${this.members().length})` },
     ...(this.isAdmin() ? [{ id: 'settings' as Tab, label: 'Settings' }] : []),
   ]);

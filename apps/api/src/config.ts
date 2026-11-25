@@ -24,6 +24,7 @@ export interface AppConfig {
     accent: string | null;
     templateId: string;
     allowAnonymous: boolean;
+    disabledFeatures: string;
   };
   adminEmails: string[];
   storage: StorageConfig;
@@ -116,6 +117,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       accent: /^#[0-9a-fA-F]{6}$/.test(env.DEFAULT_ACCENT ?? '') ? env.DEFAULT_ACCENT!.toLowerCase() : null,
       templateId: (env.DEFAULT_TEMPLATE ?? '').trim() || 'went-well',
       allowAnonymous: (env.DEFAULT_ANONYMOUS ?? 'true') !== 'false',
+      /** DISABLED_FEATURES=videos,gifs switches those off from the start (admins can change it later) */
+      disabledFeatures: env.DISABLED_FEATURES ?? '',
     },
     adminEmails: list(env.ADMIN_EMAILS),
     storage,

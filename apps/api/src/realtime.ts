@@ -40,7 +40,7 @@ export function noopHub(): Hub {
   return { emitBoard() {}, emitUser() {}, async close() {} };
 }
 
-export function createHub(server: HttpServer, db: Db): Hub {
+export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<boolean> = async () => true): Hub {
   const io = new Server(server, { path: '/socket.io', serveClient: false, cors: { origin: false } });
 
   io.use(async (socket, next) => {
@@ -56,6 +56,10 @@ export function createHub(server: HttpServer, db: Db): Hub {
   });
 
   async function presence(boardId: string) {
+    if (!(await presenceOn())) {
+      io.to(room(boardId)).emit(SOCKET_EVENTS.event, { type: 'presence', users: [] } satisfies BoardEvent);
+      return;
+    }
     const sockets = await io.in(room(boardId)).fetchSockets();
     const seen = new Map<string, UserDto>();
     for (const s of sockets) {
@@ -88,8 +92,9 @@ export function createHub(server: HttpServer, db: Db): Hub {
       await presence(boardId);
     });
 
-    socket.on(SOCKET_EVENTS.typing, (boardId: unknown, columnId: unknown) => {
+    socket.on(SOCKET_EVENTS.typing, async (boardId: unknown, columnId: unknown) => {
       if (typeof boardId !== 'string' || !data.boards.has(boardId)) return;
+      if (!(await presenceOn())) return;
       socket.to(room(boardId)).emit(SOCKET_EVENTS.typing, { user: toUserDto(data.user), columnId });
     });
 

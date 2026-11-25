@@ -11,7 +11,7 @@ import {
   actionItems, attachments, boards, cards, columns, teamMembers, teams, templates, users,
 } from '../db/schema';
 import { requireBoard, requireTeam } from '../lib/access';
-import { getSettings, newBoardSettings, templateFor } from '../lib/instance';
+import { featureOn, getSettings, newBoardSettings, requireFeature, templateFor } from '../lib/instance';
 import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
 import { newId } from '../lib/ids';
 import { boardDto, boardSettings, columnDto, loadActions, loadCards } from '../lib/serialize';
@@ -130,6 +130,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       }
     }
 
+    const carry = await featureOn(ctx, 'carryOver');
     const settings = mergeSettings(newBoardSettings(site), body.settings ?? {});
 
     const boardId = newId();
@@ -143,7 +144,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
       }
 
-      if (body.carryOver) await carryPending(tx, team.id, boardId, carriedColumnPos, false);
+      if (body.carryOver && carry) await carryPending(tx, team.id, boardId, carriedColumnPos, false);
     });
 
     const [b] = await db.select().from(boards).where(eq(boards.id, boardId));
@@ -208,6 +209,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     }), req.body);
     const savedTitle = savedBoardTitle(body.date ?? new Date().toISOString().slice(0, 10), body.name);
 
+    const carry = await featureOn(ctx, 'carryOver');
     const nextId = newId();
     await db.transaction(async tx => {
       await tx.update(boards).set({ title: savedTitle, status: 'archived', closedAt: new Date() }).where(eq(boards.id, board.id));
@@ -222,7 +224,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         pos = positionAfter(pos);
         await tx.insert(columns).values({ id: newId(), boardId: nextId, title: c.title, color: c.color, description: c.description, position: pos });
       }
-      await carryPending(tx, board.teamId, nextId, carriedPos, true);
+      if (carry) await carryPending(tx, board.teamId, nextId, carriedPos, true);
     });
 
     const [saved] = await db.select().from(boards).where(eq(boards.id, board.id));
@@ -251,6 +253,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       const [t] = await db.select().from(templates).where(and(eq(templates.id, templateId), or(eq(templates.teamId, team.id), isNull(templates.teamId))));
       specs = t?.columns ?? BUILT_IN_TEMPLATES[0].columns;
     }
+    const carry = await featureOn(ctx, 'carryOver');
     const boardId = newId();
     await db.transaction(async tx => {
       await tx.insert(boards).values({
@@ -263,7 +266,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         pos = positionAfter(pos);
         await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
       }
-      await carryPending(tx, team.id, boardId, carriedPos, true);
+      if (carry) await carryPending(tx, team.id, boardId, carriedPos, true);
     });
     return { boardId };
   });
@@ -357,6 +360,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.get('/api/boards/:boardId/export', async (req, reply) => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'export');
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId);
     const format: ExportFormat = (req.query as { format?: string }).format === 'csv' ? 'csv' : 'md';
     return sendExport(reply, formatExport([await exportData(board, user.id)], format), format, exportSlug(board.title));
@@ -365,6 +369,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   /** Many boards in one file: Settings > Export, and Export on a team's History. */
   app.post('/api/export', async (req, reply) => {
     const user = requireUser(req);
+    await requireFeature(ctx, 'export');
     const body = parse(z.object({
       boardIds: z.array(z.string().min(1).max(64)).min(1, 'pick at least one board').max(500),
       format: z.enum(['md', 'csv']).default('md'),

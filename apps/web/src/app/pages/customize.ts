@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  COLOR_PRESETS, THEME_PRESETS,
+  COLOR_PRESETS, FEATURES, THEME_PRESETS, type FeatureKey, type Features,
   type ColumnSpec, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto, type ThemePreference,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
@@ -95,6 +95,31 @@ type Key = keyof InstanceSettings;
             }</p>
         </section>
 
+        <section class="card-surface stack">
+          <div class="row"><h2>Features</h2><div class="spacer"></div>
+            <button type="button" class="btn ghost small" (click)="setAllFeatures(true)">Turn All On</button></div>
+          <p class="muted">Switch off anything your organization doesn't want, for every team. It's hidden in the app and the
+            server refuses it too, so nobody can use it by going around the screen. Press ⓘ for what each one does.</p>
+          @for (g of featureGroups; track g.name) {
+            <fieldset class="feature-group">
+              <legend>{{ g.name }}</legend>
+              @for (f of g.items; track f.key) {
+                <div class="feature-row">
+                  <label class="row">
+                    <input type="checkbox" [checked]="form.features[f.key]" (change)="setFeature(f.key, $any($event.target).checked)">
+                    <span [class.off]="!form.features[f.key]">{{ f.label }}</span>
+                  </label>
+                  <button type="button" class="info-btn" [class.open]="infoOpen() === f.key" [attr.aria-expanded]="infoOpen() === f.key"
+                          [attr.aria-label]="'About ' + f.label" [title]="f.info" (click)="infoOpen.set(infoOpen() === f.key ? null : f.key)">ⓘ</button>
+                  @if (infoOpen() === f.key) { <p class="feature-info" role="note">{{ f.info }}</p> }
+                </div>
+              }
+            </fieldset>
+          }
+          <p class="muted small">{{ featuresHint() }}
+            @if (overridden('features')) { <button type="button" class="link-btn" (click)="reset('features')">Reset</button> }</p>
+        </section>
+
         @if (!auth.open()) {
           <section class="card-surface stack">
             <h2>Sign-in</h2>
@@ -182,6 +207,23 @@ export class Customize {
       key === 'defaultTemplateId' ? this.data()!.templates.find(t => t.id === v)?.name ?? v :
       key === 'allowAnonymous' ? `anonymous ${v ? 'on' : 'off'}` : v;
     return `${this.overridden(key) ? 'Changed here. ' : ''}Launch setting: ${shown}.`;
+  }
+
+  /** The features list, in the groups the page shows */
+  protected featureGroups = (['Media', 'Cards', 'Retros', 'People'] as const).map(name => ({ name, items: FEATURES.filter(f => f.group === name) }));
+  protected infoOpen = signal<FeatureKey | null>(null);
+
+  protected setFeature(key: FeatureKey, on: boolean) {
+    this.form.features = { ...this.form.features, [key]: on };
+  }
+
+  protected setAllFeatures(on: boolean) {
+    this.form.features = Object.fromEntries(FEATURES.map(f => [f.key, on])) as Features;
+  }
+
+  protected featuresHint(): string {
+    const off = FEATURES.filter(f => !this.data()!.launchDefaults.features[f.key]).map(f => f.label);
+    return `${this.overridden('features') ? 'Changed here. ' : ''}Launch setting: ${off.length ? off.join(', ') + ' off' : 'everything on'}.`;
   }
 
   protected useSiteTheme() {

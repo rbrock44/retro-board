@@ -1,9 +1,10 @@
-import { Component, ElementRef, inject, input, output, signal, viewChild, afterNextRender } from '@angular/core';
+import { Component, ElementRef, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { AttachmentDto } from '@retro/shared';
 import { Api, errorMessage } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 import { GifPicker } from './gif-picker';
 
 interface PendingUpload {
@@ -55,12 +56,14 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,v
       }
 
       <div class="composer-bar">
-        <input #file type="file" hidden multiple [accept]="accept" (change)="onPick($event)">
-        <button type="button" class="icon-btn" (click)="file.click()" title="Attach image or video" aria-label="Attach image or video">📎</button>
-        @if (auth.config()?.gifSearch) {
+        <input #file type="file" hidden multiple [accept]="acceptTypes()" (change)="onPick($event)">
+        @if (acceptTypes()) {
+          <button type="button" class="icon-btn" (click)="file.click()" [title]="attachLabel()" [attr.aria-label]="attachLabel()">📎</button>
+        }
+        @if (auth.config()?.gifSearch && auth.on('gifs')) {
           <button type="button" class="icon-btn gif-btn" (click)="gifOpen.set(true)" title="Add a GIF" aria-label="Add a GIF">GIF</button>
         }
-        @if (allowAnonymous()) {
+        @if (allowAnonymous() && auth.on('anonymous')) {
           <label class="check small" title="Hide your name on this card"><input type="checkbox" name="anon" [(ngModel)]="anonymous"> Anonymous</label>
         }
         <div class="spacer"></div>
@@ -75,6 +78,7 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,v
 })
 export class Composer {
   protected auth = inject(AuthService);
+  private toast = inject(ToastService);
   private api = inject(Api);
 
   readonly boardId = input.required<string>();
@@ -93,7 +97,6 @@ export class Composer {
 
   protected body = '';
   protected anonymous = false;
-  protected accept = ACCEPT;
   protected attachments = signal<AttachmentDto[]>([]);
   protected uploads = signal<PendingUpload[]>([]);
   protected dragOver = signal(false);
@@ -159,8 +162,32 @@ export class Composer {
     el.value = '';
   }
 
+  /** File types the 📎 picker offers, from what's switched on */
+  protected acceptTypes = computed(() => [
+    this.auth.on('images') ? 'image/png,image/jpeg,image/webp,image/avif' : '',
+    this.auth.on('gifs') ? 'image/gif' : '',
+    this.auth.on('videos') ? 'video/mp4,video/webm,video/quicktime' : '',
+  ].filter(Boolean).join(','));
+  protected attachLabel = computed(() => {
+    const kinds = [this.auth.on('images') && 'image', this.auth.on('gifs') && 'GIF', this.auth.on('videos') && 'video'].filter(Boolean);
+    return 'Attach ' + (kinds.length > 1 ? kinds.slice(0, -1).join(', ') + ' or ' + kinds.at(-1) : kinds[0] ?? 'a file');
+  });
+
+  /** Pasted or dropped files skip the picker, so check them here too */
+  private allowed(file: File): string | null {
+    if (file.type === 'image/gif') return this.auth.on('gifs') ? null : 'GIFs are turned off on this site';
+    if (file.type.startsWith('image/')) return this.auth.on('images') ? null : 'Image uploads are turned off on this site';
+    if (file.type.startsWith('video/')) return this.auth.on('videos') ? null : 'Video uploads are turned off on this site';
+    return null;
+  }
+
   async upload(file: File) {
     if (this.attachments().length + this.uploads().length >= 10) return;
+    const blocked = this.allowed(file);
+    if (blocked) {
+      this.toast.show(blocked, 'error');
+      return;
+    }
     const key = this.nextKey++;
     const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
     this.uploads.update(u => [...u, { key, name: file.name, progress: 0, preview }]);

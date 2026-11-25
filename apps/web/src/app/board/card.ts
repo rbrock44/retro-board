@@ -12,6 +12,7 @@ import { Reactions } from './reactions';
 import { Reply } from './reply';
 import { ClickOutside } from '../shared/click-outside';
 import { PersonShades } from '../core/person-shades.service';
+import { AuthService } from '../core/auth.service';
 
 /**
  * One card. A group is shown as a box: its name, then every card in it as an equal, full card (the first card
@@ -68,7 +69,8 @@ import { PersonShades } from '../core/person-shades.service';
         </span>
         <div class="spacer"></div>
         @if (card().status !== 'none') { <span class="status-badge" [attr.data-status]="card().status">{{ labels[card().status] }}</span> }
-        @if (canVote()) {
+        @if (!auth.on('likes')) {
+        } @else if (canVote()) {
           <button type="button" class="likes" [class.on]="card().liked" [attr.aria-pressed]="card().liked"
                   [attr.aria-label]="(card().liked ? 'Unlike' : 'Like') + ' (' + likesLabel() + ')'"
                   [title]="card().liked ? 'You like this. Click to unlike' : 'Like this card'"
@@ -79,7 +81,9 @@ import { PersonShades } from '../core/person-shades.service';
       </footer>
 
       <div class="card-actions">
-        <app-reactions [items]="card().reactions" [enabled]="canVote()" (toggle)="store.react('card', card().id, $event)" />
+        @if (auth.on('reactions')) {
+          <app-reactions [items]="card().reactions" [enabled]="canVote()" (toggle)="store.react('card', card().id, $event)" />
+        }
         <div class="spacer"></div>
         @if (canMark() || canEdit()) {
           <span class="menu-wrap" (clickOutside)="menuOpen.set(false)">
@@ -88,16 +92,20 @@ import { PersonShades } from '../core/person-shades.service';
               <div class="menu right" role="menu" (click)="menuOpen.set(false)">
                 @if (canMark()) {
                   <span class="menu-label">Mark as</span>
-                  @for (s of statuses; track s) {
+                  @for (s of markable(); track s) {
                     <button type="button" role="menuitemradio" [attr.aria-checked]="card().status === s" (click)="store.setStatus(card().id, s)">
                       {{ card().status === s ? '● ' : '' }}{{ labels[s] }}
                     </button>
                   }
                   <hr>
-                  <button type="button" role="menuitem" (click)="makeAction()">Create Action Item</button>
+                  @if (auth.on('actions')) {
+                    <button type="button" role="menuitem" (click)="makeAction()">Create Action Item</button>
+                  }
                 }
                 @if (canWrite()) {
-                  <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ inGroup() ? 'Add to Group' : 'Create Group' }}</button>
+                  @if (auth.on('groups')) {
+                    <button type="button" role="menuitem" (click)="store.pickingGroupFor.set(card().id)">{{ inGroup() ? 'Add to Group' : 'Create Group' }}</button>
+                  }
                   @if (inGroup()) {
                     <button type="button" role="menuitem" (click)="store.ungroup(card().id)">{{ card().parentId ? 'Remove from Group' : 'Break Up Group' }}</button>
                   }
@@ -113,32 +121,35 @@ import { PersonShades } from '../core/person-shades.service';
         }
       </div>
 
-      <!-- A wide bar, not a small icon, so opening replies doesn't take careful aim -->
-      <button type="button" class="replies-toggle no-print" [class.open]="repliesOpen()" (click)="repliesOpen.set(!repliesOpen())"
-              [attr.aria-expanded]="repliesOpen()" [attr.aria-label]="repliesLabel()" [title]="repliesLabel()">
-        <span aria-hidden="true">💬</span>
-        @if (card().replies.length) { <span class="replies-count">{{ card().replies.length }}</span> }
-        <span class="chev" aria-hidden="true">▾</span>
-      </button>
+      @if (auth.on('replies')) {
+        <!-- A wide bar, not a small icon, so opening replies doesn't take careful aim -->
+        <button type="button" class="replies-toggle no-print" [class.open]="repliesOpen()" (click)="repliesOpen.set(!repliesOpen())"
+                [attr.aria-expanded]="repliesOpen()" [attr.aria-label]="repliesLabel()" [title]="repliesLabel()">
+          <span aria-hidden="true">💬</span>
+          @if (card().replies.length) { <span class="replies-count">{{ card().replies.length }}</span> }
+          <span class="chev" aria-hidden="true">▾</span>
+        </button>
 
-      @if (repliesOpen()) {
-        <section class="replies" aria-label="Replies">
-          @for (r of card().replies; track r.id) {
-            <app-reply [reply]="r" [boardId]="boardId()" (replyTo)="replyingTo.set($event)" />
-          }
-          @if (canWrite()) {
-            @if (replyingTo(); as to) {
-              <p class="meta">Replying to {{ to.author?.name ?? 'reply' }} <button type="button" class="link-btn" (click)="replyingTo.set(null)">cancel</button></p>
+        @if (repliesOpen()) {
+          <section class="replies" aria-label="Replies">
+            @for (r of card().replies; track r.id) {
+              <app-reply [reply]="r" [boardId]="boardId()" (replyTo)="replyingTo.set($event)" />
             }
-            <app-composer [boardId]="boardId()" placeholder="Write a reply…" submitLabel="Reply" (submitted)="sendReply($event)" />
-          }
-        </section>
+            @if (canWrite()) {
+              @if (replyingTo(); as to) {
+                <p class="meta">Replying to {{ to.author?.name ?? 'reply' }} <button type="button" class="link-btn" (click)="replyingTo.set(null)">cancel</button></p>
+              }
+              <app-composer [boardId]="boardId()" placeholder="Write a reply…" submitLabel="Reply" (submitted)="sendReply($event)" />
+            }
+          </section>
+        }
       }
     </article>
     }
   `,
 })
 export class Card {
+  protected auth = inject(AuthService);
   protected store = inject(BoardStore);
   readonly card = input.required<CardDto>();
   readonly boardId = input.required<string>();
@@ -146,6 +157,8 @@ export class Card {
 
   protected labels = CARD_STATUS_LABELS;
   protected statuses: CardStatus[] = CARD_STATUSES;
+  /** The marks on offer: Carry Over only while that feature is on */
+  protected markable = computed(() => this.statuses.filter(s => s !== 'carry_over' || this.auth.on('carryOver')));
   protected editing = signal(false);
   protected editingTitle = signal(false);
   protected repliesOpen = signal(false);

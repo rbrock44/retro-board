@@ -575,3 +575,16 @@ button.likes { cursor: pointer;
 .presence .avatar.person-ring { box-shadow: 0 0 0 2px hsl(var(--person-hue) 70% 55%); }
 .board-tools .person-shades-toggle { white-space: nowrap; }
 @media print { .card.person-shaded { background: var(--surface); } }
+
+/* ---- Customize: Features ---- */
+.feature-group { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.8rem 0.6rem; margin: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.25rem 1.25rem;
+  legend { font-weight: 700; padding: 0 0.3rem; } }
+.feature-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;
+  label { flex: 1; }
+  .off { color: var(--muted); text-decoration: line-through; } }
+.info-btn { width: 28px; height: 28px; border-radius: 50%; border: 0; background: none; color: var(--muted); cursor: pointer;
+  font-size: 1rem; line-height: 1;
+  &:hover, &.open { background: var(--surface-2); color: var(--accent); } }
+.feature-info { flex-basis: 100%; margin: 0 0 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm);
+  background: var(--surface-2); font-size: 0.85rem; line-height: 1.4; }

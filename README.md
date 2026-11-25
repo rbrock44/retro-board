@@ -100,6 +100,8 @@ its default template), so people always land in the right place.
   `Create Group` (or `Add to Group` on a grouped card) and click the target. A group shows as a box with its name, then every card in it at full size; click the name to rename it. The box shows how many cards are in it and their combined likes.
   Drag the group's header to move the whole group; drag a card inside it to reorder the group, move it to another
   group, or pull it out on its own (the first card leads the group and keeps its name)
+- `Focus` - `⤢` in a column header shows that column full screen, its cards in a roomy grid, to go over it
+  together. `‹` `›` or the arrow keys step to the next column; `Esc` closes
 - `Sort` - `Oldest First` (the order cards were added; drag to rearrange, including across columns), `Newest First`
   or `Most Liked`
 - `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`. Filter the board by mark with `Show`

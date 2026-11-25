@@ -614,3 +614,18 @@ button.likes { cursor: pointer;
   .col-chip { border-left: 3px solid; padding: 0.05rem 0.45rem; border-radius: var(--radius-sm); background: var(--surface-2, var(--surface)); font-size: 0.85rem; max-width: 100%; overflow-wrap: anywhere; }
   .swatch { width: 0.9rem; height: 0.9rem; border-radius: 50%; border: 1px solid var(--border); display: inline-block; vertical-align: -0.1rem; margin-right: 0.3rem; } }
 .settings-foot { margin: 0; text-align: left; }
+
+/* A column full screen (⤢ in its header): cards laid out in a roomy grid */
+.column-focus { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg);
+  .focus-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: relative;
+    h2 { margin: 0; font-size: 1.35rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .muted.small { white-space: nowrap; }
+    .col-bar { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--col); }
+    .icon-btn { font-size: 1.25rem; } }
+  .focus-body { flex: 1; overflow: auto; padding: 1rem 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .focus-composer { max-width: 640px; }
+  .focus-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 0.8rem; align-items: start; }
+  .card, .group-box { font-size: 1.05rem; } }
+@media (max-width: 600px) { .column-focus .focus-head, .column-focus .focus-body { padding-left: 1rem; padding-right: 1rem; } }
+body:has(.column-focus) { overflow: hidden; }

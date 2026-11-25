@@ -136,6 +136,8 @@ import { ClickOutside } from '../shared/click-outside';
                             [attr.aria-pressed]="store.groupMode()" aria-label="Group Mode" (click)="store.groupMode.set(!store.groupMode())"
                             [title]="store.groupMode() ? 'Group Mode is on. Click to turn it off (G)' : 'Group Mode: drag cards onto each other to group them (G)'">⧉</button>
                   }
+                  <button type="button" class="icon-btn small no-print" (click)="focusColumn.set(col.id)"
+                          [attr.aria-label]="'Focus on ' + col.title" title="Focus on this column (full screen)">⤢</button>
                   @if (perm().canFacilitate) {
                     <button type="button" class="icon-btn small no-print" (click)="editColumn(col)" [attr.aria-label]="'Edit column ' + col.title">✎</button>
                   }
@@ -183,6 +185,38 @@ import { ClickOutside } from '../shared/click-outside';
           }
         </div>
       </div>
+
+      @if (focused(); as fc) {
+        <!-- one column, full screen: for going over it together. ‹ › (or the arrow keys) step through the columns -->
+        <div class="column-focus" role="dialog" aria-modal="true" [attr.aria-label]="fc.col.title" [style.--col]="fc.col.color">
+          <header class="focus-head">
+            <span class="col-bar"></span>
+            <h2>{{ fc.col.title }}</h2>
+            <span class="count">{{ fc.cards.length }}</span>
+            <div class="spacer"></div>
+            <button type="button" class="icon-btn" (click)="stepFocus(-1)" [disabled]="fc.index === 0" aria-label="Previous column" title="Previous column (←)">‹</button>
+            <span class="muted small">{{ fc.index + 1 }} / {{ s.columns.length }}</span>
+            <button type="button" class="icon-btn" (click)="stepFocus(1)" [disabled]="fc.index === s.columns.length - 1" aria-label="Next column" title="Next column (→)">›</button>
+            <button type="button" class="icon-btn" (click)="focusColumn.set(null)" aria-label="Close" title="Close (Esc)">✕</button>
+          </header>
+          <div class="focus-body">
+            @if (fc.col.description) { <p class="col-desc">{{ fc.col.description }}</p> }
+            @if (perm().canWrite) {
+              <div class="focus-composer no-print">
+                <app-composer [boardId]="s.board.id" [allowAnonymous]="s.board.settings.allowAnonymous"
+                              (submitted)="add(fc.col.id, $event)" (typed)="store.sendTyping(fc.col.id)" />
+              </div>
+            }
+            <div class="focus-cards">
+              @for (card of fc.cards; track card.id) {
+                <app-card [card]="card" [boardId]="s.board.id" />
+              } @empty {
+                <p class="empty-col">No cards yet</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
 
       @if (columnEdit(); as ce) {
         <app-modal [heading]="ce.id ? 'Edit Column' : 'New Column'" (closed)="columnEdit.set(null)">
@@ -354,9 +388,31 @@ export class BoardPage implements OnDestroy {
     this.store.close();
   }
 
+  /** The column shown full screen, if any */
+  protected focusColumn = signal<string | null>(null);
+  protected focused = computed(() => {
+    const id = this.focusColumn();
+    const cols = this.store.columns();
+    const index = cols.findIndex(c => c.id === id);
+    if (index < 0) return null;
+    return { col: cols[index], index, cards: this.store.columnCards().get(cols[index].id) ?? [] };
+  });
+
+  stepFocus(dir: -1 | 1) {
+    const f = this.focused();
+    const next = f && this.store.columns()[f.index + dir];
+    if (next) this.focusColumn.set(next.id);
+  }
+
   onKey(e: KeyboardEvent) {
-    const typing = (e.target as HTMLElement)?.closest('input, textarea, select, [contenteditable]');
+    const typing = (e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
     if (typing) return;
+    if (this.focusColumn()) {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) this.focusColumn.set(null);
+      if (e.key === 'ArrowLeft') this.stepFocus(-1);
+      if (e.key === 'ArrowRight') this.stepFocus(1);
+      return;
+    }
     if (e.key === 'Escape') {
       this.store.pickingGroupFor.set(null);
       this.store.groupMode.set(false);

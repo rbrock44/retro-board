@@ -104,13 +104,13 @@ type Key = keyof InstanceSettings;
             <fieldset class="feature-group">
               <legend>{{ g.name }}</legend>
               @for (f of g.items; track f.key) {
+                <!-- One row, three columns: the switch, ⓘ, and the name; the explanation opens underneath -->
                 <div class="feature-row">
-                  <label class="row">
-                    <input type="checkbox" [checked]="form.features[f.key]" (change)="setFeature(f.key, $any($event.target).checked)">
-                    <span [class.off]="!form.features[f.key]">{{ f.label }}</span>
-                  </label>
+                  <input type="checkbox" [id]="'feature-' + f.key" [checked]="form.features[f.key]"
+                         (change)="setFeature(f.key, $any($event.target).checked)">
                   <button type="button" class="info-btn" [class.open]="infoOpen() === f.key" [attr.aria-expanded]="infoOpen() === f.key"
                           [attr.aria-label]="'About ' + f.label" [title]="f.info" (click)="infoOpen.set(infoOpen() === f.key ? null : f.key)">ⓘ</button>
+                  <label [attr.for]="'feature-' + f.key" [class.off]="!form.features[f.key]">{{ f.label }}</label>
                   @if (infoOpen() === f.key) { <p class="feature-info" role="note">{{ f.info }}</p> }
                 </div>
               }

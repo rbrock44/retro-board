@@ -104,8 +104,9 @@ export interface AuthConfigDto {
   publicUrl: string;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };
   providers: AuthProviderInfo[];
-  /** Which service the GIF button searches (GIPHY_API_KEY, else TENOR_API_KEY), or null for no GIF search */
-  gifSearch: 'giphy' | 'tenor' | null;
+  /** Which service the GIF button searches (GIPHY_API_KEY, else TENOR_API_KEY), or null for no GIF search.
+   *  'demo' is the in-browser demo's own sample library */
+  gifSearch: 'giphy' | 'tenor' | 'demo' | null;
   needsSetup: boolean;
 }
 

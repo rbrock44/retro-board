@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BoardDto, BoardEvent, BoardStateDto, CardDto, TeamDto } from '@retro/shared';
+import type { AttachmentDto, BoardDto, BoardEvent, BoardStateDto, CardDto, GifResultDto, TeamDto } from '@retro/shared';
 import { DemoBackend } from './demo-backend';
 import { DEMO_ME, seedDemo } from './demo-data';
 
@@ -19,6 +19,28 @@ describe('demo backend', () => {
     expect(state.permissions.canFacilitate).toBe(true);
     expect(state.cards.some(c => c.carriedFrom?.boardTitle.endsWith(' · Sprint 41'))).toBe(true);
     expect(state.cards.find(c => c.groupTitle === 'Test reliability')).toBeTruthy();
+  });
+
+  it('searches its own GIF library and posts a card with text and a GIF together', async () => {
+    const { b } = backend();
+    expect(((await b.handle('GET', '/api/auth/config')) as { gifSearch: string }).gifSearch).toBe('demo');
+    const all = (await b.handle('GET', '/api/gifs?q=')) as GifResultDto[];
+    expect(all.length).toBeGreaterThan(10);
+    const ship = (await b.handle('GET', '/api/gifs?q=ship%20it')) as GifResultDto[];
+    expect(ship.map(g => g.title)).toEqual(['Ship it']);
+    expect(await b.handle('GET', '/api/gifs?q=zzzz')).toEqual([]);
+
+    const a = (await b.handle('POST', '/api/boards/b-s42/attachments/gif', { url: ship[0].url, previewUrl: ship[0].previewUrl, title: ship[0].title })) as AttachmentDto;
+    expect(a).toMatchObject({ kind: 'gif', url: ship[0].url });
+    await expect(b.handle('POST', '/api/boards/b-s42/attachments/gif', { url: 'https://evil.example/x.gif' })).rejects.toThrow();
+
+    const state = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
+    const card = (await b.handle('POST', '/api/boards/b-s42/cards', { columnId: state.columns[1].id, body: 'Deploys are boring now', attachmentIds: [a.id] })) as CardDto;
+    expect(card.body).toBe('Deploys are boring now');
+    expect(card.attachments.map(x => x.id)).toEqual([a.id]);
+    // and the seed shows text with GIFs in cards and replies
+    expect(state.cards.some(c => c.body && c.attachments.some(x => x.kind === 'gif'))).toBe(true);
+    expect(state.cards.some(c => c.replies.some(r => r.attachments.some(x => x.kind === 'gif')))).toBe(true);
   });
 
   it('lets you like a card once and unlike it, like the server', async () => {

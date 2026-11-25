@@ -3,6 +3,7 @@ import {
   type ActionStatus, type AttachmentDto, type BoardSettings, type BoardStatus, type CardStatus, type ColumnDto,
   type InstanceSettings, type InviteDto, type TeamRole, type TeamSettings, type TemplateDto, type UserDto, type UserPrefs,
 } from '@retro/shared';
+import { DEMO_GIFS, PARTY_GIF } from './demo-gifs';
 
 /** Everything the demo backend knows. Kept flat and JSON-safe so it can live in localStorage and in a share link. */
 export interface DemoState {
@@ -67,13 +68,11 @@ const BURNDOWN = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="480" hei
 <text x="420" y="266" font-family="system-ui,sans-serif" font-size="12" fill="#64748b">Day 10</text>
 </svg>`);
 
-/** Stands in for a GIF: an animated SVG plays the same way in an <img>. */
-const PARTY = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
-<rect width="320" height="200" rx="12" fill="#1e1b4b"/>
-${[['#f472b6', 40, 0], ['#facc15', 100, 0.3], ['#34d399', 160, 0.6], ['#60a5fa', 220, 0.9], ['#fb923c', 280, 1.2]].map(([c, x, d]) =>
-  `<circle cx="${x}" cy="60" r="12" fill="${c}"><animate attributeName="cy" values="60;140;60" dur="1.4s" begin="${d}s" repeatCount="indefinite"/></circle>`).join('')}
-<text x="160" y="185" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="700" fill="#fff">SHIPPED! 🎉</text>
-</svg>`);
+/** A library GIF as an attachment, keyed by its attachment id */
+function gifAttachment(id: string, gifId: string): Record<string, AttachmentDto> {
+  const g = DEMO_GIFS.find(x => x.id === gifId)!;
+  return { [id]: attachment(id, 'gif', g.url, g.width, g.height, g.title) };
+}
 
 function attachment(id: string, kind: 'image' | 'gif', url: string, w: number, h: number, name: string): AttachmentDto {
   return { id, kind, mime: 'image/svg+xml', url, thumbUrl: null, width: w, height: h, size: null, name };
@@ -163,7 +162,7 @@ export function seedDemo(now = Date.now()): DemoState {
   const reviews = card(live.id, lWell, 'u-sam', 'Code reviews came back within a day, every time');
   card(live.id, lWell, 'u-jordan', 'Thanks to everyone who covered on-call while I was out', { anonymous: true });
 
-  const flaky = card(live.id, lImprove, 'u-sam', 'CI was red for most of Tuesday');
+  const flaky = card(live.id, lImprove, 'u-sam', 'CI was red for most of Tuesday', { attachmentIds: ['a-bug'] });
   const flaky2 = card(live.id, lImprove, 'u-priya', 'Integration tests are still flaky', { parentId: flaky.id, columnId: lImprove });
   const flaky3 = card(live.id, lImprove, 'u-alex', 'Nobody owns the test environment', { parentId: flaky.id, columnId: lImprove });
   flaky.groupTitle = 'Test reliability';
@@ -180,7 +179,9 @@ export function seedDemo(now = Date.now()): DemoState {
   card(kickoff.id, kGlad, DEMO_ME, 'New interview script is much tighter', {}, 70);
 
   const attachments: Record<string, AttachmentDto> = {
-    'a-party': attachment('a-party', 'gif', PARTY, 320, 200, 'shipped.gif'),
+    'a-party': attachment('a-party', 'gif', PARTY_GIF, 320, 200, 'shipped.gif'),
+    // a few more from the demo's GIF library, so text and GIFs show up together in cards and replies
+    ...gifAttachment('a-bug', 'g-bug'), ...gifAttachment('a-clap', 'g-clap'), ...gifAttachment('a-slow', 'g-slow'),
     'a-burndown': attachment('a-burndown', 'image', BURNDOWN, 480, 280, 'burndown.svg'),
   };
 
@@ -202,9 +203,9 @@ export function seedDemo(now = Date.now()): DemoState {
 
   const replyId = newId();
   const replies: DemoState['replies'] = [
-    { id: replyId, cardId: flaky.id, parentId: null, authorId: 'u-jordan', body: 'Most of the failures were the payments sandbox timing out.', attachmentIds: [], createdAt: ago(0, 0.8), editedAt: null },
+    { id: replyId, cardId: flaky.id, parentId: null, authorId: 'u-jordan', body: 'Most of the failures were the payments sandbox timing out.', attachmentIds: ['a-slow'], createdAt: ago(0, 0.8), editedAt: null },
     { id: newId(), cardId: flaky.id, parentId: replyId, authorId: 'u-alex', body: 'We could stub it in CI and run the real thing nightly.', attachmentIds: [], createdAt: ago(0, 0.6), editedAt: null },
-    { id: newId(), cardId: ship.id, parentId: null, authorId: 'u-priya', body: 'Huge. Customers already noticed.', attachmentIds: [], createdAt: ago(0, 0.5), editedAt: null },
+    { id: newId(), cardId: ship.id, parentId: null, authorId: 'u-priya', body: 'Huge. Customers already noticed.', attachmentIds: ['a-clap'], createdAt: ago(0, 0.5), editedAt: null },
   ];
 
   const actions: DemoState['actions'] = [

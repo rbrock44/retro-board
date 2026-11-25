@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { AttachmentDto, GifResultDto } from '@retro/shared';
 import { Api } from '../core/api.service';
@@ -22,7 +22,7 @@ import { Modal } from '../shared/modal';
           <button type="button" class="gif-cell" (click)="pick(g)" [title]="g.title"><img [src]="g.previewUrl" [alt]="g.title" loading="lazy"></button>
         } @empty { @if (!loading()) { <p class="muted">No GIFs found.</p> } }
       </div>
-      <p class="muted small gif-credit">Powered by {{ auth.config()?.gifSearch === 'giphy' ? 'GIPHY' : 'Tenor' }}</p>
+      <p class="muted small gif-credit">{{ credit() }}</p>
     </app-modal>
   `,
 })
@@ -36,6 +36,7 @@ export class GifPicker {
   protected q = '';
   protected results = signal<GifResultDto[]>([]);
   protected loading = signal(false);
+  protected credit = computed(() => ({ giphy: 'Powered by GIPHY', tenor: 'Powered by Tenor', demo: 'Sample GIFs for the demo' })[this.auth.config()?.gifSearch ?? 'demo']);
 
   constructor() {
     void this.search();

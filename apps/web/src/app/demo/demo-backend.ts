@@ -7,6 +7,7 @@ import {
 } from '@retro/shared';
 import { ApiError } from '../core/api.service';
 import { DEMO_ME, newId, seedDemo, type DemoCard, type DemoState } from './demo-data';
+import { searchDemoGifs } from './demo-gifs';
 
 type Listener = { onEvent(e: BoardEvent): void; onTyping(t: { user: UserDto; columnId: string }): void };
 
@@ -426,7 +427,7 @@ export class DemoBackend {
   private routes: [string, RegExp, (p: string[], body: any, q: URLSearchParams) => unknown][] = [
     // ---- auth ----
     ['GET', /^\/api\/auth\/config$/, (): AuthConfigDto => ({
-      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: null, needsSetup: false,
+      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: 'demo', needsSetup: false,
     })],
     ['GET', /^\/api\/auth\/me$/, () => this.meDto()],
     ['POST', /^\/api\/auth\/guest$/, () => this.meDto()],
@@ -874,9 +875,23 @@ export class DemoBackend {
     }],
 
     // ---- media ----
-    ['POST', /^\/api\/boards\/([^/]+)\/attachments\/gif$/, () => fail(404, 'GIF search is off in the demo')],
+    // GIF search runs over the demo's own little library (demo-gifs.ts); picking one embeds it like the server does
+    ['POST', /^\/api\/boards\/([^/]+)\/attachments\/gif$/, ([id], b) => {
+      this.requireBoard(id, 'write');
+      if (!this.site().features.gifs) fail(403, 'GIFs are turned off on this site');
+      const a: AttachmentDto = {
+        id: newId(), kind: 'gif', mime: 'image/svg+xml', url: String(b.url ?? ''), thumbUrl: b.previewUrl ?? null,
+        width: b.width ?? null, height: b.height ?? null, size: null, name: b.title ?? null,
+      };
+      if (!a.url.startsWith('data:image/svg+xml')) fail(400, 'Only GIFs from the demo library can be embedded in the demo');
+      this.state.attachments[a.id] = a;
+      return a;
+    }],
     ['DELETE', /^\/api\/attachments\/([^/]+)$/, ([id]) => { delete this.state.attachments[id]; return undefined; }],
-    ['GET', /^\/api\/gifs$/, () => fail(404, 'GIF search is off in the demo')],
+    ['GET', /^\/api\/gifs$/, (_p, _b, q) => {
+      if (!this.site().features.gifs) fail(403, 'GIFs are turned off on this site');
+      return searchDemoGifs(q.get('q') ?? '');
+    }],
 
     // ---- admin ----
     ['GET', /^\/api\/admin\/users$/, () => this.state.users.map(u => ({ ...this.user(u.id)!, email: u.email, disabled: false, createdAt: this.state.teams[0]?.createdAt ?? nowIso() }))],

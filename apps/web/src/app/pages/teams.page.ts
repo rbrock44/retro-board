@@ -15,7 +15,8 @@ import { Modal } from '../shared/modal';
       <div class="page-head">
         <h1>Your Teams</h1>
         <div class="spacer"></div>
-        @if (auth.isAdmin()) {
+        <!-- In no-sign-in mode everyone already sees every team, so there's nothing to show -->
+        @if (auth.isAdmin() && !auth.open()) {
           <label class="check"><input type="checkbox" [checked]="showAll()" (change)="toggleAll()"> Show Every Team</label>
         }
         <button class="btn primary" type="button" (click)="creating.set(true)">New Team</button>

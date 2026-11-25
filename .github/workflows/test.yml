@@ -35,6 +35,10 @@ jobs:
   demo:
     runs-on: ubuntu-latest
     needs: test
+    # One deploy at a time; a newer push replaces one still running (two at once collide on gh-pages)
+    concurrency:
+      group: demo-deploy
+      cancel-in-progress: true
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     permissions:
       contents: write

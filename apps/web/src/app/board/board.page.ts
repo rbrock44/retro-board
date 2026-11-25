@@ -85,7 +85,7 @@ import { ClickOutside } from '../shared/click-outside';
           <div class="spacer"></div>
           @if (auth.on('actions')) {
             <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
-              Action Items {{ store.openActions().length }}
+              Action Items ({{ store.openActions().length }})
             </button>
           }
           @if (s.board.status !== 'open' && auth.on('export')) {

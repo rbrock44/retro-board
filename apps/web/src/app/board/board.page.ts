@@ -227,19 +227,29 @@ import { ClickOutside } from '../shared/click-outside';
       @if (settingsOpen()) {
         <app-modal heading="Board Settings" [wide]="true" (closed)="settingsOpen.set(false)">
           <div class="stack">
-            <p class="muted">Anonymous cards, locking, colors and the columns new boards start with are set for the
-              whole team.
-              @if (s.permissions.role === 'admin') {
-                <a [routerLink]="['/teams', s.team.id, 'history']" [queryParams]="{ tab: 'settings' }" (click)="settingsOpen.set(false)">Team Settings →</a>
-              } @else { A team admin can change them in the team's Settings. }
-            </p>
-            @if (s.permissions.role === 'admin') {
-              <div class="row wrap">
-                <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
-              </div>
-            }
+            <h3 class="settings-head">This Board</h3>
+            <dl class="settings-grid">
+              @if (auth.on('anonymous')) {
+                <dt>Anonymous cards</dt><dd>{{ s.board.settings.allowAnonymous ? 'Allowed' : 'Off' }}</dd>
+              }
+              <dt>Lock</dt><dd>{{ s.board.settings.locked ? 'Locked: no new or edited cards' : 'Open' }}</dd>
+              <dt>Colors</dt>
+              <dd>
+                @if (s.board.settings.theme; as t) {
+                  <span class="swatch" [style.background]="t['accent'] ?? null"></span> Team colors
+                } @else { Each person's own theme }
+              </dd>
+              <dt>Columns</dt>
+              <dd class="col-chips">
+                @for (c of s.columns; track c.id) { <span class="col-chip" [style.border-color]="c.color">{{ c.title }}</span> }
+              </dd>
+              <dt>Status</dt><dd>{{ s.board.status === 'open' ? 'Open' : s.board.status === 'closed' ? 'Closed' : 'Archived' }}</dd>
+            </dl>
             <hr>
             <div class="row wrap">
+              @if (s.permissions.role === 'admin') {
+                <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
+              }
               @if (s.board.status === 'open') {
                 <button type="button" class="btn" (click)="setStatus('closed')">Close Board</button>
               } @else {
@@ -248,6 +258,11 @@ import { ClickOutside } from '../shared/click-outside';
               @if (s.board.status !== 'archived') { <button type="button" class="btn ghost" (click)="setStatus('archived')">Archive</button> }
               @if (s.permissions.role === 'admin') { <button type="button" class="btn ghost danger" (click)="deleteBoard()">Delete Board</button> }
             </div>
+            <p class="settings-foot muted small">
+              @if (s.permissions.role === 'admin') {
+                <a [routerLink]="['/teams', s.team.id, 'history']" [queryParams]="{ tab: 'settings' }" (click)="settingsOpen.set(false)">Change in Team Settings →</a>
+              } @else { Anonymous cards, lock and colors are set by a team admin in the team's Settings. }
+            </p>
           </div>
         </app-modal>
       }

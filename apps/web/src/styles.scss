@@ -600,3 +600,13 @@ button.likes { cursor: pointer;
   &:hover, &.open { background: var(--surface-2); color: var(--accent); } }
 .feature-info { grid-column: 1 / -1; margin: 0.15rem 0 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm);
   background: var(--surface-2); font-size: 0.85rem; line-height: 1.4; }
+
+/* Board Settings: what's applied to this board, as label | value columns */
+.settings-head { margin: 0; font-size: 0.95rem; }
+.settings-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.45rem 1.25rem; margin: 0; align-items: center;
+  dt { font-weight: 500; color: var(--muted); }
+  dd { margin: 0; min-width: 0; }
+  .col-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .col-chip { border-left: 3px solid; padding: 0.05rem 0.45rem; border-radius: var(--radius-sm); background: var(--surface-2, var(--surface)); font-size: 0.85rem; max-width: 100%; overflow-wrap: anywhere; }
+  .swatch { width: 0.9rem; height: 0.9rem; border-radius: 50%; border: 1px solid var(--border); display: inline-block; vertical-align: -0.1rem; margin-right: 0.3rem; } }
+.settings-foot { margin: 0; text-align: left; }

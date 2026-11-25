@@ -12,7 +12,6 @@ import {
 import { Api } from '../core/api.service';
 import { themeStyle } from '../core/theme.service';
 import { ToastService } from '../core/toast.service';
-import { PersonShades } from '../core/person-shades.service';
 import { DemoService } from '../demo/demo.service';
 import { AuthService } from '../core/auth.service';
 import { ActionList } from '../shared/action-list';
@@ -83,10 +82,6 @@ import { ClickOutside } from '../shared/click-outside';
               @if (auth.on('likes')) { <option value="likes">Most Liked</option> }
             </select>
           </label>
-          @if (auth.on('personShades')) {
-            <button type="button" class="chip person-shades-toggle" [class.active]="shades.enabled()" [attr.aria-pressed]="shades.enabled()"
-                    (click)="shades.toggle()" title="Give each person's cards their own light shade">🎨 Color by Person</button>
-          }
           <div class="spacer"></div>
           @if (auth.on('actions')) {
             <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
@@ -277,7 +272,6 @@ export class BoardPage implements OnDestroy {
   private toast = inject(ToastService);
   private demo = inject(DemoService);
   protected auth = inject(AuthService);
-  protected shades = inject(PersonShades);
   readonly boardId = input.required<string>();
 
   protected labels = CARD_STATUS_LABELS;

@@ -39,7 +39,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'presence', group: 'People', label: 'Who\'s Here',
     info: 'Avatars of the people on a board right now, and "typing…" hints. When off, nobody can see who else is looking at a board or writing.' },
   { key: 'personShades', group: 'People', label: 'Color by Person',
-    info: 'Gives each person\'s cards their own light shade. When off, cards are all the same color and the toggle is hidden.' },
+    info: 'Gives each person\'s cards their own light shade, the same on every board, so you can tell who wrote what at a glance (anonymous cards stay neutral). When off, cards are all the same color.' },
 ];
 
 export const FEATURE_KEYS = FEATURES.map(f => f.key);

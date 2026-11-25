@@ -87,7 +87,7 @@ its default template), so people always land in the right place.
 - `Reactions` - Emoji reactions on cards and replies, separate from likes
 - `🎨 Color by Person` - Each person's cards get their own light shade (the same on every board), so you can see
   who wrote what at a glance. Their avatar on the board gets a matching ring. Anonymous cards stay neutral, so the
-  shade never gives them away. Turn it off from the board's toolbar; the choice is remembered in your browser
+  shade never gives them away. An admin turns it on or off for everyone in **Admin → Customize → Features**
 
 ### Likes, Grouping and Marking
 

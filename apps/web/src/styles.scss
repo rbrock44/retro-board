@@ -573,7 +573,6 @@ button.likes { cursor: pointer;
 }
 /* People on the board wear the same colour, so faces match card shades */
 .presence .avatar.person-ring { box-shadow: 0 0 0 2px hsl(var(--person-hue) 70% 55%); }
-.board-tools .person-shades-toggle { white-space: nowrap; }
 @media print { .card.person-shaded { background: var(--surface); } }
 
 /* ---- Customize: Features ---- */

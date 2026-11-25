@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { io, type Socket } from 'socket.io-client';
 import {
+  CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE,
   SOCKET_EVENTS, byPosition, positionBetween, type ActionItemDto, type BoardEvent, type BoardStateDto, type CardDto,
   type BoardSummaryDto, type CardStatus, type ColumnDto, type UserDto,
 } from '@retro/shared';
@@ -46,12 +47,11 @@ export function groupLikes(head: CardDto, kids: CardDto[]): number {
   return head.likes + kids.reduce((n, k) => n + k.likes, 0);
 }
 
-/** Title the server gives a team's fresh board (CURRENT_BOARD_TITLE in the API). */
-export const CURRENT_BOARD_TITLE = 'Current retro';
+
 
 /** Browser tab title for a board page: "Current - Team - Site" for the team's current board, else the board's title. */
 export function boardTabTitle(board: Pick<BoardSummaryDto, 'title' | 'status'>, teamName: string, siteName: string): string {
-  const name = board.status === 'open' && board.title === CURRENT_BOARD_TITLE ? 'Current' : board.title;
+  const name = board.status === 'open' && board.title === OLD_CURRENT_BOARD_TITLE ? CURRENT_BOARD_TITLE : board.title;
   return `${name} - ${teamName} - ${siteName}`;
 }
 

@@ -96,7 +96,7 @@ describe('demo backend', () => {
   it('exports markdown without a server', () => {
     const { b } = backend();
     const file = b.exportBoard('b-s42', 'md');
-    expect(file.name).toBe('current-retro.md');
+    expect(file.name).toBe('current.md');
     expect(file.text).toContain('## Went Well');
   });
 });

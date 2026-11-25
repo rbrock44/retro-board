@@ -17,7 +17,7 @@ describe('saving a board and the current board', () => {
     const res = await owner.client.post(`/api/boards/${board.id}/save`, { name: 'Sprint 1', date: '2026-11-24' });
     expect(res.status).toBe(200);
     expect(res.body.saved).toMatchObject({ id: board.id, title: '2026-11-24 · Sprint 1', status: 'closed' });
-    expect(res.body.board).toMatchObject({ title: 'Current retro', status: 'open' });
+    expect(res.body.board).toMatchObject({ title: 'Current', status: 'open' });
 
     const next = (await owner.client.get(`/api/boards/${res.body.board.id}`)).body as BoardStateDto;
     // same columns, no "Carried over" column needed: the card goes back into the column it came from
@@ -28,7 +28,7 @@ describe('saving a board and the current board', () => {
 
     // the old board is in the history, read-only
     const history = (await owner.client.get(`/api/teams/${team.id}/boards`)).body as BoardSummaryDto[];
-    expect(history.map(b => [b.title, b.status])).toEqual(expect.arrayContaining([['2026-11-24 · Sprint 1', 'closed'], ['Current retro', 'open']]));
+    expect(history.map(b => [b.title, b.status])).toEqual(expect.arrayContaining([['2026-11-24 · Sprint 1', 'closed'], ['Current', 'open']]));
     expect((await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: start.id, body: 'late' })).status).toBe(403);
     expect((await owner.client.post(`/api/boards/${board.id}/save`, {})).status).toBe(400);
   });
@@ -62,7 +62,7 @@ describe('saving a board and the current board', () => {
     expect(made.boardId).toBeTruthy();
     expect(made.boardId).not.toBe(board.id);
     const s = (await owner.client.get(`/api/boards/${made.boardId}`)).body as BoardStateDto;
-    expect(s.board.title).toBe('Current retro');
+    expect(s.board.title).toBe('Current');
     expect(s.columns.length).toBeGreaterThan(0);
     // and asking again returns the same board rather than another new one
     expect((await owner.client.post(`/api/teams/${team.id}/current`)).body).toEqual({ boardId: made.boardId });

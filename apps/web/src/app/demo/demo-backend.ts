@@ -1,5 +1,5 @@
 import {
-  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
+  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
@@ -37,6 +37,7 @@ export class DemoBackend {
   constructor(public state: DemoState, private onChange: () => void) {
     // Demos saved before column titles were Title Case: bring the built-in ones up to date.
     for (const c of state.columns) c.title = RENAMED_COLUMN_TITLES[c.title] ?? c.title;
+    for (const b of state.boards) if (b.status === 'open' && b.title === OLD_CURRENT_BOARD_TITLE) b.title = CURRENT_BOARD_TITLE;
   }
 
   static fresh(onChange: () => void) {
@@ -893,7 +894,7 @@ export class DemoBackend {
     board.status = 'closed';
     board.closedAt = nowIso();
     const next = {
-      id: newId(), teamId: board.teamId, title: 'Current retro', status: 'open' as const, createdAt: nowIso(), closedAt: null,
+      id: newId(), teamId: board.teamId, title: CURRENT_BOARD_TITLE, status: 'open' as const, createdAt: nowIso(), closedAt: null,
       createdBy: this.state.meId, settings: { ...board.settings, locked: false },
     };
     this.state.boards.push(next);
@@ -915,7 +916,7 @@ export class DemoBackend {
     const open = this.state.boards.filter(b => b.teamId === teamId && b.status === 'open').sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
     if (open) return { boardId: open.id };
     if (role === 'viewer') return { boardId: null };
-    const created = this.createBoard(teamId, { title: 'Current retro', templateId: team.settings.defaultTemplateId, carryOver: false });
+    const created = this.createBoard(teamId, { title: CURRENT_BOARD_TITLE, templateId: team.settings.defaultTemplateId, carryOver: false });
     const carriedPos = positionAfter(null);
     this.carryPending(teamId, created.id, carriedPos, true);
     return { boardId: created.id };

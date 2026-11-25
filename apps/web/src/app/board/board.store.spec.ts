@@ -57,7 +57,8 @@ describe('groupLikes', () => {
 });
 
 describe('boardTabTitle', () => {
-  it('calls the open "Current retro" board Current', () => {
+  it('calls the open Current board Current, including older ones still named "Current retro"', () => {
+    expect(boardTabTitle({ title: 'Current', status: 'open' }, 'Platform Team', 'Retro Board')).toBe('Current - Platform Team - Retro Board');
     expect(boardTabTitle({ title: 'Current retro', status: 'open' }, 'Platform Team', 'Retro Board')).toBe('Current - Platform Team - Retro Board');
   });
 

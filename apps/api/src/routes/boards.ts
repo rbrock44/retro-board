@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, isCarriedOverColumn, byPosition, positionAfter,
+  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, isCarriedOverColumn, byPosition, positionAfter,
   sanitizeTokens, type BoardSettings, type BoardStateDto, type CardDto, type ColumnSpec,
 } from '@retro/shared';
 import { toUserDto } from '../auth/users';
@@ -54,8 +54,6 @@ export async function broadcastAction(ctx: Ctx, teamId: string, actionId: string
 
 type Tx = Parameters<Parameters<Ctx['db']['transaction']>[0]>[0];
 
-/** The title a fresh board gets when a team's current board is saved, or a team is opened with no board */
-export const CURRENT_BOARD_TITLE = 'Current retro';
 
 /**
  * Copies every card in the team marked "carry over" (and not carried yet) onto a new board, linked back to the

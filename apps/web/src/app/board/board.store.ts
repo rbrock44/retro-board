@@ -85,6 +85,10 @@ export class BoardStore {
   /** While dragging in Arrange Mode, where the card would land if dropped now (highlighted) */
   readonly dropSpot = signal<DropSpot | null>(null);
   readonly pickingGroupFor = signal<string | null>(null);
+  /** Cards whose replies are open. Kept here so a column's "open all replies" can reach every card */
+  readonly openReplies = signal<ReadonlySet<string>>(new Set());
+  /** The person whose details are shown (clicked on a card or reply) */
+  readonly personOpen = signal<UserDto | null>(null);
 
   readonly board = computed(() => this.state()?.board ?? null);
   readonly columns = computed(() => this.state()?.columns ?? []);
@@ -185,6 +189,19 @@ export class BoardStore {
   async reload() {
     const fresh = await this.api.get<BoardStateDto>(`/api/boards/${this.boardId}`);
     this.state.set(fresh);
+  }
+
+  toggleReplies(cardId: string) {
+    this.setReplies([cardId], !this.openReplies().has(cardId));
+  }
+
+  setReplies(cardIds: string[], open: boolean) {
+    const next = new Set(this.openReplies());
+    for (const id of cardIds) {
+      if (open) next.add(id);
+      else next.delete(id);
+    }
+    this.openReplies.set(next);
   }
 
   close() {

@@ -14,10 +14,14 @@ import { AuthService } from '../core/auth.service';
   imports: [Avatar, MarkdownPipe, RelativeTimePipe, Composer, Media, Reactions],
   template: `
     <div class="reply" [class.nested]="!!reply().parentId">
-      <app-avatar [user]="reply().author" [size]="22" />
+      @if (reply().author; as a) {
+        <button type="button" class="person-btn" (click)="store.personOpen.set(a)" [attr.aria-label]="'About ' + a.name"><app-avatar [user]="a" [size]="22" /></button>
+      } @else { <app-avatar [user]="null" [size]="22" /> }
       <div class="grow">
         <div class="reply-head">
-          <strong>{{ reply().author?.name ?? 'Someone' }}</strong>
+          @if (reply().author; as a) {
+            <button type="button" class="person-btn" (click)="store.personOpen.set(a)"><strong>{{ a.name }}</strong></button>
+          } @else { <strong>Someone</strong> }
           <span class="meta">{{ reply().createdAt | ago }}{{ reply().editedAt ? ' · edited' : '' }}</span>
         </div>
         @if (editing()) {

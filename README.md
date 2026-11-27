@@ -87,10 +87,14 @@ its default template), so people always land in the right place.
 - `Cards` - Markdown text (bold, lists, links, code). Tick `Anonymous` to hide your name from everyone
 - `Media` - Attach images, GIFs and videos (mp4, webm, mov) with 📎, by pasting an image, or by dropping files on
   the composer. With a Giphy or Tenor key configured, the `GIF` button searches GIFs.
-  Text and any mix of images, GIFs and videos go together in one card or reply. Click an image for a full-size view
+  Text and any mix of images, GIFs and videos go together in one card or reply. Click an image for a bigger view:
+  the mouse wheel zooms in and out, a click zooms in (and back to fit once fully zoomed), drag to move around, and the
+  scale at the top right shows how far it's zoomed. It never fills the screen, so a click around it always closes it
 - `Replies` - 💬 opens a thread on any card. Replies support markdown, media and reactions, and can be answered
   one level deep
 - `Reactions` - Emoji reactions on cards and replies, separate from likes
+- `People` - Click someone's face or name on a card or reply for their details: email (shown to team admins), team
+  role, when they joined, their named cards and likes on this board, and whether they're here now
 - `🎨 Color by Person` - Each person's cards get their own light shade (the same on every board), so you can see
   who wrote what at a glance. Their avatar on the board gets a matching ring. Anonymous cards stay neutral, so the
   shade never gives them away. An admin turns it on or off for everyone in **Admin → Customize → Features**
@@ -107,7 +111,11 @@ its default template), so people always land in the right place.
   In Arrange Mode, drag the group's header to move the whole group; drag a card inside it to reorder the group, move
   it to another group, or pull it out on its own (the first card leads the group and keeps its name)
 - `Focus` - `⤢` in a column header shows that column in a big popup over the dimmed board, its cards in a roomy
-  grid, to go over it together. `‹` `›` or the arrow keys step to the next column; `Esc` or a click outside closes
+  grid, to go over it together. `‹` `›` or the arrow keys step to the next column; `Esc` or a click outside closes.
+  On its left, one button opens every reply thread in the column (or closes them all once they're all open), and the
+  person button picks a random teammate to go over the column. They get `Yes, I'll Go` or `Not Right Now`: not right
+  now asks someone else and keeps them on the list for later, but nobody who just passed is asked again until someone
+  says yes. Everyone gets a turn, in random order, before anyone goes twice (remembered per team in your browser)
 - `Sort` - `Oldest First` (the order cards were added; rearrange in Arrange Mode, including across columns), `Newest First`
   or `Most Liked`
 - `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`. Filter the board by mark with `Show`

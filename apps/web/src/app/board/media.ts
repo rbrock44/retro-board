@@ -1,10 +1,12 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FEATURE_FOR_ATTACHMENT, type AttachmentDto } from '@retro/shared';
 import { AuthService } from '../core/auth.service';
+import { Lightbox } from './lightbox';
 
 /** Attachment thumbnails on a card or reply; clicking opens the lightbox. */
 @Component({
   selector: 'app-media',
+  imports: [Lightbox],
   template: `
     @if (shown().length) {
       <div class="media-grid" [class.single]="shown().length === 1">
@@ -26,10 +28,7 @@ import { AuthService } from '../core/auth.service';
       </div>
     }
     @if (open(); as a) {
-      <div class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer" (click)="open.set(null)" (keydown.escape)="open.set(null)" tabindex="-1">
-        <img [src]="a.url" [alt]="a.name ?? ''">
-        <button type="button" class="lightbox-x" aria-label="Close">✕</button>
-      </div>
+      <app-lightbox [item]="a" (closed)="open.set(null)" />
     }
   `,
 })

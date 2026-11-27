@@ -75,8 +75,15 @@ import { AuthService } from '../core/auth.service';
 
       <footer class="card-foot">
         <span class="author" [title]="card().createdAt | ago">
-          @if (card().anonymous) { <span class="anon" title="Anonymous">🕶</span> } @else { <app-avatar [user]="card().author" [size]="20" /> }
-          <span class="name">{{ card().anonymous ? (card().mine ? 'You (anonymous)' : 'Anonymous') : card().author?.name ?? 'Someone' }}</span>
+          @if (card().anonymous || !card().author) {
+            @if (card().anonymous) { <span class="anon" title="Anonymous">🕶</span> } @else { <app-avatar [user]="null" [size]="20" /> }
+            <span class="name">{{ card().anonymous ? (card().mine ? 'You (anonymous)' : 'Anonymous') : 'Someone' }}</span>
+          } @else {
+            <button type="button" class="person-btn" (click)="openPerson($event)" [attr.aria-label]="'About ' + card().author!.name">
+              <app-avatar [user]="card().author" [size]="20" />
+              <span class="name">{{ card().author!.name }}</span>
+            </button>
+          }
         </span>
         <div class="spacer"></div>
         @if (card().status !== 'none') { <span class="status-badge" [attr.data-status]="card().status">{{ labels[card().status] }}</span> }
@@ -134,7 +141,7 @@ import { AuthService } from '../core/auth.service';
 
       @if (auth.on('replies')) {
         <!-- A wide bar, not a small icon, so opening replies doesn't take careful aim -->
-        <button type="button" class="replies-toggle no-print" [class.open]="repliesOpen()" (click)="repliesOpen.set(!repliesOpen())"
+        <button type="button" class="replies-toggle no-print" [class.open]="repliesOpen()" (click)="store.toggleReplies(card().id)"
                 [attr.aria-expanded]="repliesOpen()" [attr.aria-label]="repliesLabel()" [title]="repliesLabel()">
           <svg class="bubble" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
             <path d="M12 3.5c-4.97 0-9 3.36-9 7.5 0 2.2 1.14 4.17 2.95 5.55-.2 1.33-.85 2.6-1.85 3.6 1.9-.1 3.66-.8 5-1.9.94.22 1.91.25 2.9.25 4.97 0 9-3.36 9-7.5s-4.03-7.5-9-7.5Z"
@@ -175,7 +182,7 @@ export class Card {
   protected markable = computed(() => this.statuses.filter(s => s !== 'carry_over' || this.auth.on('carryOver')));
   protected editing = signal(false);
   protected editingTitle = signal(false);
-  protected repliesOpen = signal(false);
+  protected repliesOpen = computed(() => this.store.openReplies().has(this.card().id));
   protected menuOpen = signal(false);
   protected replyingTo = signal<ReplyDto | null>(null);
 
@@ -235,6 +242,13 @@ export class Card {
   private shades = inject(PersonShades);
   /** The author's hue for the card's tint. Never for an anonymous card (not even the viewer's own): it would give the author away */
   protected shadeHue = computed(() => (this.card().anonymous ? null : this.shades.hueFor(this.card().author)));
+
+  /** While picking a card to group with, a click on the author picks the card instead */
+  openPerson(e: MouseEvent) {
+    if (this.picking()) return;
+    e.stopPropagation();
+    this.store.personOpen.set(this.card().author);
+  }
 
   onPickClick(e: MouseEvent) {
     const source = this.store.pickingGroupFor();

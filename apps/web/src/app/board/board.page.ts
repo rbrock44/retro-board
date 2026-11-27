@@ -7,7 +7,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import {
   CARD_STATUSES, CARD_STATUS_LABELS, COLOR_PRESETS, type CardDto, type CardStatus, type ColumnDto,
-  type BoardDto,
+  type BoardDto, type UserDto,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { themeStyle } from '../core/theme.service';
@@ -24,13 +24,15 @@ import { TeamPhoto } from '../shared/team-photo';
 import { Card } from './card';
 import { Composer, type ComposerResult } from './composer';
 import { ClickOutside } from '../shared/click-outside';
+import { PersonDetails } from './person-details';
+import { PresenterPicker } from './presenter-picker';
 
 @Component({
   selector: 'app-board-page',
   providers: [BoardStore],
   imports: [TeamPhoto, ClickOutside, 
     FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragPlaceholder,
-    Card, Composer, Avatar, ActionList, Modal, ColorPicker, DatePipe,
+    Card, Composer, Avatar, ActionList, Modal, ColorPicker, DatePipe, PersonDetails, PresenterPicker,
   ],
   host: {
     '(document:keydown)': 'onKey($event)',
@@ -42,7 +44,7 @@ import { ClickOutside } from '../shared/click-outside';
       <div class="board-root" [style]="boardStyle()">
         <header class="board-bar">
           <div class="board-title">
-            <p class="crumbs"><app-team-photo [team]="s.team" [size]="18" /> {{ s.team.name }} · <a [routerLink]="['/teams', s.team.id, 'history']">History</a></p>
+            <p class="crumbs board-crumbs"><app-team-photo [team]="s.team" [size]="32" /><span>{{ s.team.name }} · <a [routerLink]="['/teams', s.team.id, 'history']">History</a></span></p>
             @if (editingTitle()) {
               <input class="title-edit" [value]="s.board.title" (change)="rename($event)" (blur)="editingTitle.set(false)"
                      (keydown.enter)="$any($event.target).blur()" autofocus aria-label="Board title">
@@ -196,6 +198,32 @@ import { ClickOutside } from '../shared/click-outside';
         <div class="column-focus" role="dialog" aria-modal="true" [attr.aria-label]="fc.col.title" [style.--col]="fc.col.color">
           <header class="focus-head">
             <span class="col-bar"></span>
+            <!-- going over the column together: open or close every thread, and pick who leads it -->
+            <div class="focus-tools no-print">
+              @if (auth.on('replies')) {
+                <button type="button" class="icon-btn" (click)="toggleFocusReplies()" [disabled]="!focusReplyIds().length"
+                        [attr.aria-pressed]="focusRepliesOpen()"
+                        [attr.aria-label]="focusRepliesOpen() ? 'Close all replies' : 'Open all replies'"
+                        [title]="!focusReplyIds().length ? 'No replies in this column yet' : focusRepliesOpen() ? 'Close all replies' : 'Open all replies'">
+                  @if (focusRepliesOpen()) {
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 6l5 5 5-5M7 13l5 5 5-5" /></svg>
+                  }
+                </button>
+              }
+              <button type="button" class="icon-btn" (click)="pickerOpen.set(true)" [disabled]="!s.members.length"
+                      aria-label="Pick someone to go over this column" title="Pick someone at random to go over this column">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+                  <path d="M17 4.5h4.5V9M21.5 4.5l-5 5M17 14.5h4.5V19M21.5 19l-3-3" /></svg>
+              </button>
+              @if (presenter(); as p) {
+                @if (p.columnId === fc.col.id) {
+                  <span class="presenter-chip" title="Going over this column"><app-avatar [user]="p.user" [size]="22" /> {{ p.user.name }}</span>
+                }
+              }
+            </div>
             <!-- title centered; SVG icons rather than ‹ › ✕ glyphs, which sit off-center in most fonts -->
             <div class="focus-title"><h2>{{ fc.col.title }}</h2><span class="count">{{ fc.cards.length }}</span></div>
             <div class="focus-nav">
@@ -220,6 +248,15 @@ import { ClickOutside } from '../shared/click-outside';
           </div>
         </div>
         </div>
+      }
+
+      @if (store.personOpen(); as person) {
+        <app-person-details [user]="person" (closed)="store.personOpen.set(null)" />
+      }
+
+      @if (pickerOpen() && focused(); as fc) {
+        <app-presenter-picker [columnTitle]="fc.col.title" (picked)="presenter.set({ columnId: fc.col.id, user: $event })"
+                              (closed)="pickerOpen.set(false)" />
       }
 
       @if (columnEdit(); as ce) {
@@ -402,6 +439,26 @@ export class BoardPage implements OnDestroy {
     return { col: cols[index], index, cards: this.store.columnCards().get(cols[index].id) ?? [] };
   });
 
+  /** Who said yes to going over a column (picked at random in the column popup) */
+  protected presenter = signal<{ columnId: string; user: UserDto } | null>(null);
+  protected pickerOpen = signal(false);
+  /** Cards in the focused column, grouped ones too, that have replies to open */
+  protected focusReplyIds = computed(() => {
+    const f = this.focused();
+    if (!f) return [];
+    const kids = this.store.childrenOf();
+    return f.cards.flatMap(c => [c, ...(kids.get(c.id) ?? [])]).filter(c => c.replies.length).map(c => c.id);
+  });
+  protected focusRepliesOpen = computed(() => {
+    const ids = this.focusReplyIds();
+    const open = this.store.openReplies();
+    return ids.length > 0 && ids.every(id => open.has(id));
+  });
+
+  toggleFocusReplies() {
+    this.store.setReplies(this.focusReplyIds(), !this.focusRepliesOpen());
+  }
+
   stepFocus(dir: -1 | 1) {
     const f = this.focused();
     const next = f && this.store.columns()[f.index + dir];
@@ -412,7 +469,9 @@ export class BoardPage implements OnDestroy {
     const typing = (e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
     if (typing) return;
     if (this.focusColumn()) {
-      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) this.focusColumn.set(null);
+      // a popup over the column (the presenter picker, a person's details, an enlarged image) has the keys
+      if (document.querySelector('dialog[open], .lightbox')) return;
+      if (e.key === 'Escape') this.focusColumn.set(null);
       if (e.key === 'ArrowLeft') this.stepFocus(-1);
       if (e.key === 'ArrowRight') this.stepFocus(1);
       return;

@@ -105,9 +105,9 @@ import { PresenterPicker } from './presenter-picker';
           </span>
           }
           @if (perm().canFacilitate && s.board.status === 'open') {
-            <button type="button" class="btn primary" data-tour="archive" (click)="openArchive()" title="Move this board to the history and start a fresh one">🗄 Archive<span class="hide-sm"> Board</span></button>
+            <button type="button" class="btn primary" data-tour="archive" (click)="openArchive()" title="Move this board to the history and start a fresh one"><span aria-hidden="true">🗄</span><span>Archive<span class="hide-sm"> Board</span></span></button>
           }
-          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ <span class="hide-sm">Board </span>Settings</button> }
+          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()"><span aria-hidden="true">⚙</span><span><span class="hide-sm">Board </span>Settings</span></button> }
         </div>
 
         @if (store.arrangeMode()) {
@@ -341,7 +341,7 @@ import { PresenterPicker } from './presenter-picker';
                 }
               }
               @if (s.board.status === 'open') {
-                <button type="button" class="btn" (click)="settingsOpen.set(false); openArchive()">Archive Board</button>
+                <button type="button" class="btn primary" (click)="settingsOpen.set(false); openArchive()" title="Move this board to the history and start a fresh one"><span aria-hidden="true">🗄</span><span>Archive Board</span></button>
               }
               @if (s.permissions.role === 'admin') { <button type="button" class="btn ghost danger" (click)="deleteBoard()">Delete Board</button> }
             </div>

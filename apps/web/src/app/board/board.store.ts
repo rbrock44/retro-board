@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { io, type Socket } from 'socket.io-client';
 import {
   CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE,
@@ -11,7 +11,8 @@ import { DemoService } from '../demo/demo.service';
 
 /** position: Oldest First, the order cards sit in (new ones go to the bottom; dragging rearranges).
  *  newest: Newest First. likes: Most Liked. Only position can be rearranged by dragging. */
-export type SortMode = 'position' | 'newest' | 'likes';
+/** `position` is the board's own order: what Arrange Mode changes. The others are views that ignore it. */
+export type SortMode = 'position' | 'oldest' | 'newest' | 'likes';
 
 /** Applies one realtime event to a board state. Pure, so it is easy to test. */
 export function applyEvent(s: BoardStateDto, e: BoardEvent): BoardStateDto {
@@ -63,6 +64,11 @@ export interface DropSpot { id: string; mode: 'group' | 'before' | 'after'; colu
 /** One board's live state. Provided by the board page, so each open board gets its own store and socket. */
 @Injectable()
 export class BoardStore {
+  constructor() {
+    // Arranging moves cards within the board's own order, so that's the order shown while it's on
+    effect(() => { if (this.arrangeMode()) untracked(() => this.sort.set('position')); });
+  }
+
   private api = inject(Api);
   private toast = inject(ToastService);
   private socket: Socket | null = null;
@@ -79,6 +85,40 @@ export class BoardStore {
   readonly next = signal<{ boardId: string; savedTitle: string } | null>(null);
 
   readonly sort = signal<SortMode>('position');
+
+  /**
+   * What the board's own order amounts to: still oldest first (nobody has rearranged anything), newest first by
+   * chance, or a custom arrangement. Checked in every column and every group, ignoring filters.
+   */
+  readonly arrangement = computed<'oldest' | 'newest' | 'custom'>(() => {
+    const lists = new Map<string, CardDto[]>();
+    for (const c of this.cards()) {
+      const key = c.parentId ? 'g:' + c.parentId : 'c:' + c.columnId;
+      lists.set(key, [...(lists.get(key) ?? []), c]);
+    }
+    let asc = true, desc = true;
+    for (const list of lists.values()) {
+      const byPos = [...list].sort(byPosition).map(c => c.createdAt);
+      for (let i = 1; i < byPos.length; i++) {
+        if (byPos[i - 1] > byPos[i]) asc = false;
+        if (byPos[i - 1] < byPos[i]) desc = false;
+      }
+      if (!asc && !desc) return 'custom';
+    }
+    return asc ? 'oldest' : 'newest';
+  });
+
+  /** The Sort menu's choice: picking "Oldest First" while the board's own order already is that reads as one option */
+  readonly sortChoice = computed<SortMode>(() => {
+    const s = this.sort();
+    return s === this.arrangement() ? 'position' : s;
+  });
+
+  /** From the Sort menu. A view other than the board's own order turns Arrange Mode off: drags only make sense in it */
+  setSort(mode: SortMode) {
+    this.sort.set(mode);
+    if (mode !== 'position') this.arrangeMode.set(false);
+  }
   readonly statusFilter = signal<CardStatus | 'all'>('all');
   /** Cards only drag while Arrange Mode is on, so they can't be moved by accident */
   readonly arrangeMode = signal(false);
@@ -139,7 +179,8 @@ export class BoardStore {
       map.get(c.columnId)?.push(c);
     }
     for (const list of map.values()) {
-      if (sort === 'likes') list.sort((a, b) => groupLikes(b, kids.get(b.id) ?? []) - groupLikes(a, kids.get(a.id) ?? []) || byPosition(a, b));
+      if (sort === 'oldest') list.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || byPosition(a, b));
+      else if (sort === 'likes') list.sort((a, b) => groupLikes(b, kids.get(b.id) ?? []) - groupLikes(a, kids.get(a.id) ?? []) || byPosition(a, b));
       else if (sort === 'newest') list.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || byPosition(b, a));
       else list.sort(byPosition);
     }

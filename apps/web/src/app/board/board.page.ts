@@ -80,9 +80,11 @@ import { PresenterPicker } from './presenter-picker';
             </select>
           </label>
           <label>Sort
-            <select [ngModel]="store.sort()" (ngModelChange)="store.sort.set($event)">
-              <option value="position">Oldest First</option>
-              <option value="newest">Newest First</option>
+            <select [ngModel]="store.sortChoice()" (ngModelChange)="store.setSort($event)">
+              <!-- the board's own order, named for what it is; Custom once anyone rearranges cards -->
+              <option value="position">{{ arrangementLabel() }}</option>
+              @if (store.arrangement() !== 'oldest') { <option value="oldest">Oldest First</option> }
+              @if (store.arrangement() !== 'newest') { <option value="newest">Newest First</option> }
               @if (auth.on('likes')) { <option value="likes">Most Liked</option> }
             </select>
           </label>
@@ -403,6 +405,9 @@ export class BoardPage implements OnDestroy {
   private scrollFrame = 0;
   protected columnEdit = signal<{ id: string | null; title: string; color: string; description: string } | null>(null);
 
+  /** The Sort menu's name for the board's own order */
+  protected arrangementLabel = computed(() =>
+    ({ oldest: 'Oldest First', newest: 'Newest First', custom: 'Custom' } as const)[this.store.arrangement()]);
   protected perm = computed(() => this.store.permissions() ?? { role: 'viewer', canWrite: false, canVote: false, canFacilitate: false });
   protected boardStyle = computed(() => {
     const t = this.store.board()?.settings.theme;

@@ -62,6 +62,9 @@ img, video { max-width: 100%; }
 
 main { outline: none; }
 
+/* Read by screen readers, not shown */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* ---------- form controls ---------- */
 
 input, textarea, select, button { font: inherit; color: inherit; }
@@ -742,6 +745,13 @@ button.likes { cursor: pointer;
   background: var(--surface-2); font-size: 0.85rem; line-height: 1.4; }
 .feature-sub { grid-column: 3 / -1; padding: 0.1rem 0 0.35rem;
   label { font-weight: 400; } p { margin: 0.15rem 0 0; } }
+
+/* Deleting a column that has cards: move them or delete them */
+.delete-col-ask { margin: 0; }
+.delete-col-choice { border: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem;
+  label.check { flex-wrap: wrap; }
+  select { min-width: 10rem; }
+  .choice-note { margin: -0.3rem 0 0 1.45rem; } }
 
 /* Board Settings: what's applied to this board, as label | value columns */
 .settings-head { margin: 0; font-size: 0.95rem; }

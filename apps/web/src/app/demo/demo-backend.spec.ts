@@ -68,6 +68,18 @@ describe('demo backend', () => {
     off();
   });
 
+  it('moves the cards of a deleted column to another column, like the server', async () => {
+    const { b } = backend();
+    const live = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
+    const [from, to] = live.columns;
+    const moving = live.cards.filter(c => c.columnId === from.id).map(c => c.id).sort();
+    await b.handle('DELETE', `/api/columns/${from.id}?moveTo=${to.id}`);
+    const after = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
+    expect(after.columns.map(c => c.id)).not.toContain(from.id);
+    expect(after.cards.filter(c => moving.includes(c.id)).every(c => c.columnId === to.id)).toBe(true);
+    expect(after.cards.length).toBe(live.cards.length);
+  });
+
   it('carries marked cards into the next retro once', async () => {
     const { b } = backend();
     const live = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;

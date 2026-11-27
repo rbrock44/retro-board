@@ -66,6 +66,33 @@ describe('boards, columns and cards', () => {
     expect(templates[0].columns.map((c: { title: string }) => c.title)).toEqual(['Kudos', 'Risks', 'Big ideas']);
   });
 
+  it('deletes a column with its cards, or moves the cards to another column first', async () => {
+    const { owner, board, state: s } = await teamWithBoard(t.app);
+    const [start, stop, cont] = s.columns;
+    const post = async (columnId: string, body: string) => (await owner.client.post(`/api/boards/${board.id}/cards`, { columnId, body })).body;
+    await post(stop.id, 'already here');
+    const a = await post(start.id, 'a');
+    const b = await post(start.id, 'b');
+    const kid = await post(start.id, 'in a group');
+    await owner.client.post(`/api/cards/${kid.id}/group`, { targetId: a.id });
+
+    expect((await owner.client.del(`/api/columns/${start.id}?moveTo=${start.id}`)).status).toBe(400);
+    expect((await owner.client.del(`/api/columns/${start.id}?moveTo=${stop.id}`)).status).toBe(204);
+    let st = await state(owner.client, board.id);
+    expect(st.columns.map(c => c.id)).toEqual([stop.id, cont.id]);
+    const inStop = st.cards.filter(c => c.columnId === stop.id);
+    expect(inStop.filter(c => !c.parentId).sort((x, y) => (x.position < y.position ? -1 : 1)).map(c => c.body)).toEqual(['already here', 'a', 'b']);
+    expect(inStop.find(c => c.id === kid.id)?.parentId).toBe(a.id);
+
+    await owner.client.del(`/api/columns/${cont.id}`);
+    await post(stop.id, 'x');
+    await owner.client.del(`/api/columns/${stop.id}`);
+    st = await state(owner.client, board.id);
+    expect(st.columns).toEqual([]);
+    expect(st.cards).toEqual([]);
+    void b;
+  });
+
   it('only lets facilitators change columns', async () => {
     const { owner, team, board, state: s } = await teamWithBoard(t.app);
     const member = await addMember(t.app, owner.client, team.id);

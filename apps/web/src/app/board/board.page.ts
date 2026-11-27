@@ -271,7 +271,29 @@ import { PresenterPicker } from './presenter-picker';
       }
 
       @if (columnEdit(); as ce) {
-        <app-modal [heading]="ce.id ? 'Edit Column' : 'New Column'" (closed)="columnEdit.set(null)">
+        <app-modal [heading]="columnDelete() ? 'Delete “' + ce.title + '”' : ce.id ? 'Edit Column' : 'New Column'" (closed)="closeColumnEdit()">
+          @if (columnDelete(); as cd) {
+            <!-- A column with cards: keep them by moving them, or delete them with it -->
+            <form class="stack" (ngSubmit)="confirmDeleteColumn()">
+              <p class="delete-col-ask">This column has {{ cd.count }} {{ cd.count === 1 ? 'card' : 'cards' }}. What should happen to {{ cd.count === 1 ? 'it' : 'them' }}?</p>
+              <fieldset class="delete-col-choice">
+                <legend class="sr-only">Cards in this column</legend>
+                @if (cd.others.length) {
+                  <label class="check"><input type="radio" name="fate" value="move" [(ngModel)]="cd.fate"> Move them to
+                    <select name="moveTo" [(ngModel)]="cd.moveTo" (focus)="cd.fate = 'move'" aria-label="Column to move the cards to">
+                      @for (o of cd.others; track o.id) { <option [value]="o.id">{{ o.title }}</option> }
+                    </select></label>
+                  <p class="muted small choice-note">Groups, likes, reactions and replies come along.</p>
+                }
+                <label class="check danger-text"><input type="radio" name="fate" value="delete" [(ngModel)]="cd.fate"> Delete them for good</label>
+              </fieldset>
+              <div class="row wrap">
+                <button type="button" class="btn ghost" (click)="columnDelete.set(null)">Back</button>
+                <div class="spacer"></div>
+                <button type="submit" class="btn danger">{{ cd.fate === 'move' ? 'Move Cards and Delete Column' : 'Delete Column and Cards' }}</button>
+              </div>
+            </form>
+          } @else {
           <form class="stack" (ngSubmit)="saveColumn()">
             <label>Title <input name="title" [(ngModel)]="ce.title" required maxlength="80" autofocus></label>
             <label>Description <input name="desc" [(ngModel)]="ce.description" maxlength="300" placeholder="Optional prompt shown under the title"></label>
@@ -286,6 +308,7 @@ import { PresenterPicker } from './presenter-picker';
               <button type="submit" class="btn primary" [disabled]="!ce.title.trim()">Save</button>
             </div>
           </form>
+          }
         </app-modal>
       }
 
@@ -581,12 +604,35 @@ export class BoardPage implements OnDestroy {
     if (col) void this.store.moveColumn(col, dir);
   }
 
+  /** The delete step for a column that has cards: move them (to the next column by default) or delete them */
+  protected columnDelete = signal<{ count: number; others: ColumnDto[]; fate: 'move' | 'delete'; moveTo: string } | null>(null);
+
   deleteColumn() {
     const ce = this.columnEdit()!;
-    const n = (this.store.cards().filter(c => c.columnId === ce.id)).length;
-    if (!confirm(n ? `Delete “${ce.title}” and its ${n} cards?` : `Delete “${ce.title}”?`)) return;
-    void this.store.deleteColumn(ce.id!);
+    const count = this.store.cards().filter(c => c.columnId === ce.id).length;
+    if (!count) {
+      if (!confirm(`Delete “${ce.title}”?`)) return;
+      void this.store.deleteColumn(ce.id!);
+      this.closeColumnEdit();
+      return;
+    }
+    const cols = this.store.columns();
+    const i = cols.findIndex(c => c.id === ce.id);
+    const others = cols.filter(c => c.id !== ce.id);
+    // the column to its right, or to its left when it's the last one
+    const next = cols[i + 1] ?? cols[i - 1];
+    this.columnDelete.set({ count, others, fate: others.length ? 'move' : 'delete', moveTo: next?.id ?? '' });
+  }
+
+  confirmDeleteColumn() {
+    const ce = this.columnEdit()!, cd = this.columnDelete()!;
+    void this.store.deleteColumn(ce.id!, cd.fate === 'move' ? cd.moveTo : undefined);
+    this.closeColumnEdit();
+  }
+
+  closeColumnEdit() {
     this.columnEdit.set(null);
+    this.columnDelete.set(null);
   }
 
   /** Team templates, loaded when settings open, to tell whether the columns are already one */

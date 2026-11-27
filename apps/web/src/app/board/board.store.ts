@@ -372,8 +372,9 @@ export class BoardStore {
     return this.updateColumn(col.id, { position: positionBetween(before, after) });
   }
 
-  deleteColumn(id: string) {
-    return this.run(this.api.delete(`/api/columns/${id}`));
+  /** With `moveTo`, the column's cards move there first; without it they're deleted with the column */
+  deleteColumn(id: string, moveTo?: string) {
+    return this.run(this.api.delete(`/api/columns/${id}${moveTo ? '?moveTo=' + encodeURIComponent(moveTo) : ''}`));
   }
 
   updateBoard(patch: Record<string, unknown>) {

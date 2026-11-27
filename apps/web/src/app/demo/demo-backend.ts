@@ -674,9 +674,23 @@ export class DemoBackend {
       this.emit(col.boardId, { type: 'column.upsert', column: col });
       return col;
     }],
-    ['DELETE', /^\/api\/columns\/([^/]+)$/, ([id]) => {
+    ['DELETE', /^\/api\/columns\/([^/]+)$/, ([id], _b, q) => {
       const col = this.state.columns.find(c => c.id === id) ?? notFound('Column');
       this.requireBoard(col.boardId, 'facilitate');
+      const moveTo = q.get('moveTo');
+      if (moveTo) {
+        // Same as the server: keep the cards by moving them after the target column's own
+        const target = this.state.columns.find(c => c.id === moveTo);
+        if (!target || target.boardId !== col.boardId || target.id === id) fail(400, 'Pick another column on this board');
+        const here = this.state.cards.filter(c => c.columnId === id);
+        let pos = this.state.cards.filter(c => c.columnId === target!.id && !c.parentId).sort(byPosition).at(-1)?.position ?? null;
+        for (const c of here.filter(c => !c.parentId).sort(byPosition)) { pos = positionAfter(pos); c.position = pos; }
+        for (const c of here) c.columnId = target!.id;
+        this.state.columns = this.state.columns.filter(c => c.id !== id);
+        this.emitCards(col.boardId, here.map(c => c.id));
+        this.emit(col.boardId, { type: 'column.delete', id });
+        return undefined;
+      }
       const gone = this.state.cards.filter(c => c.columnId === id).map(c => c.id);
       this.state.cards = this.state.cards.filter(c => c.columnId !== id);
       this.state.columns = this.state.columns.filter(c => c.id !== id);

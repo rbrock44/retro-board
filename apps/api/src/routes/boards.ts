@@ -332,6 +332,31 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const [col] = await db.select().from(columns).where(eq(columns.id, (req.params as { columnId: string }).columnId));
     if (!col) throw notFound('Column');
     await requireBoard(db, user, col.boardId, 'facilitate');
+    // ?moveTo=<column> keeps the cards (with their groups, likes and replies) by moving them there first
+    const { moveTo } = parse(z.object({ moveTo: z.string().max(64).optional() }), req.query);
+    if (moveTo) {
+      const [target] = await db.select().from(columns).where(eq(columns.id, moveTo));
+      if (!target || target.boardId !== col.boardId || target.id === col.id) throw badRequest('Pick another column on this board');
+      const moved = await db.transaction(async tx => {
+        const here = await tx.select().from(cards).where(eq(cards.columnId, col.id));
+        const tops = here.filter(c => !c.parentId).sort(byPosition);
+        const last = (await tx.select({ id: cards.id, position: cards.position }).from(cards)
+          .where(and(eq(cards.columnId, target.id), isNull(cards.parentId)))).sort(byPosition).at(-1)?.position ?? null;
+        // the moved cards go after the target's own, in the order they had
+        let pos = last;
+        for (const c of tops) {
+          pos = positionAfter(pos);
+          await tx.update(cards).set({ columnId: target.id, position: pos }).where(eq(cards.id, c.id));
+        }
+        // cards inside a group keep their place in it
+        if (here.some(c => c.parentId)) await tx.update(cards).set({ columnId: target.id }).where(eq(cards.columnId, col.id));
+        await tx.delete(columns).where(eq(columns.id, col.id));
+        return here.map(c => c.id);
+      });
+      await broadcastCards(ctx, col.boardId, moved);
+      ctx.hub.emitBoard(col.boardId, { type: 'column.delete', id: col.id });
+      return noContent(reply);
+    }
     const gone = await db.select({ id: cards.id }).from(cards).where(eq(cards.columnId, col.id));
     await db.delete(columns).where(eq(columns.id, col.id));
     ctx.hub.emitBoard(col.boardId, { type: 'column.delete', id: col.id });

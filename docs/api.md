@@ -72,7 +72,7 @@ curl -b jar http://localhost:8080/api/teams
 | POST | `/api/export` | `boardIds[] (1-500), format: md\|csv` | read on every board. One file for many boards, grouped by team (spreadsheet gains `team` and `board` columns). Used by Settings → Export and a team's History |
 | POST | `/api/boards/:boardId/columns` | `title, color, description?` | facilitate |
 | PATCH | `/api/columns/:columnId` | `title?, color?, description?, position?` | facilitate |
-| DELETE | `/api/columns/:columnId` | | facilitate; deletes its cards |
+| DELETE | `/api/columns/:columnId` | query `moveTo?` (another column on the board) | facilitate; with `moveTo` its cards move there (after that column's own, groups kept), otherwise they're deleted |
 
 ## Cards
 

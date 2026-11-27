@@ -27,6 +27,8 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,v
  * Text plus media: attach with the button, paste an image, drop files, or search GIFs.
  * Files upload as soon as they are picked so submitting is instant.
  */
+let hintCount = 0;
+
 @Component({
   selector: 'app-composer',
   imports: [FormsModule, DecimalPipe, GifPicker],
@@ -34,7 +36,8 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,v
     <form class="composer" [class.drag-over]="dragOver()" (ngSubmit)="submit()"
           (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
       <textarea #box name="body" [(ngModel)]="body" [placeholder]="placeholder()" rows="2" maxlength="10000"
-                (keydown)="onKey($event)" (paste)="onPaste($event)" (input)="typed.emit()" [attr.aria-label]="placeholder()"></textarea>
+                (keydown)="onKey($event)" (paste)="onPaste($event)" (input)="typed.emit()" [attr.aria-label]="placeholder()"
+                [attr.aria-describedby]="touch ? null : hintId"></textarea>
 
       @if (attachments().length || uploads().length) {
         <div class="composer-media">
@@ -70,6 +73,9 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,v
         @if (cancellable()) { <button type="button" class="btn ghost small" (click)="cancelled.emit()">Cancel</button> }
         <button type="submit" class="btn primary small" [disabled]="!canSubmit()">{{ submitLabel() }}</button>
       </div>
+      @if (!touch) {
+        <p class="composer-hint" [id]="hintId"><kbd>Enter</kbd> to {{ submitLabel().toLowerCase() }} · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</p>
+      }
     </form>
     @if (gifOpen()) {
       <app-gif-picker [boardId]="boardId()" (picked)="addGif($event)" (closed)="gifOpen.set(false)" />
@@ -82,6 +88,9 @@ export class Composer {
   private api = inject(Api);
 
   readonly boardId = input.required<string>();
+  /** Phones and tablets: on-screen keyboards have no Shift+Enter, so there Enter adds a line and Add submits */
+  protected readonly touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  protected readonly hintId = `composer-hint-${++hintCount}`;
   readonly placeholder = input('Add a card…');
   readonly submitLabel = input('Add');
   readonly initialBody = input('');
@@ -125,9 +134,11 @@ export class Composer {
   }
 
   onKey(e: KeyboardEvent) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    // Enter while an input method is still composing (Japanese, Chinese, …) picks a character, never submits
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229
+        && (e.ctrlKey || e.metaKey || (!e.shiftKey && !e.altKey && !this.touch))) {
       e.preventDefault();
-      this.submit();
+      void this.submit();
     } else if (e.key === 'Escape' && this.cancellable()) {
       this.cancelled.emit();
     }

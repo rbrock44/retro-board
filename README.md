@@ -174,7 +174,8 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 
 | Key | Where | Does |
 |---|---|---|
-| `Ctrl/⌘ + Enter` | Any composer | Submit the card or reply |
+| `Enter` (or `Ctrl/⌘ + Enter`) | Any composer | Submit the card, reply or edit. On phones and tablets Enter adds a line; use the button |
+| `Shift + Enter` | Any composer | New line |
 | `Esc` | Composer, menus, group picking, Arrange Mode, column popup | Cancel or close |
 | `A` | Board | Toggle Arrange Mode (also `✥` in a column header) |
 

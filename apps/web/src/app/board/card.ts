@@ -103,6 +103,9 @@ import { AuthService } from '../core/auth.service';
           <app-reactions [items]="card().reactions" [enabled]="canVote()" (toggle)="store.react('card', card().id, $event)" />
         }
         <div class="spacer"></div>
+        @if (canEdit() && !editing()) {
+          <button type="button" class="card-edit-btn" (click)="editing.set(true)" aria-label="Edit card" title="Edit card">✎</button>
+        }
         @if (canMark() || canEdit()) {
           <span class="menu-wrap" (clickOutside)="menuOpen.set(false)">
             <button type="button" class="card-menu-btn" (click)="menuOpen.set(!menuOpen())" aria-label="Card options" title="Card options" [attr.aria-expanded]="menuOpen()">⋯</button>
@@ -130,7 +133,6 @@ import { AuthService } from '../core/auth.service';
                 }
                 @if (canEdit()) {
                   <hr>
-                  <button type="button" role="menuitem" (click)="editing.set(true)">Edit</button>
                   <button type="button" role="menuitem" class="danger" (click)="remove()">Delete</button>
                 }
               </div>

@@ -74,6 +74,8 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     const editsContent = body.body !== undefined || body.anonymous !== undefined || body.attachmentIds?.length || body.removeAttachmentIds?.length;
     const bctx = await requireBoard(db, user, card.boardId, editsContent ? 'write' : 'vote');
     if (editsContent && !canEditOwn(bctx, card.authorId, user.id)) throw forbidden('Only the author can edit this card');
+    // Once anonymous, always: showing the name later would give away who wrote it
+    if (card.anonymous && body.anonymous === false) throw badRequest('An anonymous card stays anonymous');
     if (body.anonymous && !card.anonymous) await requireFeature(ctx, 'anonymous');
     if (body.status === 'carry_over') await requireFeature(ctx, 'carryOver');
     if (body.groupTitle !== undefined) await requireFeature(ctx, 'groups');

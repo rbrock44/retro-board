@@ -66,8 +66,11 @@ let hintCount = 0;
         @if (auth.config()?.gifSearch && auth.on('gifs')) {
           <button type="button" class="icon-btn gif-btn" (click)="gifOpen.set(true)" title="Add a GIF" aria-label="Add a GIF">GIF</button>
         }
-        @if (allowAnonymous() && auth.on('anonymous')) {
-          <label class="check small" title="Hide your name on this card"><input type="checkbox" name="anon" [(ngModel)]="anonymous"> Anonymous</label>
+        @if (initialAnonymous()) {
+          <!-- once anonymous, always: showing the name later would give away who wrote it -->
+          <label class="check small" title="An anonymous card stays anonymous"><input type="checkbox" name="anon" checked disabled> Anonymous</label>
+        } @else if (allowAnonymous() && auth.on('anonymous')) {
+          <label class="check small" title="Hide your name on this card. It can't be undone"><input type="checkbox" name="anon" [(ngModel)]="anonymous"> Anonymous</label>
         }
         <div class="spacer"></div>
         @if (cancellable()) { <button type="button" class="btn ghost small" (click)="cancelled.emit()">Cancel</button> }

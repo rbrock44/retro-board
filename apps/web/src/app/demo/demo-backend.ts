@@ -795,6 +795,7 @@ export class DemoBackend {
       const ctx = this.requireBoard(c.boardId, content ? 'write' : 'vote');
       if (content && !ctx.canFacilitate && c.authorId !== this.state.meId) fail(403, 'Only the author can edit this card');
       if (b.body !== undefined) { c.body = String(b.body).trim(); c.editedAt = nowIso(); }
+      if (c.anonymous && b.anonymous === false) fail(400, 'An anonymous card stays anonymous');
       if (b.anonymous !== undefined) c.anonymous = !!b.anonymous;
       if (b.status) c.status = b.status;
       if (b.groupTitle !== undefined) c.groupTitle = b.groupTitle || null;

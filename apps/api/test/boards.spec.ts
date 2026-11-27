@@ -112,6 +112,11 @@ describe('boards, columns and cards', () => {
     expect((await member.client.patch(`/api/cards/${card.id}`, { body: 'edited' })).status).toBe(200);
     const other = await addMember(t.app, owner.client, team.id, 'member', 'Kim');
     expect((await other.client.patch(`/api/cards/${card.id}`, { body: 'hijack' })).status).toBe(403);
+    // once anonymous, always anonymous: not the author, not an admin
+    expect((await member.client.patch(`/api/cards/${card.id}`, { anonymous: false })).status).toBe(400);
+    expect((await owner.client.patch(`/api/cards/${card.id}`, { anonymous: false })).status).toBe(400);
+    expect((await member.client.patch(`/api/cards/${card.id}`, { body: 'again', anonymous: true })).status).toBe(200);
+    expect((await state(owner.client, board.id)).cards[0].author).toBeNull();
   });
 
   it('moves, groups and ungroups cards', async () => {

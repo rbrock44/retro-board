@@ -88,7 +88,8 @@ its default template), so people always land in the right place.
 
 ### Cards, Media and Replies
 
-- `Cards` - Markdown text (bold, lists, links, code). Tick `Anonymous` to hide your name from everyone
+- `Cards` - Markdown text (bold, lists, links, code). Tick `Anonymous` to hide your name from everyone, for good: an
+  anonymous card can't be switched back
 - `Add-card box` - Pick how it sits at the top of each column (Settings → Board): `Compact` (default), a one-line
   `＋ Add a card` that opens into the full box; `Header button`, just ＋ beside the column name; or `Full`, always open.
   `N` opens it in the column in view, `Esc` or `Cancel` folds it away

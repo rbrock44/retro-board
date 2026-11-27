@@ -921,7 +921,7 @@ export class DemoBackend {
       pos = positionAfter(pos);
       this.state.columns.push({ id: newId(), boardId: board.id, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
     }
-    if (b.carryOver !== false) this.carryPending(teamId, board.id, carriedPos, false);
+    if (b.carryOver !== false) this.carryPending(teamId, board.id, carriedPos);
     return this.boardDto(board);
   }
 
@@ -937,17 +937,30 @@ export class DemoBackend {
     return kids.map(k => k.id);
   }
 
-  /** Same as the server: marked cards move once, into the same-named column when `matchColumns`. */
-  private carryPending(teamId: string, boardId: string, carriedPos: string, matchColumns: boolean) {
+  /** Same as the server: a card in "Carried Over" belongs to the first real column it was in. */
+  private originColumnTitle(card: DemoState['cards'][number]): string {
+    let title = this.state.columns.find(c => c.id === card.columnId)?.title ?? '';
+    let from = card.carriedFromId;
+    for (let hops = 0; isCarriedOverColumn(title) && from && hops < 100; hops++) {
+      const prev = this.state.cards.find(c => c.id === from);
+      if (!prev) break;
+      title = this.state.columns.find(c => c.id === prev.columnId)?.title ?? '';
+      from = prev.carriedFromId;
+    }
+    return title;
+  }
+
+  /** Same as the server: marked cards move once, into the same-named column, else a "Carried Over" one. */
+  private carryPending(teamId: string, boardId: string, carriedPos: string) {
     const boardIds = new Set(this.state.boards.filter(x => x.teamId === teamId && x.id !== boardId).map(x => x.id));
     const pending = this.state.cards.filter(c => boardIds.has(c.boardId) && c.status === 'carry_over' && !c.carriedToBoardId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     if (!pending.length) return;
-    const targets = new Map(matchColumns ? this.state.columns.filter(c => c.boardId === boardId).map(c => [c.title.trim().toLowerCase(), c.id]) : []);
+    const targets = new Map(this.state.columns.filter(c => c.boardId === boardId).map(c => [c.title.trim().toLowerCase(), c.id]));
     let carriedColumnId: string | null = null;
     const lastPos = new Map<string, string | null>();
     for (const orig of pending) {
-      const fromTitle = this.state.columns.find(c => c.id === orig.columnId)?.title ?? '';
+      const fromTitle = this.originColumnTitle(orig);
       let columnId = !isCarriedOverColumn(fromTitle) ? targets.get(fromTitle.trim().toLowerCase()) : undefined;
       if (!columnId) {
         if (!carriedColumnId) {
@@ -987,7 +1000,7 @@ export class DemoBackend {
       pos = positionAfter(pos);
       this.state.columns.push({ id: newId(), boardId: next.id, title: c.title, color: c.color, description: c.description, position: pos });
     }
-    this.carryPending(board.teamId, next.id, carriedPos, true);
+    this.carryPending(board.teamId, next.id, carriedPos);
     this.emitBoard(boardId);
     this.emit(boardId, { type: 'board.next', boardId: next.id, savedTitle: board.title });
     return { saved: this.boardDto(board), board: this.boardDto(next) };
@@ -1001,7 +1014,7 @@ export class DemoBackend {
     if (role === 'viewer') return { boardId: null };
     const created = this.createBoard(teamId, { title: CURRENT_BOARD_TITLE, templateId: team.settings.defaultTemplateId, carryOver: false });
     const carriedPos = positionAfter(null);
-    this.carryPending(teamId, created.id, carriedPos, true);
+    this.carryPending(teamId, created.id, carriedPos);
     return { boardId: created.id };
   }
 }

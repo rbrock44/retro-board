@@ -43,12 +43,27 @@ type Tx = Parameters<Parameters<Ctx['db']['transaction']>[0]>[0];
 
 
 /**
- * Copies every card in the team marked "carry over" (and not carried yet) onto a new board, linked back to the
- * original, then marks the originals as carried so each moves once. With `matchColumns`, a card lands in the
- * column with the same title as the one it came from; otherwise, and for cards with no match, in a
- * "Carried over" column placed at `carriedPos`.
+ * The column a carried card belongs in. A card sitting in "Carried Over" (its column was gone last time) is traced
+ * back through the boards it was carried from to the first real column it was in.
  */
-async function carryPending(tx: Tx, teamId: string, boardId: string, carriedPos: string, matchColumns: boolean) {
+async function originColumnTitle(tx: Tx, carriedFromId: string | null, title: string): Promise<string> {
+  let from = carriedFromId;
+  for (let hops = 0; isCarriedOverColumn(title) && from && hops < 100; hops++) {
+    const [prev] = await tx.select({ carriedFromId: cards.carriedFromId, title: columns.title }).from(cards)
+      .innerJoin(columns, eq(columns.id, cards.columnId)).where(eq(cards.id, from));
+    if (!prev) break;
+    ({ title, carriedFromId: from } = prev);
+  }
+  return title;
+}
+
+/**
+ * Copies every card in the team marked "carry over" (and not carried yet) onto a new board, linked back to the
+ * original, then marks the originals as carried so each moves once. A card lands in the column with the same
+ * title as the one it came from; when the new board has no such column, in a "Carried Over" column placed at
+ * `carriedPos`.
+ */
+async function carryPending(tx: Tx, teamId: string, boardId: string, carriedPos: string) {
   const teamBoards = tx.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, teamId), sql`${boards.id} <> ${boardId}`));
   const pending = await tx.select({ card: cards, columnTitle: columns.title }).from(cards)
     .innerJoin(columns, eq(columns.id, cards.columnId))
@@ -56,13 +71,12 @@ async function carryPending(tx: Tx, teamId: string, boardId: string, carriedPos:
     .orderBy(asc(cards.createdAt));
   if (!pending.length) return;
 
-  const targets = matchColumns
-    ? new Map((await tx.select().from(columns).where(eq(columns.boardId, boardId))).map(c => [c.title.trim().toLowerCase(), c.id]))
-    : new Map<string, string>();
+  const targets = new Map((await tx.select().from(columns).where(eq(columns.boardId, boardId))).map(c => [c.title.trim().toLowerCase(), c.id]));
   let carriedColumnId: string | null = null;
   const lastPos = new Map<string, string | null>();
   for (const { card: orig, columnTitle } of pending) {
-    let columnId = !isCarriedOverColumn(columnTitle) ? targets.get(columnTitle.trim().toLowerCase()) : undefined;
+    const fromTitle = await originColumnTitle(tx, orig.carriedFromId, columnTitle);
+    let columnId = !isCarriedOverColumn(fromTitle) ? targets.get(fromTitle.trim().toLowerCase()) : undefined;
     if (!columnId) {
       if (!carriedColumnId) {
         carriedColumnId = newId();
@@ -131,7 +145,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
       }
 
-      if (body.carryOver && carry) await carryPending(tx, team.id, boardId, carriedColumnPos, false);
+      if (body.carryOver && carry) await carryPending(tx, team.id, boardId, carriedColumnPos);
     });
 
     const [b] = await db.select().from(boards).where(eq(boards.id, boardId));
@@ -210,7 +224,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         pos = positionAfter(pos);
         await tx.insert(columns).values({ id: newId(), boardId: nextId, title: c.title, color: c.color, description: c.description, position: pos });
       }
-      if (carry) await carryPending(tx, board.teamId, nextId, carriedPos, true);
+      if (carry) await carryPending(tx, board.teamId, nextId, carriedPos);
     });
 
     const [saved] = await db.select().from(boards).where(eq(boards.id, board.id));
@@ -252,7 +266,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         pos = positionAfter(pos);
         await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
       }
-      if (carry) await carryPending(tx, team.id, boardId, carriedPos, true);
+      if (carry) await carryPending(tx, team.id, boardId, carriedPos);
     });
     return { boardId };
   });

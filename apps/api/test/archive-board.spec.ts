@@ -33,6 +33,30 @@ describe('saving a board and the current board', () => {
     expect((await owner.client.post(`/api/boards/${board.id}/archive`, {})).status).toBe(400);
   });
 
+  it('puts carried cards in their own column on a new board, and in "Carried Over" only when that column is gone', async () => {
+    t = await makeApp();
+    const { owner, team, board, state } = await teamWithBoard(t.app);
+    const stop = state.columns.find((c: { title: string }) => c.title === 'Stop')!;
+    const card = (await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: stop.id, body: 'late deploys' })).body;
+    await owner.client.patch(`/api/cards/${card.id}`, { status: 'carry_over' });
+    await owner.client.patch(`/api/boards/${board.id}`, { status: 'archived' });
+
+    // a board without a "Stop" column: the card waits in "Carried Over"
+    const b2 = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Sprint 2', templateId: 'went-well' })).body;
+    const s2 = (await owner.client.get(`/api/boards/${b2.id}`)).body as BoardStateDto;
+    expect(s2.columns[0].title).toBe('Carried Over');
+    expect(s2.cards[0].columnId).toBe(s2.columns[0].id);
+
+    // carried again onto a board that has "Stop": it goes home, no "Carried Over" column
+    await owner.client.patch(`/api/cards/${s2.cards[0].id}`, { status: 'carry_over' });
+    await owner.client.patch(`/api/boards/${b2.id}`, { status: 'archived' });
+    const b3 = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Sprint 3', templateId: 'start-stop-continue' })).body;
+    const s3 = (await owner.client.get(`/api/boards/${b3.id}`)).body as BoardStateDto;
+    expect(s3.columns.map(c => c.title)).not.toContain('Carried Over');
+    expect(s3.cards).toHaveLength(1);
+    expect(s3.cards[0]).toMatchObject({ body: 'late deploys', columnId: s3.columns.find(c => c.title === 'Stop')!.id });
+  });
+
   it('recognises an older lowercase "Carried over" column when saving', async () => {
     t = await makeApp();
     const { owner, board } = await teamWithBoard(t.app);

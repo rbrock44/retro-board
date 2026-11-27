@@ -102,8 +102,10 @@ Notes:
 - **Likes** are one per person per card: `POST /vote` inserts the `(card, user)` row if it isn't there,
   `DELETE /vote` removes it. There is no budget or per-card cap. The table is still called `votes`
 - **Carry over**: creating a board copies every team card marked `carry_over` whose `carried_to_board_id` is
-  still empty into a new "Carried Over" column, copies their attachments (sharing the stored file), then sets
-  `carried_to_board_id` on the originals so each is carried once
+  still empty into the column with the same title it came from (a card already sitting in "Carried Over" is traced
+  back through `carried_from_id` to its first real column). Cards whose column the new board lacks go into a
+  "Carried Over" column. Attachments are copied (sharing the stored file), then `carried_to_board_id` is set on the
+  originals so each is carried once
 - **Instance settings** (site name, default theme, columns, anonymous cards, sign-up rule) are the launch values from
   the environment with admin overrides from the one-row `instance_settings` table on top (`lib/instance.ts`). New
   boards take built-in defaults, then the instance's; a team's default template wins over the instance's. Templates with no team are instance templates

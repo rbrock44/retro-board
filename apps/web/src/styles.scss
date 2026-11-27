@@ -408,7 +408,16 @@ app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
 .group-meta { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 .group-title { border: 0; background: none; padding: 0; font-weight: 700; cursor: text; color: var(--text); text-align: left;
   &:disabled { cursor: default; } }
-.carried { font-size: 0.75rem; color: #a855f7; text-decoration: none; }
+/* A card brought over from an earlier retro: a purple band across its top and a purple edge, so it stands
+   out from this retro's cards in whatever column it lands in. The left edge still shows column and status. */
+.card.is-carried { border-top-color: color-mix(in srgb, #a855f7 55%, var(--border));
+  border-right-color: color-mix(in srgb, #a855f7 55%, var(--border)); border-bottom-color: color-mix(in srgb, #a855f7 55%, var(--border)); }
+.carried { display: flex; align-items: baseline; gap: 0.3rem; margin: -0.6rem -0.7rem 0; padding: 0.3rem 0.7rem;
+  border-bottom: 1px solid color-mix(in srgb, #a855f7 30%, var(--border)); border-radius: 0 var(--radius-sm) 0 0;
+  background: color-mix(in srgb, #a855f7 14%, var(--surface)); color: color-mix(in srgb, #a855f7 70%, var(--text));
+  font-size: 0.75rem; text-decoration: none; overflow-wrap: anywhere;
+  strong { font-weight: 700; }
+  &:hover { text-decoration: underline; } }
 
 .card-foot { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--muted); }
 .author { display: flex; align-items: center; gap: 0.35rem; min-width: 0; .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }

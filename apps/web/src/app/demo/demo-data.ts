@@ -1,5 +1,5 @@
 import {
-  BUILT_IN_TEMPLATES, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, DEFAULT_BOARD_SETTINGS, positionAfter,
+  BUILT_IN_TEMPLATES, CURRENT_BOARD_TITLE, DEFAULT_BOARD_SETTINGS, positionAfter,
   type ActionStatus, type AttachmentDto, type BoardSettings, type BoardStatus, type CardStatus, type ColumnDto,
   type InstanceSettings, type InviteDto, type TeamRole, type TeamSettings, type TemplateDto, type UserDto, type UserPrefs,
 } from '@retro/shared';
@@ -109,14 +109,9 @@ export function seedDemo(now = Date.now()): DemoState {
   const kickoff = { id: 'b-kick', teamId: team2.id, title: 'Research kickoff', status: 'open' as BoardStatus, settings: s(), createdAt: ago(3), closedAt: null, createdBy: 'u-glenn' };
 
   const columns: ColumnDto[] = [];
-  const addColumns = (boardId: string, specs: { title: string; color: string; description?: string }[], carried = false) => {
+  const addColumns = (boardId: string, specs: { title: string; color: string; description?: string }[]) => {
     let pos = positionAfter(null);
     const ids: string[] = [];
-    if (carried) {
-      const id = newId();
-      columns.push({ id, boardId, ...CARRIED_OVER_COLUMN, description: 'Marked to carry over from earlier retros', position: pos });
-      ids.push(id);
-    }
     for (const spec of specs) {
       pos = positionAfter(pos);
       const id = newId();
@@ -127,7 +122,7 @@ export function seedDemo(now = Date.now()): DemoState {
   };
   const went = BUILT_IN_TEMPLATES.find(t => t.id === 'went-well')!.columns;
   const [pWell, pImprove, pIdeas] = addColumns(past.id, went);
-  const [lCarried, lWell, lImprove, lIdeas] = addColumns(live.id, went, true);
+  const [lWell, lImprove, lIdeas] = addColumns(live.id, went);
   const [kMad, kSad, kGlad] = addColumns(kickoff.id, BUILT_IN_TEMPLATES.find(t => t.id === 'mad-sad-glad')!.columns);
 
   const cards: DemoCard[] = [];
@@ -154,8 +149,9 @@ export function seedDemo(now = Date.now()): DemoState {
   p(pWell, 'u-priya', 'Team lunch at the Maid-Rite was a great reset');
 
   // ---- Sprint 42 (live) ----
-  card(live.id, lCarried, 'u-jordan', carry1.body, { carriedFromId: carry1.id }, 1);
-  card(live.id, lCarried, DEMO_ME, carry2.body, { carriedFromId: carry2.id, status: 'discussed' }, 1);
+  // carried cards go back into the column they came from
+  card(live.id, lImprove, 'u-jordan', carry1.body, { carriedFromId: carry1.id }, 1);
+  card(live.id, lIdeas, DEMO_ME, carry2.body, { carriedFromId: carry2.id, status: 'discussed' }, 1);
 
   const ship = card(live.id, lWell, 'u-alex', 'We shipped the **new billing page** two days early 🚀', { attachmentIds: ['a-party'] });
   const burndown = card(live.id, lWell, 'u-priya', 'Burndown was the smoothest it has been all year', { attachmentIds: ['a-burndown'] });

@@ -15,7 +15,7 @@ describe('demo backend', () => {
     const teams = (await b.handle('GET', '/api/teams')) as TeamDto[];
     expect(teams.map(t => t.name)).toEqual(['Corn Belt Platform', 'Des Moines Design Crew']);
     const state = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;
-    expect(state.columns.map(c => c.title)).toEqual(['Carried Over', 'Went Well', 'To Improve', 'Action Ideas']);
+    expect(state.columns.map(c => c.title)).toEqual(['Went Well', 'To Improve', 'Action Ideas']);
     expect(state.permissions.canFacilitate).toBe(true);
     expect(state.cards.some(c => c.carriedFrom?.boardTitle.endsWith(' · Sprint 41'))).toBe(true);
     expect(state.cards.find(c => c.groupTitle === 'Test reliability')).toBeTruthy();
@@ -75,8 +75,11 @@ describe('demo backend', () => {
     await b.handle('PATCH', `/api/cards/${target.id}`, { status: 'carry_over' });
     const next = (await b.handle('POST', '/api/teams/t-platform/boards', { title: 'Sprint 43 retro' })) as BoardDto;
     const s = (await b.handle('GET', `/api/boards/${next.id}`)) as BoardStateDto;
-    expect(s.columns[0].title).toBe('Carried Over');
+    // same template, so the card goes back into its own column; no "Carried Over" column
+    expect(s.columns.map(c => c.title)).not.toContain('Carried Over');
     expect(s.cards.map(c => c.body)).toEqual([target.body]);
+    const from = live.columns.find(c => c.id === target.columnId)!.title;
+    expect(s.columns.find(c => c.id === s.cards[0].columnId)!.title).toBe(from);
     const again = (await b.handle('POST', '/api/teams/t-platform/boards', { title: 'Sprint 44 retro' })) as BoardDto;
     expect(((await b.handle('GET', `/api/boards/${again.id}`)) as BoardStateDto).cards).toEqual([]);
   });

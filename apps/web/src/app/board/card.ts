@@ -53,14 +53,14 @@ import { AuthService } from '../core/auth.service';
         </div>
       </section>
     } @else {
-    <article class="card" [class.in-group]="nested()" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
+    <article class="card" [class.in-group]="nested()" [class.is-carried]="!!card().carriedFrom" [attr.data-card-id]="card().id" [attr.data-status]="card().status"
              [class.person-shaded]="shadeHue() !== null" [style.--person-hue]="shadeHue()"
              [class.drop-target]="!nested() && isSpot('group')"
              [class.pick-target]="picking() && !nested() && store.pickingGroupFor() !== card().id"
              (click)="onPickClick($event)" [attr.aria-label]="'Card: ' + card().body.slice(0, 60)">
 
       @if (card().carriedFrom; as from) {
-        <a class="carried" [routerLink]="['/boards', from.boardId]" title="Open the earlier board">↪ carried from {{ from.boardTitle }}</a>
+        <a class="carried" [routerLink]="['/boards', from.boardId]" title="Open the earlier board"><span aria-hidden="true">↪</span> <strong>Carried Over</strong> from {{ from.boardTitle }}</a>
       }
 
       @if (editing()) {

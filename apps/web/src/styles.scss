@@ -483,7 +483,9 @@ button.likes { cursor: pointer;
 .react-wrap { position: relative; }
 .react-pop { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 30; display: flex; gap: 2px; padding: 0.25rem; background: var(--surface);
   border: 1px solid var(--border); border-radius: 999px; box-shadow: var(--shadow-lg);
-  button { border: 0; background: none; font-size: 1.1rem; cursor: pointer; border-radius: 50%; width: 30px; height: 30px; &:hover { background: var(--surface-2); transform: scale(1.15); } } }
+  button { border: 0; background: none; font-size: 1.1rem; cursor: pointer; border-radius: 50%; width: 30px; height: 30px;
+    /* centered on the glyph box, not the text line: emoji otherwise sit low in the circle */
+    display: grid; place-items: center; padding: 0; line-height: 1; &:hover { background: var(--surface-2); transform: scale(1.15); } } }
 
 .react-pop .react-more { border-left: 1px solid var(--border); border-radius: 0 50% 50% 0; font-size: 1rem; }
 

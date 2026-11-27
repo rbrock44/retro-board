@@ -11,3 +11,5 @@ config/auth.yaml
 .DS_Store
 Thumbs.db
 backups/
+# copied from node_modules before each build (scripts/copy-emoji-data.mjs)
+apps/web/public/emoji/

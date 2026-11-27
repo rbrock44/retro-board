@@ -1,10 +1,11 @@
 import { Component, input, output, signal } from '@angular/core';
 import { REACTION_EMOJI, type ReactionSummary } from '@retro/shared';
 import { ClickOutside } from '../shared/click-outside';
+import { EmojiPicker } from '../shared/emoji-picker';
 
 @Component({
   selector: 'app-reactions',
-  imports: [ClickOutside],
+  imports: [ClickOutside, EmojiPicker],
   template: `
     <div class="reactions">
       @for (r of items(); track r.emoji) {
@@ -15,13 +16,19 @@ import { ClickOutside } from '../shared/click-outside';
       }
       @if (enabled()) {
         <span class="react-wrap" (clickOutside)="open.set(false)">
-          <button type="button" class="reaction add" (click)="open.set(!open())" aria-label="Add reaction" [attr.aria-expanded]="open()">☺+</button>
+          <button #add type="button" class="reaction add" (click)="open.set(!open())" aria-label="Add reaction" [attr.aria-expanded]="open()">☺+</button>
           @if (open()) {
             <span class="react-pop" role="menu">
               @for (e of emoji; track e) {
                 <button type="button" role="menuitem" (click)="toggle.emit(e); open.set(false)" [attr.aria-label]="'React ' + e">{{ e }}</button>
               }
+              <!-- every other emoji, with search -->
+              <button type="button" role="menuitem" class="react-more" (click)="open.set(false); more.set(true)"
+                      aria-label="More emoji" title="More emoji (search them all)">🔍</button>
             </span>
+          }
+          @if (more()) {
+            <app-emoji-picker [anchor]="add" (picked)="toggle.emit($event)" (closed)="more.set(false)" />
           }
         </span>
       }
@@ -33,5 +40,6 @@ export class Reactions {
   readonly enabled = input(true);
   readonly toggle = output<string>();
   protected open = signal(false);
+  protected more = signal(false);
   protected emoji = REACTION_EMOJI;
 }

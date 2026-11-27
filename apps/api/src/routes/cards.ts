@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CARD_STATUSES, byPosition, positionAfter, type CardStatus } from '@retro/shared';
+import { CARD_STATUSES, byPosition, isEmoji, positionAfter, type CardStatus } from '@retro/shared';
 import type { Ctx } from '../context';
 import type { Db } from '../db';
 import { attachments, cards, columns, reactions, replies, votes, type User } from '../db/schema';
@@ -237,7 +237,8 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(z.object({
       targetType: z.enum(['card', 'reply']),
       targetId: zId,
-      emoji: z.string().min(1).max(16).refine(s => !/[<>&"'\s]/.test(s), 'not an emoji'),
+      // any one emoji (the picker offers them all), but only an emoji
+      emoji: z.string().min(1).max(32).refine(isEmoji, 'Pick an emoji'),
     }), req.body);
     const cardId = body.targetType === 'card' ? body.targetId : (await loadReply(db, body.targetId)).cardId;
     const card = await loadCard(db, cardId);

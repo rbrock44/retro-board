@@ -96,7 +96,8 @@ its default template), so people always land in the right place.
   scale at the top right shows how far it's zoomed. It never fills the screen, so a click around it always closes it
 - `Replies` - 💬 opens a thread on any card. Replies support markdown, media and reactions, and can be answered
   one level deep
-- `Reactions` - Emoji reactions on cards and replies, separate from likes
+- `Reactions` - Emoji reactions on cards and replies, separate from likes. `☺+` offers a quick row; 🔍 opens every
+  emoji with search, categories, skin tones and your most used
 - `People` - Click someone's face or name on a card or reply for their details: email (shown to team admins), team
   role, when they joined, their named cards and likes on this board, and whether they're here now
 - `🎨 Color by Person` - Each person's cards get their own light shade (the same on every board), so you can see
@@ -192,6 +193,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
 ## 🛠 Technologies
 
 - `Angular 22` - Standalone components, signals, zoneless change detection, Angular CDK drag and drop
+- `emoji-picker-element` - The full emoji picker; its emoji list is served by the app itself
 - `Node 24 + Fastify 5` - The API, which also serves the built web app
 - `Socket.IO` - Live board updates and presence
 - `PostgreSQL 17 + Drizzle ORM` - Data and SQL migrations, applied on startup.

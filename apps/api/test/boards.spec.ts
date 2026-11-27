@@ -217,6 +217,16 @@ describe('boards, columns and cards', () => {
     expect(now.board.settings.theme?.accent).toBe('#00ff00');
   });
 
+  it('takes any single emoji as a reaction, and nothing else', async () => {
+    const { owner, board, state: s } = await teamWithBoard(t.app);
+    const card = (await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'x' })).body;
+    const react = (emoji: string) => owner.client.post('/api/reactions', { targetType: 'card', targetId: card.id, emoji });
+    for (const ok of ['🌮', '👍🏽', '🇺🇸', '👩‍👩‍👧‍👦', '1️⃣', '🫠']) expect((await react(ok)).status, ok).toBe(200);
+    for (const bad of ['hello', '👍👍', '<b>', ' 👍', '']) expect((await react(bad)).status, bad).toBe(400);
+    const st = (await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto;
+    expect(st.cards[0].reactions.map(r => r.emoji)).toEqual(expect.arrayContaining(['🌮', '👍🏽', '🇺🇸']));
+  });
+
   it('threads replies one level deep and toggles reactions', async () => {
     const { owner, board, state: s } = await teamWithBoard(t.app);
     const card = (await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: s.columns[0].id, body: 'x' })).body;

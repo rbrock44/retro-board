@@ -101,4 +101,21 @@ export const DEFAULT_BOARD_SETTINGS = {
   theme: null,
 };
 
+/** The quick row in the reaction picker; the full picker (with search) offers every emoji */
 export const REACTION_EMOJI = ['👍', '❤️', '😂', '🎉', '🤔', '😢', '🔥', '👀'];
+
+/**
+ * Exactly one emoji, as Unicode lists them (skin tones, ZWJ families and flags included). Built at run time because
+ * the `v` flag is newer than the compile target; where a browser lacks it, a looser single-pictograph check is used.
+ */
+const ONE_EMOJI: RegExp = (() => {
+  try {
+    return new RegExp('^\\p{RGI_Emoji}$', 'v');
+  } catch {
+    return /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator}{2}|[#*0-9]️?⃣)(?:[️‍\p{Emoji_Modifier}\p{Extended_Pictographic}\u{E0020}-\u{E007F}])*$/u;
+  }
+})();
+
+export function isEmoji(s: string): boolean {
+  return s.length <= 32 && ONE_EMOJI.test(s);
+}

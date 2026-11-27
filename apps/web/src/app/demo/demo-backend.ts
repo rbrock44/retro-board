@@ -1,5 +1,5 @@
 import {
-  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition,
+  BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition, isEmoji,
   canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardSettings, type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
@@ -895,6 +895,7 @@ export class DemoBackend {
       const cardId = b.targetType === 'card' ? b.targetId : (this.state.replies.find(r => r.id === b.targetId) ?? notFound('Reply')).cardId;
       const c = this.card(cardId);
       this.requireBoard(c.boardId, 'vote');
+      if (typeof b.emoji !== 'string' || !isEmoji(b.emoji)) fail(400, 'Pick an emoji');
       const i = this.state.reactions.findIndex(r => r.targetType === b.targetType && r.targetId === b.targetId && r.userId === this.state.meId && r.emoji === b.emoji);
       if (i >= 0) this.state.reactions.splice(i, 1);
       else this.state.reactions.push({ boardId: c.boardId, targetType: b.targetType, targetId: b.targetId, userId: this.state.meId, emoji: b.emoji });

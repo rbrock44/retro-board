@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { makeApp, signUp, teamWithBoard, type TestApp } from './helpers';
+import { addMember, makeApp, signUp, teamWithBoard, type TestApp } from './helpers';
 
 let t: TestApp;
 afterEach(async () => t?.close());
@@ -40,5 +40,19 @@ describe('export', () => {
     const stranger = await signUp(t.app, 'Stranger');
     expect((await stranger.client.request('POST', '/api/export', { boardIds: [board.id], format: 'md' })).status).toBe(404);
     expect((await stranger.client.request('POST', '/api/export', { boardIds: [], format: 'md' })).status).toBe(400);
+  });
+
+  it('is for team admins only, not members or viewers', async () => {
+    t = await makeApp();
+    const { owner, team, board } = await teamWithBoard(t.app);
+    const member = await addMember(t.app, owner.client, team.id, 'member');
+    const viewer = await addMember(t.app, owner.client, team.id, 'viewer');
+    const admin = await addMember(t.app, owner.client, team.id, 'admin');
+    for (const c of [member.client, viewer.client]) {
+      expect((await c.request('POST', '/api/export', { boardIds: [board.id], format: 'md' })).status).toBe(403);
+      expect((await c.get(`/api/boards/${board.id}/export?format=csv`)).status).toBe(403);
+    }
+    expect((await admin.client.request('POST', '/api/export', { boardIds: [board.id], format: 'md' })).status).toBe(200);
+    expect((await admin.client.get(`/api/boards/${board.id}/export?format=md`)).status).toBe(200);
   });
 });

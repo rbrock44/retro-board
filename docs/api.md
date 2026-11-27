@@ -74,8 +74,8 @@ Lost both the password and that browser: `./launch.sh unlock <team>` on the serv
 | POST | `/api/boards/:boardId/archive` | `name?, date? (YYYY-MM-DD)` | facilitate. Archives the board into the history as `date · name` (status `archived`) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
 | DELETE | `/api/boards/:boardId` | | team admin |
 | POST | `/api/boards/:boardId/save-template` | `name, description?` | team admin |
-| GET | `/api/boards/:boardId/export` | `?format=md\|csv` | read |
-| POST | `/api/export` | `boardIds[] (1-500), format: md\|csv` | read on every board. One file for many boards, grouped by team (spreadsheet gains `team` and `board` columns). Used by Settings → Export and a team's History |
+| GET | `/api/boards/:boardId/export` | `?format=md\|csv` | team admin |
+| POST | `/api/export` | `boardIds[] (1-500), format: md\|csv` | team admin on every board. One file for many boards, grouped by team (spreadsheet gains `team` and `board` columns). Used by Settings → Export and a team's History |
 | POST | `/api/boards/:boardId/columns` | `title, color, description?` | facilitate |
 | PATCH | `/api/columns/:columnId` | `title?, color?, description?, position?` | facilitate |
 | DELETE | `/api/columns/:columnId` | query `moveTo?` (another column on the board) | facilitate; with `moveTo` its cards move there (after that column's own, groups kept), otherwise they're deleted |

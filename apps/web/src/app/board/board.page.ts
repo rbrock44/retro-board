@@ -92,7 +92,7 @@ import { PresenterPicker } from './presenter-picker';
               Action Items ({{ store.openActions().length }})
             </button>
           }
-          @if (s.board.status !== 'open' && auth.on('export')) {
+          @if (s.board.status !== 'open' && auth.on('export') && s.permissions.role === 'admin') {
           <span class="menu-wrap" (clickOutside)="exportOpen.set(false)">
             <button type="button" class="btn ghost" (click)="exportOpen.set(!exportOpen())" [attr.aria-expanded]="exportOpen()">Export</button>
             @if (exportOpen()) {

@@ -380,7 +380,7 @@ export class DemoBackend {
   /** Same shape as the server's export: one board, or many grouped by team (Settings > Export). */
   exportBoards(boardIds: string[], format: ExportFormat): { name: string; type: string; text: string } {
     const picked: ExportBoard[] = [...new Set(boardIds)].map(id => {
-      const { board } = this.requireBoard(id, 'read');
+      const { board } = this.requireBoard(id, 'admin');
       return {
         teamName: this.team(board.teamId).name,
         board: { title: board.title, status: board.status, createdAt: board.createdAt },

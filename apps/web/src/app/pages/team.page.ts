@@ -34,7 +34,7 @@ import { TeamPhoto } from '../shared/team-photo';
           </div>
           <div class="spacer"></div>
           <a class="btn primary" [routerLink]="['/teams', t.id]">Current Board</a>
-          @if (auth.on('export')) { <button class="btn" type="button" (click)="openExport()">Export</button> }
+          @if (auth.on('export') && isAdmin()) { <button class="btn" type="button" (click)="openExport()">Export</button> }
           @if (canCreate()) { <button class="btn" type="button" (click)="openNewBoard()">New Board</button> }
         </div>
 
@@ -80,7 +80,7 @@ import { TeamPhoto } from '../shared/team-photo';
                   </a>
                   <span class="meta">{{ b.cardCount }} cards · {{ b.actionCount }} actions · {{ b.createdAt | ago }}
                     @if (b.createdBy) { · by {{ b.createdBy.name }} }</span>
-                  @if (b.status !== 'open' && auth.on('export')) {
+                  @if (b.status !== 'open' && auth.on('export') && isAdmin()) {
                     <button type="button" class="btn ghost small board-export" (click)="openExport([b.id])">Export</button>
                   }
                 </li>

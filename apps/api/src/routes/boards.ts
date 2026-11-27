@@ -386,7 +386,8 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/boards/:boardId/export', async (req, reply) => {
     const user = requireUser(req);
     await requireFeature(ctx, 'export');
-    const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId);
+    // exports are for team admins (and instance admins), like import (restore) is for instance admins
+    const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'admin');
     const format: ExportFormat = (req.query as { format?: string }).format === 'csv' ? 'csv' : 'md';
     return sendExport(reply, formatExport([await exportData(board, user.id)], format), format, exportSlug(board.title));
   });
@@ -401,7 +402,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     }), req.body);
     const picked: ExportBoard[] = [];
     for (const id of [...new Set(body.boardIds)]) {
-      const { board } = await requireBoard(db, user, id);
+      const { board } = await requireBoard(db, user, id, 'admin');
       picked.push(await exportData(board, user.id));
     }
     // Grouped by team, oldest board first within a team, so the file reads like a history.

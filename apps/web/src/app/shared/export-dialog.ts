@@ -22,6 +22,8 @@ interface TeamHistory { team: TeamDto; boards: BoardSummaryDto[] }
       <div class="stack">
         @if (loading()) {
           <p class="muted">Loading the history…</p>
+        } @else if (!teams().length) {
+          <p class="muted">Exporting is for team admins, and you're not an admin of any team. Ask one for an export.</p>
         } @else if (!total()) {
           <p class="muted">There are no boards to export yet. When a retro is done, use <strong>Archive Board</strong> on it,
             and it shows up here to export.</p>
@@ -100,7 +102,9 @@ export class ExportDialog {
   private async load() {
     try {
       const only = this.teamId();
-      const teams = only ? [await this.api.get<TeamDto>(`/api/teams/${only}`)] : await this.api.get<TeamDto[]>('/api/teams');
+      // only teams this person admins (exports are for admins), and not ones whose password this browser lacks
+      const teams = (only ? [await this.api.get<TeamDto>(`/api/teams/${only}`)] : await this.api.get<TeamDto[]>('/api/teams'))
+        .filter(t => t.myRole === 'admin' && t.password.unlocked);
       const withBoards = await Promise.all(teams.map(async team => ({
         team,
         // the Current board first, then the history, newest first

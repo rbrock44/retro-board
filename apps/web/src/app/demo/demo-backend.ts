@@ -54,6 +54,15 @@ export class DemoBackend {
     return new DemoBackend(seedDemo(), onChange);
   }
 
+  /** The password showcase (?demo=lock): the sample data with one team locked by "another browser" */
+  static lockShowcase(teamId: string, password: string, onChange: () => void) {
+    const state = seedDemo();
+    const team = state.teams.find(t => t.id === teamId)!;
+    team.passwordHash = demoHash(teamId, password);
+    team.passwordVersion = 1;
+    return new DemoBackend(state, onChange);
+  }
+
   // ---------------------------------------------------------------- lookups
 
   private user(id: string | null): UserDto | null {

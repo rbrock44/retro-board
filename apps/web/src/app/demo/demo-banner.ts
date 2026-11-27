@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ToastService } from '../core/toast.service';
 import { Modal } from '../shared/modal';
 import { RelativeTimePipe } from '../shared/relative-time.pipe';
-import { DemoService } from './demo.service';
+import { DemoService, LOCK_SHOWCASE } from './demo.service';
 import { TourService } from './tour.service';
 
 /** The strip across the top in demo mode, and the "Your Demos" panel behind it. */
@@ -18,6 +18,8 @@ import { TourService } from './tour.service';
         @switch (demo.reason()) {
           @case ('no-server') { · No server here, so this is sample data. Add and change anything; it's saved in this browser only. }
           @case ('shared') { · Someone shared this demo with you. Your changes stay in this browser. }
+          @case ('lock') { · {{ lockTeam }} has a password, <strong>{{ lockPassword }}</strong>, set in "another browser". Open it to see what
+            your team would. Then set your own on Corn Belt Platform (History → Settings → Password): this browser can always change it, even without the old one. }
           @default { · Sample data. Your changes are saved in this browser only. }
         }
         @if (demo.saveFailed()) { <span class="error"> Couldn't save (browser storage is full or blocked).</span> }
@@ -69,8 +71,10 @@ import { TourService } from './tour.service';
 export class DemoBanner {
   protected demo = inject(DemoService);
   protected tour = inject(TourService);
-  /** Offered once per browser, until they take it or say no */
-  protected offerTour = signal(!this.tour.seen());
+  /** Offered once per browser, until they take it or say no (not over the password showcase, which has its own story) */
+  protected offerTour = signal(!this.tour.seen() && this.demo.reason() !== 'lock');
+  protected lockTeam = LOCK_SHOWCASE.teamName;
+  protected lockPassword = LOCK_SHOWCASE.password;
   private toast = inject(ToastService);
   protected panelOpen = signal(false);
   protected sharing = signal(false);

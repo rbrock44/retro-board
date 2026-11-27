@@ -122,7 +122,7 @@ its default template), so people always land in the right place.
   says yes. Everyone gets a turn, in random order, before anyone goes twice (remembered per team in your browser)
 - `Sort` - `Oldest First` (the order cards were added; rearrange in Arrange Mode, including across columns), `Newest First`
   or `Most Liked`
-- `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`. Filter the board by mark with `Show`
+- `Mark` - `⋯` → `Mark as` `Discussed`, `Resolved` or `Carry Over`; pick the checked one again to unmark. Filter the board by mark with `Show`
 
 ### Carry Over and Action Items
 
@@ -149,6 +149,9 @@ on GitHub Pages with no server behind it.
   uploads (over about 200 KB) are left out to keep links short
 - **Switch person** lets you be anyone on the sample teams
 - Add `?demo` to the address of a real install to see the demo there without touching real data
+- **[`?demo=lock`](https://retro.ryan-brock.com/?demo=lock)** shows team passwords: a separate "Password demo"
+  where one team was locked in "another browser" (the password, `retro`, is on the banner and the prompt). Set
+  your own on the other team to see the original-browser side
 
 Demo mode only starts when the server doesn't answer at load time. If a running server drops later, you see
 errors and live updates reconnect as usual, rather than quietly swapping in sample data.

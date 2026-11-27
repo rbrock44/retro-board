@@ -4,7 +4,10 @@ import type { DemoBackend } from './demo-backend';
 import type { DemoState } from './demo-data';
 
 /** Why the app is in demo mode */
-export type DemoReason = 'no-server' | 'asked' | 'shared';
+export type DemoReason = 'no-server' | 'asked' | 'shared' | 'lock';
+
+/** ?demo=lock: a demo where one team already has a password, to try the prompt */
+export const LOCK_SHOWCASE = { teamId: 't-design', teamName: 'Des Moines Design Crew', password: 'retro' };
 
 export interface DemoEntry {
   id: string;
@@ -12,6 +15,8 @@ export interface DemoEntry {
   updatedAt: string;
   /** For demos opened from a link: a fingerprint of that link, so opening it again reuses this copy */
   sharedFrom?: string;
+  /** Made for a showcase link (?demo=lock): opening that link again comes back to this one */
+  showcase?: 'lock';
 }
 
 const LIBRARY_KEY = 'retro-board-demos';
@@ -80,6 +85,8 @@ export class DemoService {
   async start(reason: DemoReason) {
     // A share link pasted into a tab that's already open only changes the #, which doesn't reload the page.
     addEventListener('hashchange', () => { if (location.hash.startsWith('#demo=')) location.reload(); });
+    // Saves wait a moment to batch changes; leaving or reloading the page writes the last ones straight away
+    addEventListener('pagehide', () => this.flush());
     const { DemoBackend } = await import('./demo-backend');
     const lib = readJson<{ currentId: string | null; entries: DemoEntry[] }>(LIBRARY_KEY) ?? { currentId: null, entries: [] };
     this.entries.set(lib.entries);
@@ -104,8 +111,20 @@ export class DemoService {
         reason = 'shared';
       }
     }
+    // ?demo=lock: its own demo, kept apart from "My demo", with a team someone else locked
+    let showcase = false;
+    if (!state && new URLSearchParams(location.search).get('demo') === 'lock') {
+      showcase = true;
+      reason = 'lock';
+      const known = lib.entries.find(e => e.showcase === 'lock');
+      id = known?.id ?? makeId();
+      if (!known) this.addEntry({ id, name: 'Password demo', updatedAt: new Date().toISOString(), showcase: 'lock' });
+    }
     if (!state && id) state = readJson<DemoState>(stateKey(id));
-    if (!state) {
+    if (!state && showcase) {
+      const { teamId, password } = LOCK_SHOWCASE;
+      this.backend = DemoBackend.lockShowcase(teamId, password, () => this.scheduleSave());
+    } else if (!state) {
       id = makeId();
       this.addEntry({ id, name: 'My demo', updatedAt: new Date().toISOString() });
       this.backend = DemoBackend.fresh(() => this.scheduleSave());
@@ -116,6 +135,12 @@ export class DemoService {
     this.saveNow();
     this.reason.set(reason);
     this.active.set(true);
+  }
+
+  /** The showcase's password, shown on its prompt so visitors can get in */
+  passwordHint(teamId: string): string | null {
+    const entry = this.entries().find(e => e.id === this.currentId());
+    return this.active() && entry?.showcase === 'lock' && teamId === LOCK_SHOWCASE.teamId ? LOCK_SHOWCASE.password : null;
   }
 
   handle(method: string, url: string, body?: unknown) {

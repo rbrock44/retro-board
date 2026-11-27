@@ -114,7 +114,8 @@ import { AuthService } from '../core/auth.service';
                 @if (canMark()) {
                   <span class="menu-label">Mark as</span>
                   @for (s of markable(); track s) {
-                    <button type="button" role="menuitemradio" [attr.aria-checked]="card().status === s" (click)="store.setStatus(card().id, s)">
+                    <button type="button" role="menuitemradio" [attr.aria-checked]="card().status === s" [title]="card().status === s && s !== 'none' ? 'Click again to unmark' : ''"
+                            (click)="store.setStatus(card().id, card().status === s ? 'none' : s)">
                       {{ card().status === s ? '● ' : '' }}{{ labels[s] }}
                     </button>
                   }

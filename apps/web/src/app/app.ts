@@ -19,7 +19,7 @@ import { DemoService } from './demo/demo.service';
     @if (auth.me(); as me) {
       <header class="topbar">
         <a routerLink="/" class="brand" [attr.aria-label]="auth.siteName() + ' home'">
-          <span class="brand-mark" aria-hidden="true">◧</span> {{ auth.siteName() }}
+          <span class="brand-mark" aria-hidden="true">◧</span> <span class="brand-name">{{ auth.siteName() }}</span>
         </a>
         <nav class="topnav" aria-label="Main">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Teams</a>

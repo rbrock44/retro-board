@@ -1,5 +1,5 @@
 import { CdkDrag, CdkDragPlaceholder, CdkDropList, CdkDropListGroup, type CdkDragDrop, type CdkDragMove } from '@angular/cdk/drag-drop';
-import { Component, computed, effect, inject, input, OnDestroy, signal } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, input, OnDestroy, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
@@ -105,9 +105,9 @@ import { PresenterPicker } from './presenter-picker';
           </span>
           }
           @if (perm().canFacilitate && s.board.status === 'open') {
-            <button type="button" class="btn primary" data-tour="archive" (click)="openArchive()" title="Move this board to the history and start a fresh one">🗄 Archive Board</button>
+            <button type="button" class="btn primary" data-tour="archive" (click)="openArchive()" title="Move this board to the history and start a fresh one">🗄 Archive<span class="hide-sm"> Board</span></button>
           }
-          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ Board Settings</button> }
+          @if (perm().canFacilitate) { <button type="button" class="btn" data-tour="board-settings" (click)="openSettings()">⚙ <span class="hide-sm">Board </span>Settings</button> }
         </div>
 
         @if (store.arrangeMode()) {
@@ -127,10 +127,21 @@ import { PresenterPicker } from './presenter-picker';
             @if (perm().canFacilitate) { <button type="button" class="link-btn" (click)="store.updateBoard({ status: 'open' })">Reopen</button> }</div>
         }
 
-        <div class="board-body">
-          <div class="columns" [class.arrange-mode]="store.arrangeMode()" cdkDropListGroup>
+        @if (s.columns.length > 1) {
+          <!-- Phones show one column at a time: these tabs say which, and jump to the others -->
+          <nav class="col-jump no-print" #colJump aria-label="Columns">
             @for (col of s.columns; track col.id) {
-              <section class="column" [style.--col]="col.color" [attr.aria-label]="col.title">
+              <button type="button" [style.--col]="col.color" [class.active]="(activeColumn() ?? s.columns[0].id) === col.id"
+                      [attr.aria-current]="(activeColumn() ?? s.columns[0].id) === col.id ? 'true' : null" [attr.data-jump-id]="col.id"
+                      (click)="jumpToColumn(col.id)">{{ col.title }} <span class="n">{{ (store.columnCards().get(col.id) ?? []).length }}</span></button>
+            }
+          </nav>
+        }
+
+        <div class="board-body">
+          <div class="columns" #columnsEl [class.arrange-mode]="store.arrangeMode()" cdkDropListGroup (scroll)="onColumnsScroll()">
+            @for (col of s.columns; track col.id) {
+              <section class="column" [style.--col]="col.color" [attr.aria-label]="col.title" [attr.data-col-id]="col.id">
                 <header class="column-head">
                   <span class="col-bar"></span>
                   <h2>{{ col.title }}</h2>
@@ -324,7 +335,7 @@ import { PresenterPicker } from './presenter-picker';
             <div class="row wrap">
               @if (s.permissions.role === 'admin') {
                 @if (matchingTemplate(); as mt) {
-                  <button type="button" class="btn ghost" disabled [title]="'These columns match the “' + mt.name + '” template'">✓ Template: {{ mt.name }}</button>
+                  <button type="button" class="btn ghost btn-wrap" disabled [title]="'These columns match the “' + mt.name + '” template'">✓ Template: {{ mt.name }}</button>
                 } @else {
                   <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
                 }
@@ -362,6 +373,11 @@ export class BoardPage implements OnDestroy {
   protected exportOpen = signal(false);
   protected editingTitle = signal(false);
   protected settingsOpen = signal(false);
+  /** The column most in view, for the phone column tabs (null: the first) */
+  protected activeColumn = signal<string | null>(null);
+  private columnsEl = viewChild<ElementRef<HTMLElement>>('columnsEl');
+  private colJump = viewChild<ElementRef<HTMLElement>>('colJump');
+  private scrollFrame = 0;
   protected columnEdit = signal<{ id: string | null; title: string; color: string; description: string } | null>(null);
 
   protected perm = computed(() => this.store.permissions() ?? { role: 'viewer', canWrite: false, canVote: false, canFacilitate: false });
@@ -430,6 +446,7 @@ export class BoardPage implements OnDestroy {
   }
 
   ngOnDestroy() {
+    cancelAnimationFrame(this.scrollFrame);
     this.store.close();
   }
 
@@ -580,6 +597,48 @@ export class BoardPage implements OnDestroy {
     const want = sig(this.store.columns());
     return want ? this.templates().find(t => sig(t.columns) === want) : undefined;
   });
+
+  /** Tracks which column sits at the left edge as the board scrolls sideways */
+  onColumnsScroll() {
+    if (this.scrollFrame) return;
+    this.scrollFrame = requestAnimationFrame(() => {
+      this.scrollFrame = 0;
+      const box = this.columnsEl()?.nativeElement;
+      if (!box) return;
+      const left = box.getBoundingClientRect().left + parseFloat(getComputedStyle(box).paddingLeft);
+      let best: HTMLElement | null = null, dist = Infinity;
+      for (const el of box.querySelectorAll<HTMLElement>('[data-col-id]')) {
+        const d = Math.abs(el.getBoundingClientRect().left - left);
+        if (d < dist) { dist = d; best = el; }
+      }
+      const id = best?.dataset['colId'] ?? null;
+      if (id && id !== this.activeColumn()) { this.activeColumn.set(id); this.revealTab(id); }
+    });
+  }
+
+  jumpToColumn(id: string) {
+    const box = this.columnsEl()?.nativeElement;
+    const el = box?.querySelector<HTMLElement>(`[data-col-id="${id}"]`);
+    if (!box || !el) return;
+    const behavior: ScrollBehavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const pad = parseFloat(getComputedStyle(box).paddingLeft);
+    box.scrollTo({ left: box.scrollLeft + el.getBoundingClientRect().left - box.getBoundingClientRect().left - pad, behavior });
+    // Deep in a long column? Start the next one from its top, just under the tabs
+    const tabs = this.colJump()?.nativeElement;
+    const top = box.getBoundingClientRect().top - (tabs ? tabs.getBoundingClientRect().bottom : 0);
+    if (top < 0) window.scrollBy({ top, behavior });
+    this.activeColumn.set(id);
+    this.revealTab(id);
+  }
+
+  /** Keeps the current tab in view when there are more tabs than fit */
+  private revealTab(id: string) {
+    const strip = this.colJump()?.nativeElement;
+    const tab = strip?.querySelector<HTMLElement>(`[data-jump-id="${id}"]`);
+    if (!strip || !tab) return;
+    const s = strip.getBoundingClientRect(), t = tab.getBoundingClientRect();
+    if (t.left < s.left || t.right > s.right) strip.scrollTo({ left: strip.scrollLeft + t.left - s.left - 16 });
+  }
 
   openSettings() {
     this.settingsOpen.set(true);

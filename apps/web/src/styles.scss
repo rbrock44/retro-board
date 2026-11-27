@@ -495,13 +495,81 @@ button.likes { cursor: pointer;
 
 /* ---------- small screens ---------- */
 
+/* Column tabs: phones only, where one column shows at a time */
+.col-jump { display: none; }
+
 @media (max-width: 720px) {
   .hide-sm { display: none; }
-  .topbar { gap: 0.5rem; }
+  /* A long site name gives way first, so the menu and theme button always fit */
+  .topbar { gap: 0.5rem; padding-inline: 0.75rem; }
+  .brand { min-width: 0; flex: 0 1 auto; }
+  .brand-name { overflow: hidden; text-overflow: ellipsis; }
+  .topnav { flex-shrink: 0; a { padding-inline: 0.45rem; } }
+  .topbar .icon-btn, .menu-wrap { flex-shrink: 0; }
   :root { --column-width: 86vw; }
   .add-column { align-self: flex-start; }
-  .columns { scroll-snap-type: x mandatory; .column { scroll-snap-align: start; } }
-  .sidebar { position: fixed; inset: 52px 0 0 auto; width: min(360px, 100vw); margin: 0; border-radius: 0; z-index: 25; max-height: none; }
+  .columns { scroll-snap-type: x mandatory; scroll-padding-inline: 1rem; padding-top: 0.75rem; .column { scroll-snap-align: start; } }
+  /* Action Items: a full-screen sheet over the board */
+  .sidebar { position: fixed; inset: 0; width: 100%; height: 100dvh; margin: 0; border: 0; border-radius: 0; z-index: 30; max-height: none; }
+  body:has(.sidebar) { overflow: hidden; }
+
+  /* Board header: title, then filters on one line, then the board's buttons sharing a line */
+  .board-bar { padding: 0.6rem 1rem 0.25rem; gap: 0.5rem; }
+  .board-title h1 { font-size: 1.2rem; }
+  .board-tools { gap: 0.5rem; padding-bottom: 0.6rem;
+    > label { flex: 1 1 9rem; min-width: 0; font-size: 0.85rem; select { flex: 1; min-width: 0; } }
+    > .spacer { display: none; }
+    > .btn, > .menu-wrap { flex: 1 1 auto; }
+    .btn { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+    > .menu-wrap .btn { width: 100%; } }
+  .arrange-strip, .banner { margin-inline: 1rem; }
+
+  /* Sticks under the top bar, so switching columns never means scrolling back up */
+  .col-jump { display: flex; gap: 0.4rem; position: sticky; top: 52px; z-index: 15; overflow-x: auto; scrollbar-width: none;
+    padding: 0.5rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border);
+    &::-webkit-scrollbar { display: none; }
+    button { --col: var(--accent); flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.25rem;
+      padding: 0.3rem 0.8rem 0.3rem 0.65rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 0.875rem; font-weight: 500; cursor: pointer; white-space: nowrap;
+      &::before { content: ''; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--col); }
+      .n { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+      &.active { color: var(--text); font-weight: 600; border-color: var(--col);
+        background: color-mix(in srgb, var(--col) 16%, var(--surface)); } } }
+
+  .modal { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem);
+    &.wide { width: calc(100vw - 1rem); } }
+  .modal-body { padding: 0.9rem 1rem 1rem; }
+  .settings-grid { gap: 0.4rem 0.9rem; }
+
+  .lightbox { padding: 0.5rem; }
+  .lightbox-frame, .lightbox-frame img { max-width: calc(100vw - 1rem); max-height: 78vh; }
+  .lightbox-zoom { right: 3.75rem; .zoom-track { width: 56px; } }
+
+  .page { padding-top: 1rem; }
+  section.card-surface { padding: 0.9rem 1rem; }
+  .auth-card { padding: 1.5rem 1.25rem; }
+}
+
+/* A long label that should wrap rather than run off the edge */
+.btn.btn-wrap { white-space: normal; text-align: left; max-width: 100%; }
+
+/* Touch screens: fingers need bigger targets than a mouse pointer */
+@media (pointer: coarse) {
+  /* iOS zooms the page into any field under 16px; this keeps it still */
+  input:not([type='checkbox']):not([type='radio']):not([type='color']), textarea, select { font-size: max(16px, 1em) !important; }
+  .icon-btn { min-width: 2.5rem; height: 2.5rem;
+    &.small { min-width: 2.25rem; height: 2.25rem; } }
+  .btn.small { padding: 0.4rem 0.75rem; }
+  .reaction, .likes { line-height: 2; padding-inline: 0.6rem; }
+  .react-pop button { width: 40px; height: 40px; }
+  .replies-toggle { min-height: 34px; }
+  .thumb-x { width: 26px; height: 26px; }
+  .info-btn { width: 36px; height: 36px; }
+  .feature-row { grid-template-columns: 1.75rem 2.5rem 1fr; }
+  input[type='checkbox'], input[type='radio'] { width: 1.2rem; height: 1.2rem; }
+  .menu > a, .menu > button { padding-block: 0.65rem; }
+  .chip { padding: 0.4rem 0.85rem; }
+  .tabs button { padding-block: 0.75rem; }
 }
 
 /* ---------- print: a clean, stacked summary ---------- */
@@ -693,7 +761,14 @@ button.likes { cursor: pointer;
   .card, .group-box { font-size: 1.05rem; } }
 @media (max-width: 600px) { .column-focus .focus-head, .column-focus .focus-body { padding-left: 1rem; padding-right: 1rem; }
   /* no room to center the title between the tools and the arrows: it takes what's left */
-  .column-focus .focus-head { grid-template-columns: auto minmax(0, 1fr) auto; .presenter-chip { display: none; } } }
+  .column-focus .focus-head { grid-template-columns: auto minmax(0, 1fr) auto; .presenter-chip { display: none; } }
+  /* Phones: the title gets the whole first line; the tools and arrows share the second */
+  .column-focus-backdrop { padding: 0.5rem; }
+  .column-focus .focus-head { padding-block: 0.5rem; row-gap: 0.25rem;
+    .focus-title { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
+    .focus-tools { grid-row: 2; }
+    .focus-nav { grid-row: 2; }
+    h2 { font-size: 1.15rem; } } }
 body:has(.column-focus-backdrop) { overflow: hidden; }
 
 /* Admin → Customize: sections read as tight blocks (paragraphs drop their default margins, the stack sets the gaps) */

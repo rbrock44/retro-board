@@ -7,7 +7,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import {
   CARD_STATUSES, CARD_STATUS_LABELS, COLOR_PRESETS, type CardDto, type CardStatus, type ColumnDto,
-  type BoardDto, type UserDto,
+  type BoardDto, type TemplateDto, type UserDto, isCarriedOverColumn,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { themeStyle } from '../core/theme.service';
@@ -323,7 +323,11 @@ import { PresenterPicker } from './presenter-picker';
             <hr>
             <div class="row wrap">
               @if (s.permissions.role === 'admin') {
-                <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
+                @if (matchingTemplate(); as mt) {
+                  <button type="button" class="btn ghost" disabled [title]="'These columns match the “' + mt.name + '” template'">✓ Template: {{ mt.name }}</button>
+                } @else {
+                  <button type="button" class="btn ghost" (click)="saveTemplate()">Save Columns as Template</button>
+                }
               }
               @if (s.board.status === 'open') {
                 <button type="button" class="btn" (click)="settingsOpen.set(false); openArchive()">Archive Board</button>
@@ -568,8 +572,24 @@ export class BoardPage implements OnDestroy {
     this.columnEdit.set(null);
   }
 
+  /** Team templates, loaded when settings open, to tell whether the columns are already one */
+  private templates = signal<TemplateDto[]>([]);
+  protected matchingTemplate = computed(() => {
+    const sig = (cols: { title: string; color: string }[]) => cols.filter(c => !isCarriedOverColumn(c.title))
+      .map(c => `${c.title.trim().toLowerCase()}|${c.color.toLowerCase()}`).join('|');
+    const want = sig(this.store.columns());
+    return want ? this.templates().find(t => sig(t.columns) === want) : undefined;
+  });
+
   openSettings() {
     this.settingsOpen.set(true);
+    void this.loadTemplates();
+  }
+
+  private async loadTemplates() {
+    const teamId = this.store.state()?.team.id;
+    if (!teamId || this.perm().role !== 'admin') return;
+    try { this.templates.set(await this.api.get<TemplateDto[]>(`/api/teams/${teamId}/templates`)); } catch { /* button stays enabled */ }
   }
 
 
@@ -577,7 +597,8 @@ export class BoardPage implements OnDestroy {
     const name = prompt('Template name', this.store.board()?.title);
     if (!name?.trim()) return;
     try {
-      await this.api.post(`/api/boards/${this.boardId()}/save-template`, { name: name.trim() });
+      const t = await this.api.post<TemplateDto>(`/api/boards/${this.boardId()}/save-template`, { name: name.trim() });
+      this.templates.update(list => [t, ...list]);
       this.toast.show(`Saved “${name.trim()}” as a team template`);
     } catch (err) {
       this.toast.error(err);

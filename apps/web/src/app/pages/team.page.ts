@@ -166,7 +166,6 @@ import { TeamPhoto } from '../shared/team-photo';
                       <input type="file" accept="image/*" hidden [disabled]="photoBusy()" (change)="uploadPhoto($event)"></label>
                     @if (t.photoUrl) { <button type="button" class="btn ghost small" [disabled]="photoBusy()" (click)="removePhoto()">Remove</button> }
                   </div>
-                  <span class="muted small">Shown next to the team's name. Cropped to a square.</span>
                 </div>
               </div>
               <label>Name <input [(ngModel)]="edit.name" maxlength="80"></label>

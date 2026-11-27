@@ -86,16 +86,6 @@ type Key = keyof InstanceSettings;
         </section>
 
         <section class="card-surface stack">
-          <h2>Cards</h2>
-          <label class="check"><input type="checkbox" [(ngModel)]="form.allowAnonymous"> Allow anonymous cards</label>
-          <p class="muted small">Default for new boards; facilitators can change it.
-            {{ hint('allowAnonymous') }}
-            @if (overridden('allowAnonymous')) {
-              <button type="button" class="link-btn" (click)="reset('allowAnonymous')">Reset</button>
-            }</p>
-        </section>
-
-        <section class="card-surface stack">
           <div class="row"><h2>Features</h2><div class="spacer"></div>
             <button type="button" class="btn ghost small" (click)="setAllFeatures(true)">Turn All On</button></div>
           <p class="muted">Switch off anything your organization doesn't want, for every team. It's hidden in the app and the
@@ -112,6 +102,13 @@ type Key = keyof InstanceSettings;
                           [attr.aria-label]="'About ' + f.label" [title]="f.info" (click)="infoOpen.set(infoOpen() === f.key ? null : f.key)">ⓘ</button>
                   <label [attr.for]="'feature-' + f.key" [class.off]="!form.features[f.key]">{{ f.label }}</label>
                   @if (infoOpen() === f.key) { <p class="feature-info" role="note">{{ f.info }}</p> }
+                  @if (f.key === 'anonymous' && form.features.anonymous) {
+                    <div class="feature-sub">
+                      <label class="check"><input type="checkbox" [(ngModel)]="form.allowAnonymous"> On by default for new boards</label>
+                      <p class="muted small">Facilitators can change it per board. {{ hint('allowAnonymous') }}
+                        @if (overridden('allowAnonymous')) { <button type="button" class="link-btn" (click)="reset('allowAnonymous')">Reset</button> }</p>
+                    </div>
+                  }
                 </div>
               }
             </fieldset>

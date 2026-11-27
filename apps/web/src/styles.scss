@@ -654,6 +654,8 @@ button.likes { cursor: pointer;
   &:hover, &.open { background: var(--surface-2); color: var(--accent); } }
 .feature-info { grid-column: 1 / -1; margin: 0.15rem 0 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm);
   background: var(--surface-2); font-size: 0.85rem; line-height: 1.4; }
+.feature-sub { grid-column: 3 / -1; padding: 0.1rem 0 0.35rem;
+  label { font-weight: 400; } p { margin: 0.15rem 0 0; } }
 
 /* Board Settings: what's applied to this board, as label | value columns */
 .settings-head { margin: 0; font-size: 0.95rem; }

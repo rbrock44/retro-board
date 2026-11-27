@@ -160,15 +160,15 @@ import { AuthService } from '../core/auth.service';
               <app-reply [reply]="r" [boardId]="boardId()" (replyTo)="replyingTo.set($event)" />
             }
             @if (canWrite()) {
-              @if (compactReply() && !writingReply() && !replyingTo()) {
-                <!-- full-screen view: replying is rare there, so the box waits behind a small button -->
+              @if (foldReply() && !writingReply() && !replyingTo()) {
+                <!-- full screen (replying is rare there) or Settings > Board says so: the box waits behind a small button -->
                 <button type="button" class="reply-open" (click)="writingReply.set(true)">↩ Reply</button>
               } @else {
                 @if (replyingTo(); as to) {
                   <p class="meta">Replying to {{ to.author?.name ?? 'reply' }} <button type="button" class="link-btn" (click)="replyingTo.set(null)">cancel</button></p>
                 }
                 <app-composer [boardId]="boardId()" placeholder="Write a reply…" submitLabel="Reply" (submitted)="sendReply($event)"
-                              [cancellable]="compactReply()" [autofocus]="compactReply()" (cancelled)="writingReply.set(false); replyingTo.set(null)" />
+                              [cancellable]="foldReply()" [autofocus]="foldReply()" (cancelled)="writingReply.set(false); replyingTo.set(null)" />
               }
             }
           </section>
@@ -187,6 +187,8 @@ export class Card {
   /** Full-screen column view: the reply box stays folded away behind "Reply" until wanted */
   readonly compactReply = input(false);
   protected writingReply = signal(false);
+  /** The reply box starts folded: always in full screen, elsewhere when turned off in Settings > Board */
+  protected foldReply = computed(() => this.compactReply() || this.auth.me()?.prefs.replyBoxOpen === false);
 
   protected labels = CARD_STATUS_LABELS;
   protected statuses: CardStatus[] = CARD_STATUSES;

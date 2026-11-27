@@ -480,6 +480,7 @@ export class DemoBackend {
       if (typeof b.prefs?.focusRepliesOpen === 'boolean') {
         this.state.prefs.focusRepliesOpen = b.prefs.focusRepliesOpen;
       }
+      if (typeof b.prefs?.replyBoxOpen === 'boolean') this.state.prefs.replyBoxOpen = b.prefs.replyBoxOpen;
       if (b.prefs?.composerStyle) {
         if (!COMPOSER_STYLES.includes(b.prefs.composerStyle)) fail(400, 'Invalid composer style');
         this.state.prefs.composerStyle = b.prefs.composerStyle;

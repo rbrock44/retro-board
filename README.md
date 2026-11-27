@@ -123,6 +123,7 @@ its default template), so people always land in the right place.
   grid, to go over it together. `‹` `›` or the arrow keys step to the next column, and past the last one to the
   action items (also one click away on the checklist button beside them); `Esc` or a click outside closes. Reply
   threads start open (turn that off in Settings → Full-Screen Column), with the reply box tucked behind `↩ Reply`.
+  Elsewhere the box shows as soon as a thread opens; turn that off in Settings → Board to tuck it away there too.
   Who's on the board shows at the top left. On its left, one button opens every reply thread in the column (or closes them all once they're all open), and the
   person button picks a random teammate to go over the column. They get `Yes, I'll Go` or `Not Right Now`: not right
   now asks someone else and keeps them on the list for later, but nobody who just passed is asked again until someone

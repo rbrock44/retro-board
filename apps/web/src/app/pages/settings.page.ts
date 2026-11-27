@@ -41,6 +41,9 @@ import { ExportDialog } from '../shared/export-dialog';
                                           (change)="setComposerStyle(o.value)"> <span><strong>{{ o.label }}</strong> <span class="muted small">{{ o.hint }}</span></span></label>
             }
           </fieldset>
+          <label class="check"><input type="checkbox" [checked]="me.prefs.replyBoxOpen !== false" (change)="setReplyBox($any($event.target).checked)">
+            Show the reply box as soon as a thread opens</label>
+          <p class="muted small">Off: it waits behind <strong>↩ Reply</strong> until you want it. Full screen always tucks it away.</p>
         </section>
 
         <section class="card-surface stack">
@@ -131,6 +134,10 @@ export class SettingsPage {
     { value: 'button', label: 'Header button', hint: 'just ＋ next to the column name, so cards start at the top' },
     { value: 'full', label: 'Full', hint: 'the box is always open in every column' },
   ];
+
+  async setReplyBox(on: boolean) {
+    await this.auth.updateMe({ prefs: { replyBoxOpen: on } }).catch(err => this.toast.error(err));
+  }
 
   async setComposerStyle(style: ComposerStyle) {
     await this.auth.updateMe({ prefs: { composerStyle: style } }).catch(err => this.toast.error(err));

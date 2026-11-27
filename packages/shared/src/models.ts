@@ -38,6 +38,8 @@ export interface UserPrefs {
   theme?: ThemePreference;
   /** Full-screen column view opens every reply thread (unset: on) */
   focusRepliesOpen?: boolean;
+  /** An open thread shows its reply box right away; off: behind "↩ Reply" (unset: on). Full screen always folds it */
+  replyBoxOpen?: boolean;
   /** The add-card box at the top of each column (unset: compact) */
   composerStyle?: ComposerStyle;
 }

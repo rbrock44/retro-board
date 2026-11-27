@@ -126,6 +126,18 @@ A backup restores into either storage mode and into newer versions (the database
 usual on start). Run `backup` from cron or Task Scheduler for regular copies, and keep some of them on another
 machine.
 
+### In the app
+
+Admins can also back up and restore from **Admin → Customize → Your Data**, with no command line: `Download Backup`
+saves every table and every upload (S3 included) in one `.tar.gz`, and `Restore from Backup` loads one into this or
+any other Retro Board, on any host or database. That's the easy way to move from your own computer to a server.
+
+- Restoring **replaces everything**. Sign-in sessions aren't in backups, so everyone signs in again afterwards
+- A backup from a newer version is refused; older ones go into newer versions
+- The file holds everyone's data, including password hashes: keep it private
+- The two kinds don't mix: an app backup goes back in the app, a `./launch.sh backup` with `./launch.sh restore`
+- Behind Cloudflare (Tunnel or proxy), uploads are capped at 100 MB per request on the free plan, which limits restore size
+
 With `--data folder`, the live data is also plain files in `data/`, so a normal file backup works too **while the
 app is stopped** (`./launch.sh stop`); copying a running database's files can catch it mid-write. With S3 storage,
 back up the bucket with your provider's tools; `backup` only covers the database then.

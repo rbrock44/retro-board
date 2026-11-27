@@ -366,6 +366,8 @@ export class DemoBackend {
   // ---------------------------------------------------------------- uploads
 
   async upload(url: string, file: File, onProgress?: (f: number) => void): Promise<AttachmentDto | TeamDto> {
+    // Backups need a server: the demo's data lives in this browser (Share keeps a copy instead)
+    if (url === '/api/admin/restore') fail(400, "Backups aren't available in the demo");
     const photo = url.match(/^\/api\/teams\/([^/]+)\/photo$/);
     if (photo) return this.uploadTeamPhoto(photo[1], file);
     const m = url.match(/^\/api\/boards\/([^/]+)\/attachments$/) ?? notFound();

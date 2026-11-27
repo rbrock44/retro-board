@@ -7,6 +7,7 @@ import {
 import { Api } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
+import { DemoService } from '../demo/demo.service';
 import { ColorPicker } from '../shared/color-picker';
 import { ThemeEditor } from '../shared/theme-editor';
 
@@ -146,7 +147,20 @@ type Key = keyof InstanceSettings;
               <li>Uploads: <code>{{ d.storage.uploads }}</code></li>
             </ul>
           }
-          <p class="muted small"><code>./launch.sh backup</code> saves everything to one file in <code>backups/</code>.</p>
+          @if (demo.active()) {
+            <p class="muted small">Backups aren't available in the demo: its data lives in this browser. Use Share to keep a copy.</p>
+          } @else {
+            <h3>Backup and Restore</h3>
+            <p class="muted small">One file with every team, board, card, person and upload. Keep it somewhere safe: it holds everyone's
+              data, including sign-in details. Restore it here on this or any other Retro Board, such as when moving to a server.</p>
+            <div class="row wrap">
+              <a class="btn" href="/api/admin/backup" download>Download Backup</a>
+              <label class="btn ghost danger" [class.disabled]="restoring()">{{ restoring() ? 'Restoring…' : 'Restore from Backup…' }}
+                <input type="file" accept=".gz,.tgz,application/gzip" hidden [disabled]="restoring()" (change)="restore($event)"></label>
+            </div>
+            <p class="muted small">Restoring <strong>replaces everything</strong> here with the backup, and everyone signs in again.
+              A <code>./launch.sh backup</code> file goes back with <code>./launch.sh restore</code> instead.</p>
+          }
         </section>
 
         <div class="row end sticky-save">
@@ -162,6 +176,28 @@ export class Customize {
   protected auth = inject(AuthService);
   private api = inject(Api);
   private toast = inject(ToastService);
+  protected demo = inject(DemoService);
+  protected restoring = signal(false);
+
+  /** Replaces all data with a backup file, then starts over (the restore signs everyone out) */
+  async restore(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!confirm(`Replace ALL data here with the backup "${file.name}"?
+
+Every team, board and person here now is removed and the backup's take their place. Everyone signs in again afterwards. This can't be undone, so download a backup first if you might want today's data.`)) return;
+    this.restoring.set(true);
+    try {
+      const r = await this.api.upload<{ rows: number; files: number }>('/api/admin/restore', file);
+      alert(`Restored: ${r.rows} records and ${r.files} files. Sign in again to continue.`);
+      location.href = '/';
+    } catch (err) {
+      this.toast.error(err);
+      this.restoring.set(false);
+    }
+  }
   protected data = signal<InstanceSettingsAdminDto | null>(null);
   protected saving = signal(false);
   protected form: InstanceSettings = null!;

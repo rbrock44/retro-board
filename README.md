@@ -284,6 +284,10 @@ across, and leaves the old copy where it was. Admins also see where the data is 
 
 A backup restores on any computer, in either storage mode, and into newer versions of Retro Board.
 
+No command line? Admins can `Download Backup` and `Restore from Backup` in `Admin` → `Customize` → `Your Data`.
+It works on any host (embedded database, Postgres, S3), which makes moving from your computer to a server one upload.
+The two kinds of backup go back the way they came: app backups in the app, `launch.sh` backups with `launch.sh restore`.
+
 ### Customize
 
 Almost everything can be changed, at three levels:

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
@@ -21,6 +21,12 @@ function migrationsDir(): string {
   const found = candidates.find(p => existsSync(resolve(p, 'meta/_journal.json')));
   if (!found) throw new Error(`No migrations found in ${candidates.join(', ')}`);
   return found;
+}
+
+/** How many migrations this version of the app has: a backup records it so a newer one isn't loaded into an older app. */
+export function migrationCount(): number {
+  const journal = JSON.parse(readFileSync(resolve(migrationsDir(), 'meta/_journal.json'), 'utf8')) as { entries: unknown[] };
+  return journal.entries.length;
 }
 
 /**

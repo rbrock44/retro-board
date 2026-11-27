@@ -1,10 +1,16 @@
+import { createWriteStream } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { BUILT_IN_TEMPLATES, withFeatureDefaults, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
+import { backupStream, restoreBackup } from '../lib/backup';
 import { getOverrides, getSettings, launchDefaults, saveOverrides } from '../lib/instance';
 import { newId } from '../lib/ids';
-import { badRequest, noContent, notFound, parse, requireAdmin, zColor } from '../lib/http';
+import { HttpError, badRequest, noContent, notFound, parse, requireAdmin, zColor } from '../lib/http';
 import { deleteUserSessions } from '../auth/sessions';
 import { toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
@@ -37,6 +43,33 @@ export async function adminRoutes(app: FastifyInstance, ctx: Ctx) {
     await db.update(users).set({ role: body.role ?? target.role, disabled: body.disabled ?? target.disabled }).where(eq(users.id, userId));
     if (body.disabled) await deleteUserSessions(db, userId);
     return noContent(reply);
+  });
+
+  // ---- Your Data: backup and restore ----
+
+  app.get('/api/admin/backup', async (req, reply) => {
+    requireAdmin(req);
+    const stamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
+    reply.header('content-type', 'application/gzip');
+    reply.header('content-disposition', `attachment; filename="retro-board-${stamp}.tar.gz"`);
+    reply.header('cache-control', 'no-store');
+    return reply.send(await backupStream(ctx));
+  });
+
+  /** Replaces all data with an uploaded backup. Everyone (including whoever restores) signs in again afterwards. */
+  app.post('/api/admin/restore', async req => {
+    requireAdmin(req);
+    const file = await req.file({ limits: { fileSize: 20 * 1024 ** 3, files: 1 } });
+    if (!file) throw badRequest('No file was sent');
+    const dir = await mkdtemp(join(tmpdir(), 'retro-restore-'));
+    try {
+      const path = join(dir, 'backup.tar.gz');
+      await pipeline(file.file, createWriteStream(path));
+      if (file.file.truncated) throw new HttpError(413, 'That file is too big');
+      return await restoreBackup(ctx, path);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   // ---- Customize: instance-wide settings ----

@@ -239,6 +239,10 @@ function Restore-Backup([string]$file) {
   $tmp = Join-Path ([IO.Path]::GetTempPath()) ("retro-" + [Guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory $tmp | Out-Null
   Invoke-Quiet { & $tarExe -xzf (Resolve-Path $file).Path -C $tmp } | Out-Null
+  if (Test-Path "$tmp\retro-board-backup.json") {
+    Remove-Item -Recurse -Force $tmp
+    Fail "$file was made in the app (Admin > Customize > Your Data). Restore it there: Restore from Backup."
+  }
   if (-not (Test-Path "$tmp\database.dump")) { Remove-Item -Recurse -Force $tmp; Fail "$file isn't a Retro Board backup" }
   $n = "rb-" + [Guid]::NewGuid().ToString('N')
   Invoke-Quiet { docker compose stop app } | Out-Null

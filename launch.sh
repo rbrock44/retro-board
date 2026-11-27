@@ -279,6 +279,10 @@ do_restore() { # do_restore file
   ensure_up
   tmp=$(mktemp -d)
   tar xzf "$1" -C "$tmp"
+  if [ -f "$tmp/retro-board-backup.json" ]; then
+    rm -rf "$tmp"
+    warn "$1 was made in the app (Admin > Customize > Your Data). Restore it there: Restore from Backup."; exit 1
+  fi
   [ -f "$tmp/database.dump" ] || { warn "$1 isn't a Retro Board backup"; rm -rf "$tmp"; exit 1; }
   n=rb-$(date +%s)-$$
   dc stop app >/dev/null 2>&1

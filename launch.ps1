@@ -6,6 +6,7 @@
 #   launch.cmd update          rebuild after pulling new code (no questions)
 #   launch.cmd backup          save everything (database + uploads) to one file in backups\
 #   launch.cmd restore FILE    put a backup back
+#   launch.cmd unlock [TEAM]   remove a forgotten team password (no TEAM: list the teams that have one)
 #   launch.cmd stop | logs
 #
 # launch.cmd --help lists the options. Works in Windows PowerShell 5.1 and PowerShell 7.
@@ -13,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 $usage = @'
-Usage: launch.cmd [up|update|stop|logs|backup|restore FILE] [options]
+Usage: launch.cmd [up|update|stop|logs|backup|restore FILE|unlock [TEAM]] [options]
 
 With no options, launch.cmd asks each question below, showing the current value; press Enter to keep it.
 Passing any option (or -y) skips the questions. Everything is saved in .env.
@@ -114,9 +115,15 @@ function Test-Features([string]$list) {
 $argList = @($args)
 $cmd = 'up'
 $restoreFile = ''
-if ($argList.Count -gt 0 -and @('up', 'update', 'stop', 'logs', 'backup', 'restore') -contains $argList[0]) {
+$unlockTeam = ''
+if ($argList.Count -gt 0 -and @('up', 'update', 'stop', 'logs', 'backup', 'restore', 'unlock') -contains $argList[0]) {
   $cmd = $argList[0]
   $argList = @($argList | Select-Object -Skip 1)
+  if ($cmd -eq 'unlock') {
+    # everything after it is the team's name (or id)
+    $unlockTeam = (@($argList) -join ' ').Trim()
+    $argList = @()
+  }
   if ($cmd -eq 'restore') {
     if ($argList.Count -lt 1) { Fail 'Usage: launch.cmd restore backups\<file>.tar.gz' 2 }
     $restoreFile = [string]$argList[0]
@@ -275,6 +282,13 @@ if ($cmd -eq 'backup') {
   Write-Host "Saved everything (database and uploads) to $f"
   Write-Host "Put it back any time with: launch.cmd restore $f"
   exit 0
+}
+if ($cmd -eq 'unlock') {
+  if (-not (Test-Path $envPath)) { Fail 'Run launch.cmd once first.' }
+  Confirm-Up
+  if ($unlockTeam) { docker compose exec -T app node dist/cli.js unlock $unlockTeam }
+  else { docker compose exec -T app node dist/cli.js unlock }
+  exit $LASTEXITCODE
 }
 if ($cmd -eq 'restore') {
   if (-not (Test-Path $envPath)) { Fail 'Run launch.cmd once first, then restore.' }

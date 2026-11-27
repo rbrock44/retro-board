@@ -13,6 +13,7 @@
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @retro/api\" \"npm start -w @retro/web\"",
     "build": "npm run build -w @retro/web && npm run build -w @retro/api",
     "start": "npm start -w @retro/api",
+    "unlock": "npm run unlock -w @retro/api --",
     "test": "npm test -w @retro/shared && npm test -w @retro/api && npm test -w @retro/web",
     "db:generate": "npm run db:generate -w @retro/api"
   },

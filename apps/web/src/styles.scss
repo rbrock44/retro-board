@@ -749,6 +749,17 @@ button.likes { cursor: pointer;
 .feature-sub { grid-column: 3 / -1; padding: 0.1rem 0 0.35rem;
   label { font-weight: 400; } p { margin: 0.15rem 0 0; } }
 
+/* Team password: the prompt that stands in for a locked team's pages, and the lock on its tile */
+.unlock-page { display: grid; place-items: center; padding: 3rem 1rem; }
+.unlock-card { width: min(380px, 100%); padding: 1.75rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; text-align: center;
+  h1 { font-size: 1.3rem; }
+  p { margin: 0; }
+  label { width: 100%; text-align: left; }
+  .btn { width: 100%; }
+  .error:empty { display: none; } }
+.lock-tag { margin-left: auto; font-size: 1rem; }
+.password-form { max-width: 360px; }
+
 /* Deleting a column that has cards: move them or delete them */
 .delete-col-ask { margin: 0; }
 .delete-col-choice { border: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem;

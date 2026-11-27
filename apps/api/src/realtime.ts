@@ -6,6 +6,7 @@ import { toUserDto } from './auth/users';
 import type { Db } from './db';
 import type { User } from './db/schema';
 import { requireBoard } from './lib/access';
+import { attachTeamKeys } from './lib/team-lock';
 
 /** Broadcasts board changes. An event can be one value for everyone or a function shaped per viewer. */
 export interface Hub {
@@ -20,6 +21,17 @@ interface SocketData {
 }
 
 const room = (boardId: string) => `board:${boardId}`;
+
+/** Every cookie in a Cookie header, by name. */
+function allCookies(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of (header ?? '').split(';')) {
+    const i = part.indexOf('=');
+    if (i <= 0) continue;
+    try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch { /* skip a malformed one */ }
+  }
+  return out;
+}
 
 /** Reads one cookie from a Cookie header. Small on purpose: npm may hoist an incompatible `cookie` package. */
 export function readCookie(header: string | undefined, name: string): string | undefined {
@@ -40,7 +52,7 @@ export function noopHub(): Hub {
   return { emitBoard() {}, emitUser() {}, async close() {} };
 }
 
-export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<boolean> = async () => true): Hub {
+export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<boolean> = async () => true, cookieSecret = ''): Hub {
   const io = new Server(server, { path: '/socket.io', serveClient: false, cors: { origin: false } });
 
   io.use(async (socket, next) => {
@@ -48,6 +60,7 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
       const found = await userForToken(db, readCookie(socket.handshake.headers.cookie, SESSION_COOKIE));
       if (!found) return next(new Error('unauthorized'));
       (socket.data as SocketData).user = found.user;
+      attachTeamKeys(found.user, allCookies(socket.handshake.headers.cookie), cookieSecret);
       (socket.data as SocketData).boards = new Set();
       next();
     } catch (err) {

@@ -36,7 +36,11 @@ import { TeamPhoto } from '../shared/team-photo';
           @for (t of teams(); track t.id) {
             <li>
               <a class="team-tile card-surface" [routerLink]="['/teams', t.id]">
-                <div class="team-tile-head"><app-team-photo [team]="t" [size]="44" /><h2>{{ t.name }}</h2></div>
+                <div class="team-tile-head"><app-team-photo [team]="t" [size]="44" /><h2>{{ t.name }}</h2>
+                  @if (t.password.set) {
+                    <span class="lock-tag" [title]="t.password.unlocked ? 'Has a password; this browser can get in' : 'Needs a password'">
+                      {{ t.password.unlocked ? '🔓' : '🔒' }}<span class="sr-only">{{ t.password.unlocked ? 'Unlocked' : 'Needs a password' }}</span></span>
+                  }</div>
                 @if (t.description) { <p class="muted">{{ t.description }}</p> }
                 <p class="meta">{{ t.memberCount }} {{ t.memberCount === 1 ? 'member' : 'members' }} · {{ t.myRole ?? 'not a member' }}</p>
               </a>

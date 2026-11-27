@@ -217,6 +217,37 @@ import { TeamPhoto } from '../shared/team-photo';
                 </div>
               </details>
 
+              <h2 id="team-password">Password</h2>
+              @if (t.password.set) {
+                <p>🔒 Everyone needs the password to open this team's boards. Each browser asks once, and again after it changes.</p>
+                @if (t.password.owner) {
+                  <p class="notice">This browser set the password, so it can change or remove it without the old one, even if it's forgotten.</p>
+                }
+              } @else {
+                <p class="muted">No password: anyone on the team can open its boards. With one, everyone types it once per browser.
+                  The browser that sets it can always change it later, even without the old one.</p>
+              }
+              <form class="stack password-form" (ngSubmit)="savePassword(false)">
+                <!-- for password managers: whose password this is -->
+                <input type="text" name="username" [value]="t.name" autocomplete="username" hidden>
+                @if (t.password.set && !t.password.owner) {
+                  <label>Current password <input name="current" type="password" [(ngModel)]="pw.current" autocomplete="current-password"></label>
+                }
+                <label>{{ t.password.set ? 'New password' : 'Password' }}
+                  <input name="next" type="password" [(ngModel)]="pw.next" autocomplete="new-password" minlength="4" maxlength="200"></label>
+                <div class="row wrap">
+                  <button type="submit" class="btn primary" [disabled]="pwBusy() || pw.next.length < 4 || (t.password.set && !t.password.owner && !pw.current)">
+                    {{ t.password.set ? 'Change Password' : 'Set Password' }}</button>
+                  @if (t.password.set) {
+                    <button type="button" class="btn ghost danger" [disabled]="pwBusy() || (!t.password.owner && !pw.current)" (click)="savePassword(true)">Remove Password</button>
+                  }
+                </div>
+                @if (t.password.set) {
+                  <p class="muted small">Changing it asks everyone for the new one. Forgot it, and this isn't the browser that set it?
+                    Whoever runs the server can remove it with <code>./launch.sh unlock "{{ t.name }}"</code>.</p>
+                }
+              </form>
+
               <h2 class="danger-text">Danger Zone</h2>
               <button class="btn danger" type="button" (click)="deleteTeam()">Delete Team and All Its Boards</button>
             </section>
@@ -541,6 +572,26 @@ export class TeamPage {
     if (!confirm(`Delete the “${t.name}” template?`)) return;
     await this.api.delete(`/api/templates/${t.id}`);
     this.templates.update(list => list.filter(x => x.id !== t.id));
+  }
+
+  protected pw = { current: '', next: '' };
+  protected pwBusy = signal(false);
+
+  /** Sets, changes or (`remove`) removes the team password */
+  async savePassword(remove: boolean) {
+    const t = this.team()!;
+    if (remove && !confirm(`Remove the password from ${t.name}? Anyone on the team can then open its boards.`)) return;
+    this.pwBusy.set(true);
+    try {
+      const body = { current: this.pw.current || undefined, password: remove ? null : this.pw.next };
+      this.team.set(await this.api.put<TeamDto>(`${this.base()}/password`, body));
+      this.toast.show(remove ? 'Password removed' : t.password.set ? 'Password changed. Everyone else types the new one' : 'Password set');
+      this.pw = { current: '', next: '' };
+    } catch (err) {
+      this.toast.error(err);
+    } finally {
+      this.pwBusy.set(false);
+    }
   }
 
   async deleteTeam() {

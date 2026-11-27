@@ -73,7 +73,8 @@ describe('backup and restore in the app', () => {
   });
 
   it('reads back what it writes: big files across chunks, long paths, odd sizes', async () => {
-    const big = Buffer.alloc(3 * 1024 * 1024 + 7, 0).map((_, i) => i % 251);
+    const big = Buffer.alloc(3 * 1024 * 1024 + 7);
+    for (let i = 0; i < big.length; i++) big[i] = i % 251;
     const files = [
       { name: 'a.json', data: Buffer.from('{}') },
       { name: `files/board/${'x'.repeat(60)}/${'y'.repeat(70)}.png`, data: big },

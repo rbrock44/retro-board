@@ -50,6 +50,12 @@ export const teams = pgTable('teams', {
   settings: jsonb('settings').$type<TeamSettings>().notNull().default(sql`'{}'::jsonb`),
   /** The team's display photo in storage: a square webp, re-encoded on upload */
   photoKey: text('photo_key'),
+  /** Team password (argon2): everyone needs it to see the team's boards. Null: no password */
+  passwordHash: text('password_hash'),
+  /** Bumped on every password change, which signs every unlocked browser out */
+  passwordVersion: integer('password_version').notNull().default(0),
+  /** sha256 of the key kept by the browser that set the password: it may always get in and set a new one */
+  ownerKeyHash: text('owner_key_hash'),
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
 });

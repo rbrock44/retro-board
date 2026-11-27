@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationStart, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { ToastService } from './core/toast.service';
@@ -9,10 +9,12 @@ import { NamePrompt } from './shared/name-prompt';
 import { DemoBanner } from './demo/demo-banner';
 import { TourOverlay } from './demo/tour-overlay';
 import { DemoService } from './demo/demo.service';
+import { TeamLockService } from './core/team-lock.service';
+import { TeamUnlock } from './shared/team-unlock';
 
 @Component({
   selector: 'app-root',
-  imports: [ClickOutside, RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner, TourOverlay],
+  imports: [ClickOutside, RouterOutlet, RouterLink, RouterLinkActive, Avatar, NamePrompt, DemoBanner, TourOverlay, TeamUnlock],
   template: `
     <a class="skip-link" href="#main">Skip to content</a>
     @if (demo.active()) { <app-demo-banner /> }
@@ -43,7 +45,10 @@ import { DemoService } from './demo/demo.service';
         </div>
       </header>
     }
-    <main id="main" tabindex="-1"><router-outlet /></main>
+    <main id="main" tabindex="-1">
+      @if (lock.locked(); as l) { <app-team-unlock [team]="l" /> }
+      <div [hidden]="!!lock.locked()"><router-outlet /></div>
+    </main>
     @if (auth.whoPrompt(); as w) { <app-name-prompt [mode]="w.mode" /> }
     @if (demo.active()) { <app-tour-overlay /> }
     <div class="toasts" aria-live="polite">
@@ -58,10 +63,13 @@ export class App {
   protected theme = inject(ThemeService);
   protected toast = inject(ToastService);
   protected demo = inject(DemoService);
+  protected lock = inject(TeamLockService);
   private router = inject(Router);
   protected menuOpen = signal(false);
 
   constructor() {
+    // a team's password prompt belongs to the page that asked for it: going elsewhere clears it
+    this.router.events.subscribe(e => { if (e instanceof NavigationStart) this.lock.locked.set(null); });
     void this.auth.ensureLoaded().then(() => {
       // A share link has been read into this browser; take the (long) #demo=... off the address bar.
       if (location.hash.startsWith('#demo=')) void this.router.navigateByUrl(this.router.url.split('#')[0], { replaceUrl: true });

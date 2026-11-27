@@ -11,7 +11,11 @@ import {
   actionItems, boards, cards, invites, teamMembers, teams, templates, users, type Team, type User,
 } from '../db/schema';
 import { requireTeam, teamRole } from '../lib/access';
-import { badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
+import { HttpError, badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
+import { hash, verify } from '@node-rs/argon2';
+import {
+  clearTeamCookies, guessAllowed, isLockOwner, makeOwner, noteWrongGuess, setUnlocked, teamOpen,
+} from '../lib/team-lock';
 import { newId, newToken } from '../lib/ids';
 import { acceptInvite, findValidInvite } from '../lib/invites';
 import { boardDto, boardDtos, loadActions } from '../lib/serialize';
@@ -74,6 +78,7 @@ export async function teamDto(ctx: Ctx, team: Team, user: User): Promise<TeamDto
     photoUrl: teamPhotoUrl(team),
     settings: teamSettings(team.settings),
     createdAt: team.createdAt.toISOString(),
+    password: { set: !!team.passwordHash, unlocked: teamOpen(team, user), owner: isLockOwner(team, user) },
   };
 }
 
@@ -92,6 +97,63 @@ async function adminCount(ctx: Ctx, teamId: string): Promise<number> {
 
 export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db } = ctx;
+
+  // ---- team password ----
+
+  /** Typing the team's password: this browser stays unlocked until the password changes. */
+  app.post('/api/teams/:teamId/unlock', async (req, reply) => {
+    const user = requireUser(req);
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'viewer', { skipPassword: true });
+    const { password } = parse(z.object({ password: z.string().max(200) }), req.body);
+    if (!team.passwordHash) return { ok: true };
+    const guessKey = `${team.id}:${req.ip}`;
+    if (!guessAllowed(guessKey)) throw new HttpError(429, 'Too many tries. Wait a minute and try again');
+    if (!(await verify(team.passwordHash, password))) {
+      noteWrongGuess(guessKey);
+      throw badRequest("That's not the password");
+    }
+    setUnlocked(reply, ctx.config, team.id, team.passwordVersion);
+    return { ok: true };
+  });
+
+  /**
+   * Sets, changes or removes (`password: null`) the team password. Team admins need the current password, except
+   * in the browser that set it. Every change signs every other browser out of the team.
+   */
+  app.put('/api/teams/:teamId/password', async (req, reply) => {
+    const user = requireUser(req);
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin', { skipPassword: true });
+    const body = parse(z.object({
+      current: z.string().max(200).optional(),
+      password: z.string().min(4, 'Use at least 4 characters').max(200).nullable(),
+    }), req.body);
+    if (team.passwordHash && !isLockOwner(team, user)) {
+      const guessKey = `${team.id}:${req.ip}`;
+      if (!guessAllowed(guessKey)) throw new HttpError(429, 'Too many tries. Wait a minute and try again');
+      if (!body.current || !(await verify(team.passwordHash, body.current))) {
+        noteWrongGuess(guessKey);
+        throw badRequest('The current password is wrong');
+      }
+    }
+    const wasOwner = isLockOwner(team, user);
+    let owner = false;
+    if (body.password === null) {
+      await db.update(teams).set({ passwordHash: null, ownerKeyHash: null, passwordVersion: team.passwordVersion + 1 }).where(eq(teams.id, team.id));
+      clearTeamCookies(reply, ctx.config, team.id);
+    } else {
+      const version = team.passwordVersion + 1;
+      // the first browser to set a password becomes the original one; later changes keep it
+      const keep = team.passwordHash && team.ownerKeyHash;
+      const ownerKeyHash = keep ? team.ownerKeyHash : makeOwner(reply, ctx.config, team.id);
+      owner = !keep || wasOwner;
+      await db.update(teams).set({ passwordHash: await hash(body.password), passwordVersion: version, ownerKeyHash }).where(eq(teams.id, team.id));
+      setUnlocked(reply, ctx.config, team.id, version);
+    }
+    const [fresh] = await db.select().from(teams).where(eq(teams.id, team.id));
+    const dto = await teamDto(ctx, fresh, user);
+    // this request's cookies predate the change: describe the result as this browser will now see it
+    return { ...dto, password: { set: body.password !== null, unlocked: true, owner } };
+  });
 
   app.get('/api/teams', async req => {
     const user = requireUser(req);

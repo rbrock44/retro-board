@@ -7,6 +7,7 @@
 #   ./launch.sh update          rebuild after pulling new code (no questions)
 #   ./launch.sh backup          save everything (database + uploads) to one file in backups/
 #   ./launch.sh restore FILE    put a backup back
+#   ./launch.sh unlock [TEAM]   remove a forgotten team password (no TEAM: list the teams that have one)
 #   ./launch.sh stop | logs
 #
 # Run ./launch.sh --help for the options.
@@ -15,7 +16,7 @@ cd "$(dirname "$0")"
 
 usage() {
   cat <<'EOF'
-Usage: ./launch.sh [up|update|stop|logs|backup|restore FILE] [options]
+Usage: ./launch.sh [up|update|stop|logs|backup|restore FILE|unlock [TEAM]] [options]
 
 With no options, ./launch.sh asks each question below, showing the current value; press Enter to keep it.
 Passing any option (or -y) skips the questions. Everything is saved in .env.
@@ -111,7 +112,11 @@ valid_features() {
 
 cmd=up
 restore_file=""
+unlock_team=""
 case "${1:-}" in
+  unlock)
+    # everything after it is the team's name (or id)
+    cmd=unlock; shift; unlock_team="$*"; set -- ;;
   up|update|stop|logs|backup) cmd=$1; shift ;;
   restore)
     cmd=restore; shift
@@ -312,6 +317,12 @@ case "$cmd" in
     say "Saved everything (database and uploads) to $f"
     say "Put it back any time with: ./launch.sh restore $f"
     exit 0 ;;
+  unlock)
+    [ -f .env ] || { warn "Run ./launch.sh once first."; exit 1; }
+    ensure_up
+    if [ -n "$unlock_team" ]; then dc exec -T app node dist/cli.js unlock "$unlock_team"
+    else dc exec -T app node dist/cli.js unlock; fi
+    exit $? ;;
   restore)
     [ -f .env ] || { warn "Run ./launch.sh once first, then restore."; exit 1; }
     say "This replaces all current data with the backup in $restore_file."

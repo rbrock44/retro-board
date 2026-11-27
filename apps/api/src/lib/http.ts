@@ -3,7 +3,8 @@ import { z } from 'zod';
 import type { User } from '../db/schema';
 
 export class HttpError extends Error {
-  constructor(public readonly status: number, message: string) {
+  /** `extra` is sent along with `error`, for clients that act on it (e.g. `lockedTeam` for a password prompt) */
+  constructor(public readonly status: number, message: string, public readonly extra?: Record<string, unknown>) {
     super(message);
   }
 }

@@ -57,6 +57,13 @@
       "when": 1795628860347,
       "tag": "0007_team_photo",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795809219284,
+      "tag": "0008_team_password",
+      "breakpoints": true
     }
   ]
 }

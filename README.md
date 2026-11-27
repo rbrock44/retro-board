@@ -58,6 +58,10 @@ plain email and password).
   - `member` - Starts retros, adds cards, replies and media, likes cards, reacts, manages action items. Facilitates
     the boards they start
   - `viewer` - Read-only, for stakeholders who want to follow along
+- `Team password` - A team admin can put a password on a team (History → Settings → Password). Everyone then types
+  it once per browser to open the team's boards, and again after it changes. The browser that set it never has to,
+  and can set a new one without the old one, so a forgotten password isn't a dead end. Other admins need the old
+  one to change it. If both are lost, whoever runs the server removes it with `./launch.sh unlock "<team>"`
 - `Instance Admin` - The first account created, plus anyone in `ADMIN_EMAILS`. Manages every account from the
   `Admin` page and acts as admin on every team
 
@@ -253,6 +257,7 @@ Pass options instead of answering questions, which suits scripts and servers:
 | `./launch.sh update` | Rebuild after pulling or downloading new code |
 | `./launch.sh backup` | Save everything to one file in `backups/` |
 | `./launch.sh restore <file>` | Put a backup back |
+| `./launch.sh unlock ["<team>"]` | Remove a forgotten team password (no team: list the ones that have one) |
 | `./launch.sh logs` | Follow the app logs |
 | `./launch.sh stop` | Stop it (your data stays) |
 
@@ -330,7 +335,9 @@ the team's people listed ("Are you one of these?") plus anyone who has used this
 carries on as that person; otherwise they type a new one. **Switch person** in the menu does the same at any time,
 for a shared meeting-room laptop.
 
-Use it only on a trusted network, or behind something that already controls who gets in (a VPN, or a proxy with
+A team password keeps a team's boards from people who don't have it, but with no sign-in, everyone is also an
+instance admin, so anyone can download a full backup from `Admin`. Use it only on a trusted network, or behind
+something that already controls who gets in (a VPN, or a proxy with
 its own login). Switching back to `accounts` signs guests out; what they wrote stays.
 
 ### Sign-in Providers

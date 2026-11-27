@@ -1,4 +1,4 @@
-// Bundles the API (and the shared package) into dist/main.js and copies the SQL migrations next to it.
+// Bundles the API (and the shared package) into dist/main.js (and the server tools into dist/cli.js) and copies the SQL migrations next to it.
 // Every other npm package stays external and is installed in the runtime image.
 import { build } from 'esbuild';
 import { cpSync, rmSync } from 'node:fs';
@@ -17,8 +17,8 @@ const externals = {
 
 rmSync('dist', { recursive: true, force: true });
 await build({
-  entryPoints: ['src/main.ts'],
-  outfile: 'dist/main.js',
+  entryPoints: { main: 'src/main.ts', cli: 'src/cli.ts' },
+  outdir: 'dist',
   bundle: true,
   platform: 'node',
   target: 'node24',
@@ -27,4 +27,4 @@ await build({
   plugins: [externals],
 });
 cpSync('drizzle', 'dist/drizzle', { recursive: true });
-console.log('built dist/main.js');
+console.log('built dist/main.js and dist/cli.js');

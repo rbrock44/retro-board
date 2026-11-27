@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { DemoService } from '../demo/demo.service';
+import { TeamLockService, type LockedTeam } from './team-lock.service';
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  /** `data` is the rest of the error body, e.g. `lockedTeam` on a 423 */
+  constructor(public readonly status: number, message: string, public readonly data?: Record<string, unknown>) {
     super(message);
   }
 }
@@ -14,8 +16,20 @@ export class ApiError extends Error {
 @Injectable({ providedIn: 'root' })
 export class Api {
   private demo = inject(DemoService);
+  private lock = inject(TeamLockService);
 
   async request<T>(method: string, url: string, body?: unknown): Promise<T> {
+    try {
+      return await this.send<T>(method, url, body);
+    } catch (err) {
+      // A team password this browser hasn't typed: the app shows the password prompt instead of the page
+      const team = err instanceof ApiError && err.status === 423 ? err.data?.['lockedTeam'] as LockedTeam | undefined : undefined;
+      if (team) this.lock.locked.set(team);
+      throw err;
+    }
+  }
+
+  private async send<T>(method: string, url: string, body?: unknown): Promise<T> {
     if (this.demo.active()) return (await this.demo.handle(method, url, body)) as T;
     const isForm = body instanceof FormData;
     const res = await fetch(url, {
@@ -32,7 +46,7 @@ export class Api {
     const data = text ? safeJson(text) : undefined;
     if (!res.ok) {
       const msg = (data as { error?: string } | undefined)?.error ?? `Request failed (${res.status})`;
-      throw new ApiError(res.status, msg);
+      throw new ApiError(res.status, msg, data as Record<string, unknown> | undefined);
     }
     return data as T;
   }
@@ -40,6 +54,7 @@ export class Api {
   get<T>(url: string) { return this.request<T>('GET', url); }
   post<T>(url: string, body: unknown = {}) { return this.request<T>('POST', url, body); }
   patch<T>(url: string, body: unknown) { return this.request<T>('PATCH', url, body); }
+  put<T>(url: string, body: unknown) { return this.request<T>('PUT', url, body); }
   delete<T = void>(url: string) { return this.request<T>('DELETE', url); }
 
   /** Upload with progress, which fetch cannot report. */

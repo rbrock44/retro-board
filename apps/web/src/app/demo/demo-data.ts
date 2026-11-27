@@ -11,7 +11,13 @@ export interface DemoState {
   meId: string;
   prefs: UserPrefs;
   users: (UserDto & { email: string })[];
-  teams: { id: string; name: string; description: string; settings: TeamSettings; createdAt: string; photoUrl?: string | null }[];
+  teams: {
+    id: string; name: string; description: string; settings: TeamSettings; createdAt: string; photoUrl?: string | null;
+    /** Team password, as on the server (hashed); bumped version signs this browser out */
+    passwordHash?: string | null; passwordVersion?: number;
+  }[];
+  /** This browser's team-password keys: unlocked versions, and the teams whose password it set. Not shared */
+  locks?: { unlocked: Record<string, number>; owner: string[] };
   members: { teamId: string; userId: string; role: TeamRole; joinedAt: string }[];
   invites: InviteDto[];
   templates: (TemplateDto & { teamId: string })[];

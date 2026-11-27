@@ -96,7 +96,8 @@ export class DemoService {
         reason = 'shared';
       } else if (shared) {
         id = makeId();
-        state = shared.state;
+        // whoever opens a share link is another browser: they type team passwords themselves
+        state = { ...shared.state, locks: undefined };
         const base = shared.name || 'Shared demo';
         const name = lib.entries.some(e => e.name === base) ? `${base} (shared)` : base;
         this.addEntry({ id, name, updatedAt: new Date().toISOString(), sharedFrom: fingerprint });

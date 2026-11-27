@@ -12,6 +12,13 @@ import { searchDemoGifs } from './demo-gifs';
 type Listener = { onEvent(e: BoardEvent): void; onTyping(t: { user: UserDto; columnId: string }): void };
 
 const fail = (status: number, msg: string): never => { throw new ApiError(status, msg); };
+
+/** A team password in the demo: never leaves this browser, so a quick non-cryptographic hash just keeps it out of sight */
+function demoHash(teamId: string, password: string): string {
+  let h = 0x811c9dc5;
+  for (const ch of `${teamId}:${password}`) { h ^= ch.codePointAt(0)!; h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16);
+}
 const notFound = (what = 'That') => fail(404, `${what} was not found`);
 const nowIso = () => new Date().toISOString();
 
@@ -61,12 +68,31 @@ export class DemoBackend {
     return this.state.members.find(m => m.teamId === teamId && m.userId === userId)?.role ?? null;
   }
 
-  private requireTeam(teamId: string, min: TeamRole = 'viewer') {
+  private requireTeam(teamId: string, min: TeamRole = 'viewer', skipPassword = false) {
     const team = this.team(teamId);
     const role = this.role(teamId) ?? notFound('Team');
+    if (!skipPassword) this.requireOpen(team);
     const rank = { viewer: 1, member: 2, admin: 3 };
     if (rank[role] < rank[min]) fail(403, `Team ${min}s only`);
     return { team, role };
+  }
+
+  // ---- team password, as on the server. `state.locks` is what this browser holds (left out of share links).
+
+  private lockOwner(team: DemoState['teams'][number]): boolean {
+    return !!team.passwordHash && !!this.state.locks?.owner.includes(team.id);
+  }
+
+  private teamOpen(team: DemoState['teams'][number]): boolean {
+    return !team.passwordHash || this.state.locks?.unlocked[team.id] === (team.passwordVersion ?? 0) || this.lockOwner(team);
+  }
+
+  private requireOpen(team: DemoState['teams'][number]) {
+    if (!this.teamOpen(team)) throw new ApiError(423, 'This team has a password', { lockedTeam: { id: team.id, name: team.name } });
+  }
+
+  private locks() {
+    return (this.state.locks ??= { unlocked: {}, owner: [] });
   }
 
   private access(boardId: string) {
@@ -78,6 +104,7 @@ export class DemoBackend {
 
   private requireBoard(boardId: string, need: 'read' | 'write' | 'vote' | 'facilitate' | 'admin') {
     const ctx = this.access(boardId);
+    this.requireOpen(this.team(ctx.board.teamId));
     const ok = need === 'read' || (need === 'write' && ctx.canWrite) || (need === 'vote' && ctx.canVote) ||
       (need === 'facilitate' && ctx.canFacilitate) || (need === 'admin' && ctx.role === 'admin');
     if (!ok) {
@@ -123,6 +150,7 @@ export class DemoBackend {
       settings: this.teamSettings(t),
       myRole: this.role(t.id), memberCount: this.state.members.filter(m => m.teamId === t.id).length,
       photoUrl: t.photoUrl ?? null,
+      password: { set: !!t.passwordHash, unlocked: this.teamOpen(t), owner: this.lockOwner(t) },
     };
   }
 
@@ -468,6 +496,33 @@ export class DemoBackend {
       return this.teamDto(t);
     }],
     ['GET', /^\/api\/teams\/([^/]+)$/, ([id]) => this.teamDto(this.requireTeam(id).team)],
+    ['POST', /^\/api\/teams\/([^/]+)\/unlock$/, ([id], b) => {
+      const { team } = this.requireTeam(id, 'viewer', true);
+      if (team.passwordHash && team.passwordHash !== demoHash(id, String(b.password ?? ''))) fail(400, "That's not the password");
+      this.locks().unlocked[id] = team.passwordVersion ?? 0;
+      return { ok: true };
+    }],
+    ['PUT', /^\/api\/teams\/([^/]+)\/password$/, ([id], b) => {
+      const { team } = this.requireTeam(id, 'admin', true);
+      const next = b.password === null ? null : String(b.password ?? '');
+      if (next !== null && next.length < 4) fail(400, 'Use at least 4 characters');
+      if (team.passwordHash && !this.lockOwner(team) && team.passwordHash !== demoHash(id, String(b.current ?? ''))) {
+        fail(400, 'The current password is wrong');
+      }
+      const locks = this.locks();
+      team.passwordVersion = (team.passwordVersion ?? 0) + 1;
+      if (next === null) {
+        team.passwordHash = null;
+        locks.owner = locks.owner.filter(x => x !== id);
+        delete locks.unlocked[id];
+      } else {
+        // the first browser to set one becomes the original; later changes keep it
+        if (!team.passwordHash) locks.owner = [...locks.owner.filter(x => x !== id), id];
+        team.passwordHash = demoHash(id, next);
+        locks.unlocked[id] = team.passwordVersion;
+      }
+      return this.teamDto(team);
+    }],
     ['PATCH', /^\/api\/teams\/([^/]+)$/, ([id], b) => {
       const { team } = this.requireTeam(id, 'admin');
       if (b.name) team.name = String(b.name).trim().slice(0, 80);
@@ -621,7 +676,7 @@ export class DemoBackend {
 
     // ---- boards ----
     ['GET', /^\/api\/boards\/([^/]+)$/, ([id]): BoardStateDto => {
-      const ctx = this.access(id);
+      const ctx = this.requireBoard(id, 'read');
       const team = this.team(ctx.board.teamId);
       return {
         board: this.boardDto(ctx.board),

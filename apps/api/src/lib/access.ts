@@ -5,6 +5,7 @@ import {
 import type { Db } from '../db';
 import { boards, cards, columns, replies, teamMembers, teams, type Board, type Team, type User } from '../db/schema';
 import { forbidden, notFound } from './http';
+import { requireOpen } from './team-lock';
 
 const RANK: Record<TeamRole, number> = { viewer: 1, member: 2, admin: 3 };
 
@@ -29,11 +30,18 @@ export async function teamRole(db: Db, user: User, teamId: string): Promise<Team
   return m?.role ?? null;
 }
 
-export async function requireTeam(db: Db, user: User, teamId: string, min: TeamRole = 'viewer'): Promise<{ team: Team; role: TeamRole }> {
+/**
+ * The team, if this person may use it. A team with a password also needs this browser to have unlocked it
+ * (`skipPassword` is for the routes that do the unlocking, and the photo shown on the prompt).
+ */
+export async function requireTeam(
+  db: Db, user: User, teamId: string, min: TeamRole = 'viewer', opts: { skipPassword?: boolean } = {},
+): Promise<{ team: Team; role: TeamRole }> {
   const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
   if (!team) throw notFound('Team');
   const role = await teamRole(db, user, teamId);
   if (!role) throw notFound('Team');
+  if (!opts.skipPassword) requireOpen(team, user);
   if (!atLeast(role, min)) throw forbidden(`Team ${min}s only`);
   return { team, role };
 }
@@ -70,6 +78,10 @@ export async function requireBoard(db: Db, user: User, boardId: string, need: Bo
   if (!board) throw notFound('Board');
   const role = await teamRole(db, user, board.teamId);
   if (!role) throw notFound('Board');
+  const [lock] = await db.select({
+    id: teams.id, name: teams.name, passwordHash: teams.passwordHash, passwordVersion: teams.passwordVersion, ownerKeyHash: teams.ownerKeyHash,
+  }).from(teams).where(eq(teams.id, board.teamId)).limit(1);
+  if (lock) requireOpen(lock, user);
   const { access, permissions } = boardPermissions(board, role, user.id);
   const ok =
     need === 'read' ||

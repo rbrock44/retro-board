@@ -48,8 +48,21 @@ export async function makeApp(opts: { authFile?: Partial<AuthFileConfig>; realti
 
 /** A signed-in browser: keeps its cookie and sends the CSRF header like the web client does. */
 export class Client {
-  cookie = '';
+  /** Every cookie the server set, like a browser keeps them (the session plus e.g. team-password cookies) */
+  jar = new Map<string, string>();
   constructor(private app: FastifyInstance) {}
+
+  /** The Cookie header this browser sends */
+  get cookie(): string {
+    return [...this.jar].map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+  set cookie(value: string) {
+    this.jar.clear();
+    for (const part of value.split(';')) {
+      const i = part.indexOf('=');
+      if (i > 0) this.jar.set(part.slice(0, i).trim(), part.slice(i + 1).trim());
+    }
+  }
 
   async request<T = any>(method: string, url: string, body?: unknown, headers: Record<string, string> = {}) {
     const res = await this.app.inject({
@@ -60,7 +73,12 @@ export class Client {
     });
     const set = res.headers['set-cookie'];
     for (const c of Array.isArray(set) ? set : set ? [set] : []) {
-      if (c.startsWith('rb_session=')) this.cookie = c.split(';')[0];
+      const [pair, ...attrs] = c.split(';');
+      const i = pair.indexOf('=');
+      const name = pair.slice(0, i).trim(), value = pair.slice(i + 1).trim();
+      const expired = !value || attrs.some(a => /^\s*(max-age=0|expires=thu, 01 jan 1970)/i.test(a));
+      if (expired) this.jar.delete(name);
+      else this.jar.set(name, value);
     }
     let json: T | undefined;
     try { json = res.json() as T; } catch { json = undefined; }
@@ -71,6 +89,7 @@ export class Client {
   post<T = any>(url: string, body?: unknown) { return this.request<T>('POST', url, body ?? {}); }
   patch<T = any>(url: string, body: unknown) { return this.request<T>('PATCH', url, body); }
   del<T = any>(url: string) { return this.request<T>('DELETE', url); }
+  put<T = any>(url: string, body: unknown) { return this.request<T>('PUT', url, body); }
 }
 
 let n = 0;

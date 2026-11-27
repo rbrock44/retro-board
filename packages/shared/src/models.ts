@@ -120,6 +120,15 @@ export interface TeamDto {
   photoUrl: string | null;
   settings: TeamSettings;
   createdAt: string;
+  /** Team password: whether there is one, whether this browser can get in, and whether it's the browser that set it */
+  password: TeamPasswordState;
+}
+
+export interface TeamPasswordState {
+  set: boolean;
+  unlocked: boolean;
+  /** This browser set the password: it may set a new one without the old one */
+  owner: boolean;
 }
 
 /**

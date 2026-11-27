@@ -80,6 +80,20 @@ describe('demo backend', () => {
     expect(after.cards.length).toBe(live.cards.length);
   });
 
+  it('locks a team behind a password, like the server, but never for the browser that set it', async () => {
+    const { b } = backend();
+    const set = (await b.handle('PUT', '/api/teams/t-platform/password', { password: 'sprint' })) as TeamDto;
+    expect(set.password).toEqual({ set: true, unlocked: true, owner: true });
+    expect(((await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto).board.id).toBe('b-s42');
+    // another browser: same data, none of this one's keys
+    const other = new DemoBackend({ ...structuredClone(b['state']), locks: undefined }, () => {});
+    await expect(other.handle('GET', '/api/boards/b-s42')).rejects.toMatchObject({ status: 423, data: { lockedTeam: { id: 't-platform' } } });
+    await expect(other.handle('POST', '/api/teams/t-platform/unlock', { password: 'nope' })).rejects.toMatchObject({ status: 400 });
+    await other.handle('POST', '/api/teams/t-platform/unlock', { password: 'sprint' });
+    expect(((await other.handle('GET', '/api/boards/b-s42')) as BoardStateDto).board.id).toBe('b-s42');
+    await expect(other.handle('PUT', '/api/teams/t-platform/password', { password: 'other' })).rejects.toMatchObject({ status: 400 });
+  });
+
   it('carries marked cards into the next retro once', async () => {
     const { b } = backend();
     const live = (await b.handle('GET', '/api/boards/b-s42')) as BoardStateDto;

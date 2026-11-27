@@ -259,7 +259,8 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.get('/api/teams/:teamId/photo', async (req, reply) => {
     const user = requireUser(req);
-    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
+    // shown on the team's tile and its password prompt, so no password needed
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'viewer', { skipPassword: true });
     const got = team.photoKey ? await storage.get(team.photoKey) : null;
     if (!got) throw notFound('Photo');
     reply.header('content-type', 'image/webp')

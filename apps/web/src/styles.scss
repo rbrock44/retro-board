@@ -325,7 +325,12 @@ app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
     app-team-photo { margin: 0; } }
   h1 { font-size: 1.35rem; cursor: default; } }
 .title-edit { font-size: 1.2rem; font-weight: 600; }
-.presence { display: flex; .avatar { margin-left: -6px; border: 2px solid var(--bg); } .more { font-size: 0.8rem; color: var(--muted); margin-left: 0.3rem; align-self: center; } }
+.presence { display: flex; .avatar { margin-left: -6px; border: 2px solid var(--bg); }
+  /* each face is a button: overlapping, lifted on hover so the one you'd open is clear */
+  .person-btn { margin-left: -6px; border-radius: 50%; position: relative; transition: transform 0.12s;
+    .avatar { margin-left: 0; }
+    &:hover, &:focus-visible { z-index: 1; transform: translateY(-2px); } }
+  .more { font-size: 0.8rem; color: var(--muted); margin-left: 0.3rem; align-self: center; } }
 .board-tools { display: flex; align-items: center; gap: 0.75rem; padding: 0.25rem 1rem 0.5rem; flex-wrap: wrap;
   label { flex-direction: row; align-items: center; gap: 0.4rem; font-weight: 400; color: var(--muted); }
   select { padding: 0.25rem 0.4rem; } }

@@ -60,8 +60,11 @@ const FOCUS_ACTIONS = '__actions__';
           </div>
           <div class="spacer"></div>
           @if (auth.on('presence')) {
-            <div class="presence" aria-label="People here now">
-              @for (u of store.presence().slice(0, 8); track u.id) { <app-avatar [user]="u" [size]="26" /> }
+            <div class="presence" role="group" aria-label="People here now">
+              <!-- each face opens that person's details, like a name on a card -->
+              @for (u of store.presence().slice(0, 8); track u.id) {
+                <button type="button" class="person-btn" (click)="store.personOpen.set(u)" [attr.aria-label]="'About ' + u.name" [title]="u.name"><app-avatar [user]="u" [size]="26" /></button>
+              }
               @if (store.presence().length > 8) { <span class="more">+{{ store.presence().length - 8 }}</span> }
             </div>
           }
@@ -255,7 +258,9 @@ const FOCUS_ACTIONS = '__actions__';
               }
               @if (auth.on('presence') && store.presence().length) {
                 <div class="presence focus-presence" role="group" [attr.aria-label]="store.presence().length + ' here now'">
-                  @for (u of store.presence().slice(0, 6); track u.id) { <app-avatar [user]="u" [size]="26" /> }
+                  @for (u of store.presence().slice(0, 6); track u.id) {
+                    <button type="button" class="person-btn" (click)="store.personOpen.set(u)" [attr.aria-label]="'About ' + u.name" [title]="u.name"><app-avatar [user]="u" [size]="26" /></button>
+                  }
                   @if (store.presence().length > 6) { <span class="more">+{{ store.presence().length - 6 }}</span> }
                 </div>
               }

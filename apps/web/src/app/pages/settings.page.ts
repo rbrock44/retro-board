@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { ThemePreference } from '@retro/shared';
+import type { ComposerStyle, ThemePreference } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ThemeService } from '../core/theme.service';
@@ -30,6 +30,17 @@ import { ExportDialog } from '../shared/export-dialog';
             <button class="btn ghost" type="button" (click)="followSystem()">Follow System Light/Dark</button></div>
           <p class="muted">Changes apply right away and follow you to any device you sign in on.</p>
           <app-theme-editor [value]="theme.current()" (valueChange)="setTheme($event)" />
+        </section>
+
+        <section class="card-surface stack">
+          <h2>Board</h2>
+          <fieldset class="stack composer-style">
+            <legend>Add-card box at the top of each column</legend>
+            @for (o of composerOptions; track o.value) {
+              <label class="check"><input type="radio" name="composerStyle" [value]="o.value" [checked]="(me.prefs.composerStyle ?? 'compact') === o.value"
+                                          (change)="setComposerStyle(o.value)"> <span><strong>{{ o.label }}</strong> <span class="muted small">{{ o.hint }}</span></span></label>
+            }
+          </fieldset>
         </section>
 
         <section class="card-surface stack">
@@ -113,6 +124,16 @@ export class SettingsPage {
 
   async setFocusReplies(on: boolean) {
     await this.auth.updateMe({ prefs: { focusRepliesOpen: on } }).catch(err => this.toast.error(err));
+  }
+
+  protected composerOptions: { value: ComposerStyle; label: string; hint: string }[] = [
+    { value: 'compact', label: 'Compact', hint: 'a one-line "＋ Add a card" that opens into the full box' },
+    { value: 'button', label: 'Header button', hint: 'just ＋ next to the column name, so cards start at the top' },
+    { value: 'full', label: 'Full', hint: 'the box is always open in every column' },
+  ];
+
+  async setComposerStyle(style: ComposerStyle) {
+    await this.auth.updateMe({ prefs: { composerStyle: style } }).catch(err => this.toast.error(err));
   }
 
   async saveProfile() {

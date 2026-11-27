@@ -89,6 +89,9 @@ its default template), so people always land in the right place.
 ### Cards, Media and Replies
 
 - `Cards` - Markdown text (bold, lists, links, code). Tick `Anonymous` to hide your name from everyone
+- `Add-card box` - Pick how it sits at the top of each column (Settings → Board): `Compact` (default), a one-line
+  `＋ Add a card` that opens into the full box; `Header button`, just ＋ beside the column name; or `Full`, always open.
+  `N` opens it in the column in view, `Esc` or `Cancel` folds it away
 - `Media` - Attach images, GIFs and videos (mp4, webm, mov) with 📎, by pasting an image, or by dropping files on
   the composer. With a Giphy or Tenor key configured, the `GIF` button searches GIFs.
   Text and any mix of images, GIFs and videos go together in one card or reply. Click an image for a bigger view:

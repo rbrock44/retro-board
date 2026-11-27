@@ -38,7 +38,13 @@ export interface UserPrefs {
   theme?: ThemePreference;
   /** Full-screen column view opens every reply thread (unset: on) */
   focusRepliesOpen?: boolean;
+  /** The add-card box at the top of each column (unset: compact) */
+  composerStyle?: ComposerStyle;
 }
+
+/** full: always open · compact: a one-line "+ Add a card" that opens on click · button: just a + in the column header */
+export type ComposerStyle = 'full' | 'compact' | 'button';
+export const COMPOSER_STYLES: readonly ComposerStyle[] = ['compact', 'button', 'full'];
 
 export interface UserDto {
   id: string;

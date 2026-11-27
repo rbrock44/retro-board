@@ -371,6 +371,13 @@ app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
   kbd { font: inherit; font-weight: 600; padding: 0 0.25rem; border: 1px solid var(--border); border-bottom-width: 2px;
     border-radius: 4px; background: var(--surface-2); } }
 .composer:focus-within .composer-hint { display: block; }
+/* Settings > Board: the add-card box as a one-line bar, or just ＋ in the column header */
+.add-card-bar { display: block; width: 100%; text-align: left; padding: 0.45rem 0.6rem; border: 1px dashed var(--border);
+  border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; font-size: 0.9rem; cursor: pointer;
+  &:hover, &:focus-visible { border-color: var(--col, var(--accent)); color: var(--text); background: var(--surface); } }
+.add-card-btn { color: var(--muted);
+  &.on { background: var(--accent); color: var(--accent-text); } }
+.composer-style { border: 0; padding: 0; gap: 0.4rem; legend { padding: 0; margin-bottom: 0.4rem; } }
 .composer-bar { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
 .gif-btn { font-size: 0.7rem; font-weight: 700; border: 1px solid var(--border); }
 .composer-media { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.25rem 0; }

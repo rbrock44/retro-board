@@ -162,13 +162,24 @@ const FOCUS_ACTIONS = '__actions__';
                   @if (perm().canFacilitate) {
                     <button type="button" class="icon-btn small no-print" (click)="editColumn(col)" [attr.aria-label]="'Edit column ' + col.title">✎</button>
                   }
+                  @if (perm().canWrite && composerStyle() === 'button') {
+                    <button type="button" class="icon-btn small no-print add-card-btn" [class.on]="composing() === col.id"
+                            [attr.aria-expanded]="composing() === col.id" (click)="toggleComposer(col.id)"
+                            [attr.aria-label]="'Add a card to ' + col.title" title="Add a card (N)">＋</button>
+                  }
                 </header>
                 @if (col.description) { <p class="col-desc">{{ col.description }}</p> }
 
                 @if (perm().canWrite) {
+                  <!-- the add-card box: always open, a one-line bar, or behind ＋ in the header (Settings > Board) -->
                   <div class="no-print">
-                    <app-composer [boardId]="s.board.id" [allowAnonymous]="s.board.settings.allowAnonymous"
-                                  (submitted)="add(col.id, $event)" (typed)="store.sendTyping(col.id)" />
+                    @if (composerStyle() === 'full' || composing() === col.id) {
+                      <app-composer [boardId]="s.board.id" [allowAnonymous]="s.board.settings.allowAnonymous"
+                                    [cancellable]="composerStyle() !== 'full'" [autofocus]="composerStyle() !== 'full'"
+                                    (submitted)="add(col.id, $event)" (typed)="store.sendTyping(col.id)" (cancelled)="composing.set(null)" />
+                    } @else if (composerStyle() === 'compact') {
+                      <button type="button" class="add-card-bar" (click)="composing.set(col.id)" title="Add a card (N)">＋ Add a card</button>
+                    }
                   </div>
                 }
                 @if (auth.on('presence') && store.typingIn(col.id).length) {
@@ -595,8 +606,24 @@ export class BoardPage implements OnDestroy {
     if (e.key === 'Escape') {
       this.store.pickingGroupFor.set(null);
       this.store.arrangeMode.set(false);
+      this.composing.set(null);
+    }
+    // N: add a card to the column in view (the first one on a wide screen)
+    if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && this.perm().canWrite && this.composerStyle() !== 'full') {
+      const cols = this.store.columns();
+      const id = this.activeColumn() ?? cols[0]?.id;
+      if (id) { e.preventDefault(); this.composing.set(id); }
     }
     if (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey && this.perm().canWrite) this.store.arrangeMode.update(v => !v);
+  }
+
+  /** How the add-card box shows (Settings > Board); compact unless changed */
+  protected composerStyle = computed(() => this.auth.me()?.prefs.composerStyle ?? 'compact');
+  /** The column whose add-card box is open when it isn't always open; it stays open for adding several */
+  protected composing = signal<string | null>(null);
+
+  toggleComposer(columnId: string) {
+    this.composing.update(c => c === columnId ? null : columnId);
   }
 
   add(columnId: string, r: ComposerResult) {

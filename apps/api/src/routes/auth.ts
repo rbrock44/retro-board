@@ -159,6 +159,7 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
       prefs: z.object({
         theme: z.object({ preset: z.string().max(40), tokens: z.record(z.string(), z.string()) }).nullable().optional(),
         focusRepliesOpen: z.boolean().optional(),
+        composerStyle: z.enum(['full', 'compact', 'button']).optional(),
       }).optional(),
     }), req.body);
     const prefs = { ...user.prefs };
@@ -167,6 +168,7 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
       else delete prefs.theme;
     }
     if (typeof body.prefs?.focusRepliesOpen === 'boolean') prefs.focusRepliesOpen = body.prefs.focusRepliesOpen;
+    if (body.prefs?.composerStyle) prefs.composerStyle = body.prefs.composerStyle;
     const [updated] = await db.update(users).set({
       name: body.name ?? user.name,
       avatarUrl: body.avatarUrl === undefined ? user.avatarUrl : body.avatarUrl,

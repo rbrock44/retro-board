@@ -1,6 +1,6 @@
 import {
   BUILT_IN_TEMPLATES, CARD_STATUS_LABELS, CARRIED_OVER_COLUMN, CURRENT_BOARD_TITLE, OLD_CURRENT_BOARD_TITLE, RENAMED_COLUMN_TITLES, isCarriedOverColumn, sameColumnTitle, DEFAULT_BOARD_SETTINGS, REACTION_EMOJI, byPosition, isEmoji,
-  canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
+  COMPOSER_STYLES, canFacilitate, canVoteBoard, canWriteBoard, positionAfter, sanitizeTokens,
   type ActionItemDto, type AttachmentDto, type AuthConfigDto, type BoardAccess, type BoardDto, type BoardEvent,
   type BoardSettings, type BoardStateDto, type BoardSummaryDto, type CardDto, type InviteDto, type MeDto, type ReactionSummary,
   ALL_FEATURES_ON, TEAM_BOARD_SETTING_KEYS, exportSlug, formatExport, withFeatureDefaults, type ExportBoard, type ExportFormat, type InstanceSettings, type InstanceSettingsAdminDto, type ReplyDto, type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamSettings, type TeamRole, type TemplateDto, type UserDto,
@@ -479,6 +479,10 @@ export class DemoBackend {
       }
       if (typeof b.prefs?.focusRepliesOpen === 'boolean') {
         this.state.prefs.focusRepliesOpen = b.prefs.focusRepliesOpen;
+      }
+      if (b.prefs?.composerStyle) {
+        if (!COMPOSER_STYLES.includes(b.prefs.composerStyle)) fail(400, 'Invalid composer style');
+        this.state.prefs.composerStyle = b.prefs.composerStyle;
       }
       return this.meDto();
     }],

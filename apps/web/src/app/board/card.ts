@@ -46,7 +46,7 @@ import { AuthService } from '../core/auth.service';
           @for (m of members(); track m.id) {
             <div cdkDrag [cdkDragData]="m" [cdkDragDisabled]="!canWrite() || !store.arrangeMode()" class="group-member"
                  (cdkDragMoved)="memberMoved($event)" (cdkDragEnded)="store.dragPointer = null; store.dropSpot.set(null)">
-              <app-card [card]="m" [boardId]="boardId()" [nested]="true" />
+              <app-card [card]="m" [boardId]="boardId()" [nested]="true" [compactReply]="compactReply()" />
               <div *cdkDragPlaceholder class="drag-placeholder"></div>
             </div>
           }
@@ -160,10 +160,16 @@ import { AuthService } from '../core/auth.service';
               <app-reply [reply]="r" [boardId]="boardId()" (replyTo)="replyingTo.set($event)" />
             }
             @if (canWrite()) {
-              @if (replyingTo(); as to) {
-                <p class="meta">Replying to {{ to.author?.name ?? 'reply' }} <button type="button" class="link-btn" (click)="replyingTo.set(null)">cancel</button></p>
+              @if (compactReply() && !writingReply() && !replyingTo()) {
+                <!-- full-screen view: replying is rare there, so the box waits behind a small button -->
+                <button type="button" class="reply-open" (click)="writingReply.set(true)">↩ Reply</button>
+              } @else {
+                @if (replyingTo(); as to) {
+                  <p class="meta">Replying to {{ to.author?.name ?? 'reply' }} <button type="button" class="link-btn" (click)="replyingTo.set(null)">cancel</button></p>
+                }
+                <app-composer [boardId]="boardId()" placeholder="Write a reply…" submitLabel="Reply" (submitted)="sendReply($event)"
+                              [cancellable]="compactReply()" [autofocus]="compactReply()" (cancelled)="writingReply.set(false); replyingTo.set(null)" />
               }
-              <app-composer [boardId]="boardId()" placeholder="Write a reply…" submitLabel="Reply" (submitted)="sendReply($event)" />
             }
           </section>
         }
@@ -178,6 +184,9 @@ export class Card {
   readonly card = input.required<CardDto>();
   readonly boardId = input.required<string>();
   readonly nested = input(false);
+  /** Full-screen column view: the reply box stays folded away behind "Reply" until wanted */
+  readonly compactReply = input(false);
+  protected writingReply = signal(false);
 
   protected labels = CARD_STATUS_LABELS;
   protected statuses: CardStatus[] = CARD_STATUSES;
@@ -277,6 +286,7 @@ export class Card {
   async sendReply(r: ComposerResult) {
     await this.store.reply(this.card().id, r.body, this.replyingTo()?.id ?? null, r.attachmentIds);
     this.replyingTo.set(null);
+    this.writingReply.set(false);
   }
 
   makeAction() {

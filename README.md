@@ -116,8 +116,10 @@ its default template), so people always land in the right place.
   In Arrange Mode, drag the group's header to move the whole group; drag a card inside it to reorder the group, move
   it to another group, or pull it out on its own (the first card leads the group and keeps its name)
 - `Focus` - `⤢` in a column header shows that column in a big popup over the dimmed board, its cards in a roomy
-  grid, to go over it together. `‹` `›` or the arrow keys step to the next column; `Esc` or a click outside closes.
-  On its left, one button opens every reply thread in the column (or closes them all once they're all open), and the
+  grid, to go over it together. `‹` `›` or the arrow keys step to the next column, and past the last one to the
+  action items (also one click away on the checklist button beside them); `Esc` or a click outside closes. Reply
+  threads start open (turn that off in Settings → Full-Screen Column), with the reply box tucked behind `↩ Reply`.
+  Who's on the board shows at the top left. On its left, one button opens every reply thread in the column (or closes them all once they're all open), and the
   person button picks a random teammate to go over the column. They get `Yes, I'll Go` or `Not Right Now`: not right
   now asks someone else and keeps them on the list for later, but nobody who just passed is asked again until someone
   says yes. Everyone gets a turn, in random order, before anyone goes twice (remembered per team in your browser)

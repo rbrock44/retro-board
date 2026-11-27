@@ -835,6 +835,21 @@ emoji-picker { flex: 1; width: 100%; height: 100%;
     .focus-nav { grid-row: 2; }
     h2 { font-size: 1.15rem; } } }
 body:has(.column-focus-backdrop) { overflow: hidden; }
+/* Who's here, at the end of the popup's left-hand tools: the same overlapping faces as on the board */
+.column-focus .focus-presence { display: flex; align-items: center;
+  /* set apart from the buttons before it, when there are any */
+  &:not(:first-child) { margin-left: 0.5rem; padding-left: 0.6rem; border-left: 1px solid var(--border); }
+  .avatar { margin-left: -6px; border: 2px solid var(--surface); }
+  .avatar:first-child { margin-left: 0; } }
+.column-focus .focus-actions-btn.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent); }
+/* Action items, full screen: a readable width, centered */
+.focus-actions { width: min(820px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 0.75rem;
+  > p { margin: 0; } }
+/* Full screen, the reply box waits behind this */
+.reply-open { align-self: flex-start; border: 0; background: none; padding: 0.2rem 0.1rem; color: var(--muted); font: inherit;
+  font-size: 0.85rem; cursor: pointer;
+  &:hover { color: var(--accent); text-decoration: underline; } }
+@media (max-width: 600px) { .column-focus .focus-presence { display: none; } }
 
 /* Admin → Customize: sections read as tight blocks (paragraphs drop their default margins, the stack sets the gaps) */
 .customize > section.stack { gap: 0.6rem;

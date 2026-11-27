@@ -1,5 +1,5 @@
 import { CdkDrag, CdkDragPlaceholder, CdkDropList, CdkDropListGroup, type CdkDragDrop, type CdkDragMove } from '@angular/cdk/drag-drop';
-import { Component, computed, effect, ElementRef, inject, input, OnDestroy, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, input, OnDestroy, signal, untracked, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
@@ -26,6 +26,9 @@ import { Composer, type ComposerResult } from './composer';
 import { ClickOutside } from '../shared/click-outside';
 import { PersonDetails } from './person-details';
 import { PresenterPicker } from './presenter-picker';
+
+/** focusColumn's value while the popup shows the action items rather than a column */
+const FOCUS_ACTIONS = '__actions__';
 
 @Component({
   selector: 'app-board-page',
@@ -204,60 +207,88 @@ import { PresenterPicker } from './presenter-picker';
         </div>
       </div>
 
-      @if (focused(); as fc) {
-        <!-- one column as a big popup, for going over it together. ‹ › (or the arrow keys) step through the columns;
-             clicking the dimmed margin around it closes it -->
+      @if (focused() || focusOnActions()) {
+        <!-- one column as a big popup, for going over it together. ‹ › (or the arrow keys) step through the columns,
+             then the action items; clicking the dimmed margin around it closes it -->
         <div class="column-focus-backdrop" (click)="$event.target === $event.currentTarget && focusColumn.set(null)">
-        <div class="column-focus" role="dialog" aria-modal="true" [attr.aria-label]="fc.col.title" [style.--col]="fc.col.color">
+        <div class="column-focus" role="dialog" aria-modal="true" [attr.aria-label]="focused()?.col?.title ?? 'Action Items'"
+             [style.--col]="focused()?.col?.color ?? 'var(--accent)'">
           <header class="focus-head">
             <span class="col-bar"></span>
-            <!-- going over the column together: open or close every thread, and pick who leads it -->
+            <!-- left: the people side of going over a column: open or close every thread, pick who leads it, who's here -->
             <div class="focus-tools no-print">
-              @if (auth.on('replies')) {
-                <button type="button" class="icon-btn" (click)="toggleFocusReplies()" [disabled]="!focusReplyIds().length"
-                        [attr.aria-pressed]="focusRepliesOpen()"
-                        [attr.aria-label]="focusRepliesOpen() ? 'Close all replies' : 'Open all replies'"
-                        [title]="!focusReplyIds().length ? 'No replies in this column yet' : focusRepliesOpen() ? 'Close all replies' : 'Open all replies'">
-                  @if (focusRepliesOpen()) {
-                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg>
-                  } @else {
-                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 6l5 5 5-5M7 13l5 5 5-5" /></svg>
-                  }
+              @if (focused(); as fc) {
+                @if (auth.on('replies')) {
+                  <button type="button" class="icon-btn" (click)="toggleFocusReplies()" [disabled]="!focusReplyIds().length"
+                          [attr.aria-pressed]="focusRepliesOpen()"
+                          [attr.aria-label]="focusRepliesOpen() ? 'Close all replies' : 'Open all replies'"
+                          [title]="!focusReplyIds().length ? 'No replies in this column yet' : focusRepliesOpen() ? 'Close all replies' : 'Open all replies'">
+                    @if (focusRepliesOpen()) {
+                      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 6l5 5 5-5M7 13l5 5 5-5" /></svg>
+                    }
+                  </button>
+                }
+                <button type="button" class="icon-btn" (click)="pickerOpen.set(true)" [disabled]="!s.members.length"
+                        aria-label="Pick someone to go over this column" title="Pick someone at random to go over this column">
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+                    <path d="M17 4.5h4.5V9M21.5 4.5l-5 5M17 14.5h4.5V19M21.5 19l-3-3" /></svg>
                 </button>
-              }
-              <button type="button" class="icon-btn" (click)="pickerOpen.set(true)" [disabled]="!s.members.length"
-                      aria-label="Pick someone to go over this column" title="Pick someone at random to go over this column">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                  <circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
-                  <path d="M17 4.5h4.5V9M21.5 4.5l-5 5M17 14.5h4.5V19M21.5 19l-3-3" /></svg>
-              </button>
-              @if (presenter(); as p) {
-                @if (p.columnId === fc.col.id) {
-                  <span class="presenter-chip" title="Going over this column"><app-avatar [user]="p.user" [size]="22" /> {{ p.user.name }}</span>
+                @if (presenter(); as p) {
+                  @if (p.columnId === fc.col.id) {
+                    <span class="presenter-chip" title="Going over this column"><app-avatar [user]="p.user" [size]="22" /> {{ p.user.name }}</span>
+                  }
                 }
               }
+              @if (auth.on('presence') && store.presence().length) {
+                <div class="presence focus-presence" role="group" [attr.aria-label]="store.presence().length + ' here now'">
+                  @for (u of store.presence().slice(0, 6); track u.id) { <app-avatar [user]="u" [size]="26" /> }
+                  @if (store.presence().length > 6) { <span class="more">+{{ store.presence().length - 6 }}</span> }
+                </div>
+              }
             </div>
-            <!-- title centered; SVG icons rather than ‹ › ✕ glyphs, which sit off-center in most fonts -->
-            <div class="focus-title"><h2>{{ fc.col.title }}</h2><span class="count">{{ fc.cards.length }}</span></div>
+            <!-- title centered; SVG icons rather than glyphs, which sit off-center in most fonts -->
+            <div class="focus-title">
+              @if (focused(); as fc) { <h2>{{ fc.col.title }}</h2><span class="count">{{ fc.cards.length }}</span> }
+              @else { <h2>Action Items</h2><span class="count">{{ store.openActions().length }}</span> }
+            </div>
             <div class="focus-nav">
-              <button type="button" class="icon-btn" (click)="stepFocus(-1)" [disabled]="fc.index === 0" aria-label="Previous column" title="Previous column (←)">
+              @if (auth.on('actions')) {
+                <button type="button" class="icon-btn focus-actions-btn" [class.on]="focusOnActions()" (click)="toggleActionsFocus()"
+                        [attr.aria-pressed]="focusOnActions()" [attr.aria-label]="focusOnActions() ? 'Back to the column' : 'Action items, full screen'"
+                        [title]="focusOnActions() ? 'Back to the column' : 'Action items, full screen'">
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path d="M4 6.5l1.6 1.6L8.5 5M4 12.5l1.6 1.6 2.9-3.1M4 18.5l1.6 1.6 2.9-3.1M11.5 7h8.5M11.5 13h8.5M11.5 19h8.5" /></svg>
+                </button>
+              }
+              <button type="button" class="icon-btn" (click)="stepFocus(-1)" [disabled]="focusIndex() === 0" aria-label="Previous" title="Previous (←)">
                 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
-              <span class="muted small">{{ fc.index + 1 }} / {{ s.columns.length }}</span>
-              <button type="button" class="icon-btn" (click)="stepFocus(1)" [disabled]="fc.index === s.columns.length - 1" aria-label="Next column" title="Next column (→)">
+              <span class="muted small">{{ focusIndex() + 1 }} / {{ focusSteps() }}</span>
+              <button type="button" class="icon-btn" (click)="stepFocus(1)" [disabled]="focusIndex() === focusSteps() - 1" aria-label="Next" title="Next (→)">
                 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
               <button type="button" class="icon-btn" (click)="focusColumn.set(null)" aria-label="Close" title="Close (Esc)">
                 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
             </div>
           </header>
           <div class="focus-body">
-            @if (fc.col.description) { <p class="col-desc">{{ fc.col.description }}</p> }
-            <div class="focus-cards">
-              @for (card of fc.cards; track card.id) {
-                <app-card [card]="card" [boardId]="s.board.id" />
-              } @empty {
-                <p class="empty-col">No cards yet</p>
-              }
-            </div>
+            @if (focused(); as fc) {
+              @if (fc.col.description) { <p class="col-desc">{{ fc.col.description }}</p> }
+              <div class="focus-cards">
+                @for (card of fc.cards; track card.id) {
+                  <app-card [card]="card" [boardId]="s.board.id" [compactReply]="true" />
+                } @empty {
+                  <p class="empty-col">No cards yet</p>
+                }
+              </div>
+            } @else {
+              <div class="focus-actions">
+                <p class="muted">Open items from every retro in this team, plus the ones made here.</p>
+                <app-action-list [actions]="store.boardActions()" [members]="s.members" [teamId]="s.team.id" [boardId]="s.board.id"
+                                 [canEdit]="perm().canVote" [showBoard]="true" />
+              </div>
+            }
           </div>
         </div>
         </div>
@@ -508,11 +539,47 @@ export class BoardPage implements OnDestroy {
     this.store.setReplies(this.focusReplyIds(), !this.focusRepliesOpen());
   }
 
+  /** Action items, full screen: a step after the last column in the popup */
+  protected focusOnActions = computed(() => this.focusColumn() === FOCUS_ACTIONS && this.auth.on('actions'));
+  protected focusSteps = computed(() => this.store.columns().length + (this.auth.on('actions') ? 1 : 0));
+  protected focusIndex = computed(() => this.focusOnActions() ? this.store.columns().length : this.focused()?.index ?? 0);
+  /** The column to go back to from the action items */
+  private lastFocusColumn: string | null = null;
+
   stepFocus(dir: -1 | 1) {
-    const f = this.focused();
-    const next = f && this.store.columns()[f.index + dir];
-    if (next) this.focusColumn.set(next.id);
+    const next = this.focusIndex() + dir;
+    if (next < 0 || next >= this.focusSteps()) return;
+    const cols = this.store.columns();
+    if (next < cols.length) this.focusColumn.set(cols[next].id);
+    else this.toggleActionsFocus();
   }
+
+  toggleActionsFocus() {
+    if (this.focusOnActions()) {
+      const cols = this.store.columns();
+      this.focusColumn.set(cols.find(c => c.id === this.lastFocusColumn)?.id ?? cols.at(-1)?.id ?? null);
+    } else {
+      this.lastFocusColumn = this.focusColumn();
+      this.focusColumn.set(FOCUS_ACTIONS);
+    }
+  }
+
+  /**
+   * Opening a column full screen opens its reply threads (Settings > Full-Screen Column, on unless turned off).
+   * Threads opened that way close again on leaving it, so the board looks as it did.
+   */
+  private autoOpened: string[] = [];
+  private focusReplies = effect(() => {
+    const id = this.focusColumn();
+    untracked(() => {
+      if (this.autoOpened.length) this.store.setReplies(this.autoOpened, false);
+      this.autoOpened = [];
+      if (!id || id === FOCUS_ACTIONS || this.auth.me()?.prefs.focusRepliesOpen === false) return;
+      const open = this.store.openReplies();
+      this.autoOpened = this.focusReplyIds().filter(c => !open.has(c));
+      this.store.setReplies(this.autoOpened, true);
+    });
+  });
 
   onKey(e: KeyboardEvent) {
     const typing = (e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');

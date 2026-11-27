@@ -36,6 +36,8 @@ export interface ThemePreference {
 
 export interface UserPrefs {
   theme?: ThemePreference;
+  /** Full-screen column view opens every reply thread (unset: on) */
+  focusRepliesOpen?: boolean;
 }
 
 export interface UserDto {

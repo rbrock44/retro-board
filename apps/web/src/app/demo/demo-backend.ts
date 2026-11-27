@@ -477,6 +477,9 @@ export class DemoBackend {
         if (b.prefs.theme) this.state.prefs.theme = { preset: String(b.prefs.theme.preset), tokens: sanitizeTokens(b.prefs.theme.tokens) };
         else delete this.state.prefs.theme;
       }
+      if (typeof b.prefs?.focusRepliesOpen === 'boolean') {
+        this.state.prefs.focusRepliesOpen = b.prefs.focusRepliesOpen;
+      }
       return this.meDto();
     }],
     ['POST', /^\/api\/auth\/logout$/, () => undefined],

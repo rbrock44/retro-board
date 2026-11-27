@@ -32,6 +32,13 @@ import { ExportDialog } from '../shared/export-dialog';
           <app-theme-editor [value]="theme.current()" (valueChange)="setTheme($event)" />
         </section>
 
+        <section class="card-surface stack">
+          <h2>Full-Screen Column</h2>
+          <label class="check"><input type="checkbox" [checked]="me.prefs.focusRepliesOpen !== false" (change)="setFocusReplies($any($event.target).checked)">
+            Open every reply thread when a column goes full screen</label>
+          <p class="muted small">So the discussion under each card is right there while you go over it. ⇊ in the full-screen header still opens or closes them all.</p>
+        </section>
+
         @if (!me.guest) {
           <section class="card-surface stack">
             <h2>Password</h2>
@@ -102,6 +109,10 @@ export class SettingsPage {
     this.theme.resetToSystem();
     await this.auth.updateMe({ prefs: { theme: null } });
     this.toast.show('Following your system theme');
+  }
+
+  async setFocusReplies(on: boolean) {
+    await this.auth.updateMe({ prefs: { focusRepliesOpen: on } }).catch(err => this.toast.error(err));
   }
 
   async saveProfile() {

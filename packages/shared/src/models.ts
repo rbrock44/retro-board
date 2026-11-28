@@ -40,6 +40,8 @@ export interface UserPrefs {
   focusRepliesOpen?: boolean;
   /** An open thread shows its reply box right away; off: behind "↩ Reply" (unset: on). Full screen always folds it */
   replyBoxOpen?: boolean;
+  /** Who presents next never asks viewers, who can only watch (unset: off, everyone is asked) */
+  pickerSkipsViewers?: boolean;
   /** The add-card box at the top of each column (unset: compact) */
   composerStyle?: ComposerStyle;
 }
@@ -314,6 +316,8 @@ export interface BoardStateDto {
   cards: CardDto[];
   actions: ActionItemDto[];
   members: UserDto[];
+  /** The members with the read-only viewer role (they can only watch, so nobody asks them to present) */
+  viewerIds?: string[];
   permissions: BoardPermissions;
 }
 

@@ -3,6 +3,7 @@ import type { UserDto } from '@retro/shared';
 import { Avatar } from '../shared/avatar';
 import { Modal } from '../shared/modal';
 import { BoardStore } from './board.store';
+import { AuthService } from '../core/auth.service';
 import { accept, pass, pickNext, type Rotation } from './presenter-rotation';
 
 const storageKey = (teamId: string) => `retro.presenters.${teamId}`;
@@ -55,13 +56,19 @@ const storageKey = (teamId: string) => `retro.presenters.${teamId}`;
 })
 export class PresenterPicker {
   private store = inject(BoardStore);
+  private auth = inject(AuthService);
   /** The column to go over; null picks who presents next on the board */
   readonly columnTitle = input<string | null>(null);
   readonly closed = output<void>();
   /** Who said yes, for the column header */
   readonly picked = output<UserDto>();
 
-  protected members = computed(() => this.store.members());
+  /** Who can be asked: everyone, or (Settings > Board) everyone but viewers, who can only watch */
+  protected members = computed(() => {
+    if (this.auth.me()?.prefs.pickerSkipsViewers !== true) return this.store.members();
+    const viewers = new Set(this.store.state()?.viewerIds ?? []);
+    return this.store.members().filter(m => !viewers.has(m.id));
+  });
   private memberIds = computed(() => this.members().map(m => m.id));
   private teamId = computed(() => this.store.board()?.teamId ?? '');
   private rotation = signal<Rotation>({ done: [], passed: [] });

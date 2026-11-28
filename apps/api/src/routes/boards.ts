@@ -159,7 +159,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       db.select().from(columns).where(eq(columns.boardId, board.id)),
       loadCards(db, board.id),
       loadActions(db, and(eq(actionItems.teamId, board.teamId), or(eq(actionItems.status, 'open'), eq(actionItems.boardId, board.id)))),
-      db.select({ u: users }).from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, board.teamId)),
+      db.select({ u: users, role: teamMembers.role }).from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, board.teamId)),
     ]);
     const [team] = await db.select({ id: teams.id, name: teams.name, photoKey: teams.photoKey }).from(teams).where(eq(teams.id, board.teamId));
     return {
@@ -169,6 +169,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       cards: shape(user.id).sort(byPosition),
       actions,
       members: memberRows.map(r => toUserDto(r.u)).sort((a, b) => a.name.localeCompare(b.name)),
+      viewerIds: memberRows.filter(r => r.role === 'viewer').map(r => r.u.id),
       permissions,
     };
   });

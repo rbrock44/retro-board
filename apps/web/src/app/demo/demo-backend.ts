@@ -493,6 +493,7 @@ export class DemoBackend {
         this.state.prefs.focusRepliesOpen = b.prefs.focusRepliesOpen;
       }
       if (typeof b.prefs?.replyBoxOpen === 'boolean') this.state.prefs.replyBoxOpen = b.prefs.replyBoxOpen;
+      if (typeof b.prefs?.pickerSkipsViewers === 'boolean') this.state.prefs.pickerSkipsViewers = b.prefs.pickerSkipsViewers;
       if (b.prefs?.composerStyle) {
         if (!COMPOSER_STYLES.includes(b.prefs.composerStyle)) fail(400, 'Invalid composer style');
         this.state.prefs.composerStyle = b.prefs.composerStyle;
@@ -721,6 +722,7 @@ export class DemoBackend {
         cards: this.state.cards.filter(c => c.boardId === id).map(c => this.cardDto(c)),
         actions: this.teamActions(team.id),
         members: this.state.members.filter(m => m.teamId === team.id).map(m => this.user(m.userId)!).sort((a, b) => a.name.localeCompare(b.name)),
+        viewerIds: this.state.members.filter(m => m.teamId === team.id && m.role === 'viewer').map(m => m.userId),
         permissions: { role: ctx.role, canWrite: ctx.canWrite, canVote: ctx.canVote, canFacilitate: ctx.canFacilitate },
       };
     }],

@@ -44,6 +44,9 @@ import { ExportDialog } from '../shared/export-dialog';
           <label class="check"><input type="checkbox" [checked]="me.prefs.replyBoxOpen !== false" (change)="setReplyBox($any($event.target).checked)">
             Show the reply box as soon as a thread opens</label>
           <p class="muted small">Off: it waits behind <strong>↩ Reply</strong> until you want it. Full screen always tucks it away.</p>
+          <label class="check"><input type="checkbox" [checked]="me.prefs.pickerSkipsViewers === true" (change)="setPickerSkipsViewers($any($event.target).checked)">
+            Leave viewers out when picking who presents next</label>
+          <p class="muted small">Viewers can only watch, so you may not want to ask them. Off: everyone on the team can be picked.</p>
         </section>
 
         <section class="card-surface stack">
@@ -144,6 +147,10 @@ export class SettingsPage {
     { value: 'button', label: 'Header button', hint: 'just ＋ next to the column name, so cards start at the top' },
     { value: 'full', label: 'Full', hint: 'the box is always open in every column' },
   ];
+
+  async setPickerSkipsViewers(on: boolean) {
+    await this.auth.updateMe({ prefs: { pickerSkipsViewers: on } }).catch(err => this.toast.error(err));
+  }
 
   async setReplyBox(on: boolean) {
     await this.auth.updateMe({ prefs: { replyBoxOpen: on } }).catch(err => this.toast.error(err));

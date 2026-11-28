@@ -26,7 +26,7 @@ curl -b jar http://localhost:8080/api/teams
 | POST | `/api/auth/login` | `email, password` | |
 | POST | `/api/auth/logout` | | |
 | GET | `/api/auth/me` | | Profile, prefs (theme), linked providers |
-| PATCH | `/api/auth/me` | `name?, avatarUrl?, prefs?: { theme?: {preset, tokens} \| null, focusRepliesOpen?, replyBoxOpen?, composerStyle?: 'full'\|'compact'\|'button' }` | |
+| PATCH | `/api/auth/me` | `name?, avatarUrl?, prefs?: { theme?: {preset, tokens} \| null, focusRepliesOpen?, replyBoxOpen?, pickerSkipsViewers?, composerStyle?: 'full'\|'compact'\|'button' }` | |
 | POST | `/api/auth/password` | `current?, next` | `current` required when a password exists. Signs out other sessions |
 | DELETE | `/api/auth/identities/:provider` | | Unlink a provider |
 | GET | `/api/auth/:provider/start` | `?invite=&next=` | Browser redirect to the provider |

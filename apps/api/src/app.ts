@@ -82,6 +82,8 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
     'DELETE /api/teams/:teamId/members/:userId', 'PATCH /api/teams/:teamId/members/:userId', 'PUT /api/teams/:teamId/password',
     'DELETE /api/teams/:teamId', 'POST /api/auth/logout', 'POST /api/auth/guest/new', 'POST /api/auth/guest/claim',
     'PATCH /api/admin/users/:userId', 'POST /api/admin/restore',
+    // private boards: a new link or password, or no longer private
+    'PUT /api/boards/:boardId/private', 'POST /api/boards/:boardId/private/new-link', 'PUT /api/boards/:boardId/password',
   ]);
   app.addHook('onResponse', async (req, reply) => {
     if (reply.statusCode < 300 && accessRoutes.has(`${req.method} ${req.routeOptions.url}`)) hubRef.current.recheck();

@@ -6,7 +6,7 @@ import type { PgTable } from 'drizzle-orm/pg-core';
 import type { Ctx } from '../context';
 import { migrationCount } from '../db';
 import {
-  actionItems, attachments, boards, cards, columns, identities, instanceSettings, invites, reactions, replies, teamMembers,
+  actionItems, attachments, boardAccess, boards, cards, columns, identities, instanceSettings, invites, reactions, replies, teamMembers,
   teams, templates, users, votes,
 } from '../db/schema';
 import { badRequest } from './http';
@@ -23,7 +23,7 @@ const FORMAT = 1;
 
 /** Every table, parents before children, so rows can go back in this order (and come out in reverse). */
 const TABLES: Record<string, PgTable> = {
-  users, identities, teams, teamMembers, invites, templates, boards, columns, cards, replies, attachments, votes,
+  users, identities, teams, teamMembers, invites, templates, boards, boardAccess, columns, cards, replies, attachments, votes,
   reactions, actionItems, instanceSettings,
 };
 

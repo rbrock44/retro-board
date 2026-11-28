@@ -3,6 +3,8 @@ import { Injectable, signal } from '@angular/core';
 export interface LockedTeam {
   id: string;
   name: string;
+  /** A private board with its own password, rather than a team */
+  board?: boolean;
 }
 
 /**

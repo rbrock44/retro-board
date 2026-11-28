@@ -225,6 +225,10 @@ export interface BoardSummaryDto {
   createdBy: UserDto | null;
   cardCount: number;
   actionCount: number;
+  /** Private (hidden): out of the team's lists, opened by its link */
+  private?: boolean;
+  /** A private board with its own password */
+  hasPassword?: boolean;
 }
 
 export interface BoardDto extends BoardSummaryDto {
@@ -333,6 +337,8 @@ export interface BoardStateDto {
   /** The members with the read-only viewer role (they can only watch, so nobody asks them to present) */
   viewerIds?: string[];
   permissions: BoardPermissions;
+  /** A private board's link code, for its facilitators to share (`/b/<code>`); null for the others */
+  privateLink?: string | null;
 }
 
 export interface SearchResultDto {

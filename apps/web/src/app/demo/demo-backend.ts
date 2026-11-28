@@ -172,7 +172,18 @@ export class DemoBackend {
       settings: { allowAnonymous: b.settings.allowAnonymous, locked: b.settings.locked, theme: b.settings.theme ?? null },
       cardCount: this.state.cards.filter(c => c.boardId === b.id).length,
       actionCount: this.state.actions.filter(a => a.boardId === b.id).length,
+      private: !!b.private, hasPassword: !!b.passwordHash,
     };
+  }
+
+  /** A link code, like the server's */
+  private static linkCode() {
+    const bytes = crypto.getRandomValues(new Uint8Array(18));
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  private isPrivate(boardId: string | null | undefined) {
+    return !!boardId && !!this.state.boards.find(b => b.id === boardId)?.private;
   }
 
   private summary(b: DemoState['boards'][number]): BoardSummaryDto {
@@ -233,7 +244,8 @@ export class DemoBackend {
   }
 
   private teamActions(teamId: string) {
-    return this.state.actions.filter(a => a.teamId === teamId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(a => this.actionDto(a));
+    // a private board's action items stay on it
+    return this.state.actions.filter(a => a.teamId === teamId && !this.isPrivate(a.boardId)).sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(a => this.actionDto(a));
   }
 
   /** One like per person per card, like the server's `votes` table. */
@@ -733,11 +745,44 @@ export class DemoBackend {
         team: { id: team.id, name: team.name, photoUrl: team.photoUrl ?? null, pickerSkipsViewers: this.teamSettings(team).pickerSkipsViewers === true },
         columns: this.state.columns.filter(c => c.boardId === id).sort(byPosition),
         cards: this.state.cards.filter(c => c.boardId === id).map(c => this.cardDto(c)),
-        actions: this.teamActions(team.id),
+        // a private board shows only its own action items
+        actions: ctx.board.private ? this.state.actions.filter(a => a.boardId === id).map(a => this.actionDto(a)) : this.teamActions(team.id),
         members: this.state.members.filter(m => m.teamId === team.id).map(m => this.user(m.userId)!).sort((a, b) => a.name.localeCompare(b.name)),
         viewerIds: this.state.members.filter(m => m.teamId === team.id && m.role === 'viewer').map(m => m.userId),
         permissions: { role: ctx.role, canWrite: ctx.canWrite, canVote: ctx.canVote, canFacilitate: ctx.canFacilitate },
+        privateLink: ctx.board.private && ctx.canFacilitate ? ctx.board.shareToken ?? null : null,
       };
+    }],
+    // private boards: in the demo you made them, so you're always let in
+    ['POST', /^\/api\/private\/([^/]+)$/, ([token]) => {
+      const board = this.state.boards.find(b => b.private && b.shareToken === token) ?? fail(404, 'That link not found');
+      return { boardId: board.id };
+    }],
+    ['PUT', /^\/api\/boards\/([^/]+)\/private$/, ([id], b) => {
+      const { board } = this.requireBoard(id, 'facilitate');
+      if (b.private) { board.private = true; board.shareToken ??= DemoBackend.linkCode(); }
+      else { board.private = false; board.shareToken = null; board.passwordHash = null; }
+      this.emitBoard(id);
+      return { board: this.boardDto(board), privateLink: board.shareToken ?? null };
+    }],
+    ['POST', /^\/api\/boards\/([^/]+)\/private\/new-link$/, ([id]) => {
+      const { board } = this.requireBoard(id, 'facilitate');
+      if (!board.private) fail(400, 'Only a private board has a link');
+      board.shareToken = DemoBackend.linkCode();
+      return { privateLink: board.shareToken };
+    }],
+    ['PUT', /^\/api\/boards\/([^/]+)\/password$/, ([id], b) => {
+      const { board } = this.requireBoard(id, 'facilitate');
+      if (!board.private) fail(400, 'Only a private board can have its own password');
+      if (b.password !== null && String(b.password ?? '').length < 4) fail(400, 'Use at least 4 characters');
+      board.passwordHash = b.password === null ? null : demoHash(id, String(b.password));
+      this.emitBoard(id);
+      return this.boardDto(board);
+    }],
+    ['POST', /^\/api\/boards\/([^/]+)\/unlock$/, ([id], b) => {
+      const board = this.state.boards.find(x => x.id === id) ?? notFound('Board');
+      if (board.passwordHash && board.passwordHash !== demoHash(id, String(b.password ?? ''))) fail(400, "That's not the password");
+      return { ok: true };
     }],
     ['PATCH', /^\/api\/boards\/([^/]+)$/, ([id], b) => {
       const { board } = this.requireBoard(id, 'facilitate');
@@ -1034,10 +1079,17 @@ export class DemoBackend {
     const site = this.site();
     const templateId = b.templateId ?? team.settings.defaultTemplateId ?? site.defaultTemplateId;
     const specs = b.columns?.length ? b.columns : this.templates(teamId).find(t => t.id === templateId)?.columns ?? fail(400, 'Unknown template');
-    const board = {
+    if (b.password && !b.private) fail(400, 'Only a private board can have its own password');
+    if (b.password && String(b.password).length < 4) fail(400, 'Use at least 4 characters');
+    const board: DemoState['boards'][number] = {
       id: newId(), teamId, title: title.slice(0, 120), status: 'open' as const, createdAt: nowIso(), closedAt: null, createdBy: this.state.meId,
       settings: { ...DEFAULT_BOARD_SETTINGS, allowAnonymous: site.allowAnonymous, ...this.teamOverlay(team) },
     };
+    if (b.private) {
+      board.private = true;
+      board.shareToken = DemoBackend.linkCode();
+      board.passwordHash = b.password ? demoHash(board.id, String(b.password)) : null;
+    }
     this.state.boards.push(board);
     const carriedPos = positionAfter(null);
     let pos = carriedPos;
@@ -1045,7 +1097,7 @@ export class DemoBackend {
       pos = positionAfter(pos);
       this.state.columns.push({ id: newId(), boardId: board.id, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
     }
-    if (b.carryOver !== false) this.carryPending(teamId, board.id, carriedPos);
+    if (b.carryOver !== false && !b.private) this.carryPending(teamId, board.id, carriedPos);
     return this.boardDto(board);
   }
 
@@ -1076,7 +1128,8 @@ export class DemoBackend {
 
   /** Same as the server: marked cards move once, into the same-named column, else a "Carried Over" one. */
   private carryPending(teamId: string, boardId: string, carriedPos: string) {
-    const boardIds = new Set(this.state.boards.filter(x => x.teamId === teamId && x.id !== boardId).map(x => x.id));
+    // private boards keep their cards to themselves
+    const boardIds = new Set(this.state.boards.filter(x => x.teamId === teamId && x.id !== boardId && !x.private).map(x => x.id));
     const pending = this.state.cards.filter(c => boardIds.has(c.boardId) && c.status === 'carry_over' && !c.carriedToBoardId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     if (!pending.length) return;
@@ -1108,15 +1161,21 @@ export class DemoBackend {
   private archiveBoard(boardId: string, b: any) {
     const { board } = this.requireBoard(boardId, 'facilitate');
     if (board.status !== 'open') fail(400, 'This board is already in the history');
+    const privateTitle = board.title;
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date ?? '') ? b.date : nowIso().slice(0, 10);
     const name = String(b.name ?? '').trim().slice(0, 80);
     board.title = name ? `${date} · ${name}` : date;
     board.status = 'archived';
     board.closedAt = nowIso();
-    const next = {
+    const next: DemoState['boards'][number] = {
       id: newId(), teamId: board.teamId, title: CURRENT_BOARD_TITLE, status: 'open' as const, createdAt: nowIso(), closedAt: null,
       createdBy: this.state.meId, settings: { ...DEFAULT_BOARD_SETTINGS, allowAnonymous: this.site().allowAnonymous, ...this.teamOverlay(this.team(board.teamId)) },
     };
+    if (board.private) {
+      // the link and password go with it to the fresh one, which stays private under the same name
+      Object.assign(next, { private: true, shareToken: board.shareToken, passwordHash: board.passwordHash, title: privateTitle });
+      board.shareToken = null;
+    }
     this.state.boards.push(next);
     const carriedPos = positionAfter(null);
     let pos = carriedPos;
@@ -1124,7 +1183,7 @@ export class DemoBackend {
       pos = positionAfter(pos);
       this.state.columns.push({ id: newId(), boardId: next.id, title: c.title, color: c.color, description: c.description, position: pos });
     }
-    this.carryPending(board.teamId, next.id, carriedPos);
+    if (!board.private) this.carryPending(board.teamId, next.id, carriedPos);
     this.emitBoard(boardId);
     this.emit(boardId, { type: 'board.next', boardId: next.id, savedTitle: board.title });
     return { saved: this.boardDto(board), board: this.boardDto(next) };
@@ -1133,7 +1192,7 @@ export class DemoBackend {
   /** Opening a team: its newest open board, or a new one from the default template. */
   private currentBoard(teamId: string) {
     const { team, role } = this.requireTeam(teamId);
-    const open = this.state.boards.filter(b => b.teamId === teamId && b.status === 'open').sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const open = this.state.boards.filter(b => b.teamId === teamId && b.status === 'open' && !b.private).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
     if (open) return { boardId: open.id };
     if (role === 'viewer') return { boardId: null };
     const created = this.createBoard(teamId, { title: CURRENT_BOARD_TITLE, templateId: team.settings.defaultTemplateId, carryOver: false });

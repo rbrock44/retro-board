@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { hash, verify } from '@node-rs/argon2';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
@@ -8,13 +9,14 @@ import {
 import { toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
 import {
-  actionItems, attachments, boards, cards, columns, replies, teamMembers, teams, templates, users,
+  actionItems, attachments, boardAccess, boards, cards, columns, replies, teamMembers, teams, templates, users,
 } from '../db/schema';
 import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
-import { requireBoard, requireTeam } from '../lib/access';
+import { notFromPrivate, requireBoard, requireTeam, seesPrivate, teamRole } from '../lib/access';
 import { featureOn, getSettings, newBoardSettings, requireFeature, templateFor } from '../lib/instance';
-import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
-import { newId } from '../lib/ids';
+import { HttpError, badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
+import { newId, newToken } from '../lib/ids';
+import { guessAllowed, noteWrongGuess } from '../lib/team-lock';
 import { boardDto, columnDto, loadActions, loadCards } from '../lib/serialize';
 import { teamBoardOverlay, teamPhotoUrl, teamSettings } from './teams';
 
@@ -32,9 +34,13 @@ export async function broadcastCards(ctx: Ctx, boardId: string, ids: string[]) {
 }
 
 /** Action items show on every open board of their team, so changes go to all of them. */
-export async function broadcastAction(ctx: Ctx, teamId: string, actionId: string, deleted = false) {
-  const open = await ctx.db.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, teamId), eq(boards.status, 'open')));
+export async function broadcastAction(ctx: Ctx, teamId: string, actionId: string, deleted = false, boardId: string | null = null) {
   const [dto] = deleted ? [] : await loadActions(ctx.db, eq(actionItems.id, actionId));
+  // a private board's action items stay on it; the team's show on its other open boards, never on private ones
+  const from = boardId ?? dto?.boardId ?? null;
+  const [home] = from ? await ctx.db.select({ id: boards.id, private: boards.private }).from(boards).where(eq(boards.id, from)) : [];
+  const open = home?.private ? [home]
+    : await ctx.db.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, teamId), eq(boards.status, 'open'), eq(boards.private, false)));
   for (const b of open) {
     ctx.hub.emitBoard(b.id, deleted || !dto ? { type: 'action.delete', id: actionId } : { type: 'action.upsert', action: dto });
   }
@@ -65,7 +71,8 @@ async function originColumnTitle(tx: Tx, carriedFromId: string | null, title: st
  * `carriedPos`.
  */
 async function carryPending(tx: Tx, teamId: string, boardId: string, carriedPos: string) {
-  const teamBoards = tx.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, teamId), sql`${boards.id} <> ${boardId}`));
+  // private boards keep their cards to themselves: none carry out of them
+  const teamBoards = tx.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, teamId), sql`${boards.id} <> ${boardId}`, eq(boards.private, false)));
   const pending = await tx.select({ card: cards, columnTitle: columns.title }).from(cards)
     .innerJoin(columns, eq(columns.id, cards.columnId))
     .where(and(inArray(cards.boardId, teamBoards), eq(cards.status, 'carry_over'), isNull(cards.carriedToBoardId)))
@@ -116,7 +123,12 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       templateId: z.string().max(64).optional(),
       columns: z.array(z.object({ title: z.string().trim().min(1).max(80), color: zColor, description: z.string().max(300).optional() })).max(12).optional(),
       carryOver: z.boolean().default(true),
+      /** Private (hidden): only its link opens it, plus its creator and team admins */
+      private: z.boolean().default(false),
+      /** A private board's own password */
+      password: z.string().min(4, 'Use at least 4 characters').max(200).optional(),
     }), req.body);
+    if (body.password && !body.private) throw badRequest('Only a private board can have its own password');
 
     let specs: ColumnSpec[] | undefined = body.columns;
     const site = await getSettings(ctx);
@@ -136,8 +148,9 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const settings = { ...newBoardSettings(site), ...teamBoardOverlay(team.settings) };
 
     const boardId = newId();
+    const privacy = body.private ? { private: true, shareToken: newToken(18), passwordHash: body.password ? await hash(body.password) : null } : {};
     await db.transaction(async tx => {
-      await tx.insert(boards).values({ id: boardId, teamId: team.id, title: body.title, settings, createdBy: user.id });
+      await tx.insert(boards).values({ id: boardId, teamId: team.id, title: body.title, settings, createdBy: user.id, ...privacy });
       // The first slot is kept free for a "Carried over" column.
       const carriedColumnPos = positionAfter(null);
       let pos: string = carriedColumnPos;
@@ -146,7 +159,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         await tx.insert(columns).values({ id: newId(), boardId, title: spec.title, color: spec.color, description: spec.description ?? '', position: pos });
       }
 
-      if (body.carryOver && carry) await carryPending(tx, team.id, boardId, carriedColumnPos);
+      if (body.carryOver && carry && !body.private) await carryPending(tx, team.id, boardId, carriedColumnPos);
     });
 
     const [b] = await db.select().from(boards).where(eq(boards.id, boardId));
@@ -159,8 +172,11 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const [cols, shape, actions, memberRows] = await Promise.all([
       db.select().from(columns).where(eq(columns.boardId, board.id)),
       loadCards(db, board.id),
-      loadActions(db, and(eq(actionItems.teamId, board.teamId), or(eq(actionItems.status, 'open'), eq(actionItems.boardId, board.id)))),
-      db.select({ u: users, role: teamMembers.role }).from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, board.teamId)),
+      // a private board shows only its own action items, and the team's other boards never show them
+      loadActions(db, board.private ? eq(actionItems.boardId, board.id)
+        : and(eq(actionItems.teamId, board.teamId), or(eq(actionItems.status, 'open'), eq(actionItems.boardId, board.id)), notFromPrivate())),
+      board.private ? privateBoardPeople(board)
+        : db.select({ u: users, role: teamMembers.role }).from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, board.teamId)),
     ]);
     const [team] = await db.select({ id: teams.id, name: teams.name, photoKey: teams.photoKey, settings: teams.settings }).from(teams).where(eq(teams.id, board.teamId));
     return {
@@ -172,7 +188,100 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       members: memberRows.map(r => toUserDto(r.u)).sort((a, b) => a.name.localeCompare(b.name)),
       viewerIds: memberRows.filter(r => r.role === 'viewer').map(r => r.u.id),
       permissions,
+      privateLink: board.private && permissions.canFacilitate ? board.shareToken : null,
     };
+  });
+
+  /**
+   * The people on a private board, for owners of action items and who presents next: its creator and everyone
+   * who came by its link. The rest of the team isn't listed, so the link shows nobody the team's roster.
+   */
+  async function privateBoardPeople(board: typeof boards.$inferSelect) {
+    const ids = (await db.select({ id: boardAccess.userId }).from(boardAccess)
+      .where(and(eq(boardAccess.boardId, board.id), eq(boardAccess.linkVersion, board.linkVersion)))).map(r => r.id);
+    if (board.createdBy) ids.push(board.createdBy);
+    if (!ids.length) return [];
+    const rows = await db.select({ u: users, role: teamMembers.role }).from(users)
+      .leftJoin(teamMembers, and(eq(teamMembers.userId, users.id), eq(teamMembers.teamId, board.teamId)))
+      .where(inArray(users.id, [...new Set(ids)]));
+    return rows.map(r => ({ u: r.u, role: r.role ?? 'member' }));
+  }
+
+  // ---- private boards: a link that opens it, a new link that cuts off the old one, and its own password ----
+
+  /** Opening a private board's link: this person may come back to it (until the link is replaced) */
+  app.post('/api/private/:token', async req => {
+    const user = requireUser(req);
+    const token = (req.params as { token: string }).token;
+    const [board] = token.length >= 16 ? await db.select().from(boards).where(and(eq(boards.shareToken, token), eq(boards.private, true))) : [];
+    if (!board) throw notFound('That link');
+    await db.insert(boardAccess).values({ boardId: board.id, userId: user.id, linkVersion: board.linkVersion })
+      .onConflictDoUpdate({ target: [boardAccess.boardId, boardAccess.userId], set: { linkVersion: board.linkVersion } });
+    return { boardId: board.id };
+  });
+
+  /** Makes a board private (with a fresh link) or not (its link and password go) */
+  app.put('/api/boards/:boardId/private', async req => {
+    const user = requireUser(req);
+    const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'facilitate');
+    const body = parse(z.object({ private: z.boolean() }), req.body);
+    const [updated] = await db.update(boards).set(body.private
+      ? { private: true, shareToken: board.shareToken ?? newToken(18) }
+      : { private: false, shareToken: null, linkVersion: board.linkVersion + 1, passwordHash: null, passwordVersion: board.passwordVersion + 1 })
+      .where(eq(boards.id, board.id)).returning();
+    const dto = await boardDto(db, updated);
+    ctx.hub.emitBoard(board.id, { type: 'board.update', board: dto });
+    return { board: dto, privateLink: updated.shareToken };
+  });
+
+  /** A new link: everyone who came by the old one is out (the creator and team admins stay in) */
+  app.post('/api/boards/:boardId/private/new-link', async req => {
+    const user = requireUser(req);
+    const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'facilitate');
+    if (!board.private) throw badRequest('Only a private board has a link');
+    const [updated] = await db.update(boards).set({ shareToken: newToken(18), linkVersion: board.linkVersion + 1 })
+      .where(eq(boards.id, board.id)).returning();
+    return { privateLink: updated.shareToken };
+  });
+
+  /** Sets or removes (`null`) a private board's password; everyone but its creator types the new one */
+  app.put('/api/boards/:boardId/password', async req => {
+    const user = requireUser(req);
+    const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'facilitate');
+    if (!board.private) throw badRequest('Only a private board can have its own password');
+    const body = parse(z.object({ password: z.string().min(4, 'Use at least 4 characters').max(200).nullable() }), req.body);
+    const version = board.passwordVersion + 1;
+    const [updated] = await db.update(boards).set({ passwordHash: body.password ? await hash(body.password) : null, passwordVersion: version })
+      .where(eq(boards.id, board.id)).returning();
+    // whoever set it doesn't have to type it
+    if (body.password) {
+      await db.insert(boardAccess).values({ boardId: board.id, userId: user.id, passwordVersion: version })
+        .onConflictDoUpdate({ target: [boardAccess.boardId, boardAccess.userId], set: { passwordVersion: version } });
+    }
+    const dto = await boardDto(db, updated);
+    ctx.hub.emitBoard(board.id, { type: 'board.update', board: dto });
+    return dto;
+  });
+
+  /** Typing a private board's password */
+  app.post('/api/boards/:boardId/unlock', async req => {
+    const user = requireUser(req);
+    const [board] = await db.select().from(boards).where(eq(boards.id, (req.params as { boardId: string }).boardId));
+    const { password } = parse(z.object({ password: z.string().max(200) }), req.body);
+    if (!board?.private || !board.passwordHash) throw notFound('Board');
+    const guessKey = `board:${board.id}:${req.ip}`;
+    if (!guessAllowed(guessKey)) throw new HttpError(429, 'Too many tries. Wait a minute and try again');
+    // only someone who could get in but for the password may try it
+    const [row] = await db.select().from(boardAccess).where(and(eq(boardAccess.boardId, board.id), eq(boardAccess.userId, user.id)));
+    const role = await teamRole(db, user, board.teamId);
+    if (!(row?.linkVersion === board.linkVersion || seesPrivate(board, user, role))) throw notFound('Board');
+    if (!(await verify(board.passwordHash, password))) {
+      noteWrongGuess(guessKey);
+      throw badRequest("That's not the password");
+    }
+    await db.insert(boardAccess).values({ boardId: board.id, userId: user.id, passwordVersion: board.passwordVersion })
+      .onConflictDoUpdate({ target: [boardAccess.boardId, boardAccess.userId], set: { passwordVersion: board.passwordVersion } });
+    return { ok: true };
   });
 
   app.patch('/api/boards/:boardId', async req => {
@@ -214,11 +323,22 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const [teamRow] = await db.select().from(teams).where(eq(teams.id, board.teamId));
     const nextId = newId();
     await db.transaction(async tx => {
-      await tx.update(boards).set({ title: savedTitle, status: 'archived', closedAt: new Date() }).where(eq(boards.id, board.id));
+      // a private board's link, password and people move to the fresh one, which stays private; the saved one is
+      // kept for its creator and the team's admins
+      await tx.update(boards).set({ title: savedTitle, status: 'archived', closedAt: new Date(), ...(board.private ? { shareToken: null } : {}) })
+        .where(eq(boards.id, board.id));
       await tx.insert(boards).values({
-        id: nextId, teamId: board.teamId, title: CURRENT_BOARD_TITLE, createdBy: user.id,
+        id: nextId, teamId: board.teamId, title: board.private ? board.title : CURRENT_BOARD_TITLE, createdBy: board.private ? board.createdBy : user.id,
         settings: { ...newBoardSettings(await getSettings(ctx)), ...teamBoardOverlay(teamRow?.settings) },
+        ...(board.private ? {
+          private: true, shareToken: board.shareToken, linkVersion: board.linkVersion,
+          passwordHash: board.passwordHash, passwordVersion: board.passwordVersion,
+        } : {}),
       });
+      if (board.private) {
+        const people = await tx.select().from(boardAccess).where(eq(boardAccess.boardId, board.id));
+        if (people.length) await tx.insert(boardAccess).values(people.map(p => ({ ...p, boardId: nextId })));
+      }
       const carriedPos = positionAfter(null);
       let pos = carriedPos;
       const old = (await tx.select().from(columns).where(eq(columns.boardId, board.id))).sort(byPosition);
@@ -226,7 +346,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
         pos = positionAfter(pos);
         await tx.insert(columns).values({ id: newId(), boardId: nextId, title: c.title, color: c.color, description: c.description, position: pos });
       }
-      if (carry) await carryPending(tx, board.teamId, nextId, carriedPos);
+      if (carry && !board.private) await carryPending(tx, board.teamId, nextId, carriedPos);
     });
 
     const [saved] = await db.select().from(boards).where(eq(boards.id, board.id));
@@ -243,8 +363,9 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   app.post('/api/teams/:teamId/current', async req => {
     const user = requireUser(req);
     const { team, role } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
+    // a private board is never the team's current one
     const [open] = await db.select({ id: boards.id }).from(boards)
-      .where(and(eq(boards.teamId, team.id), eq(boards.status, 'open'))).orderBy(sql`${boards.createdAt} desc`).limit(1);
+      .where(and(eq(boards.teamId, team.id), eq(boards.status, 'open'), eq(boards.private, false))).orderBy(sql`${boards.createdAt} desc`).limit(1);
     if (open) return { boardId: open.id };
     if (role === 'viewer') return { boardId: null };
 

@@ -65,6 +65,12 @@ plain email and password).
   `Copy Link That Skips the Password` (and every copied invite link) carries a key instead of the password, so
   whoever opens it isn't asked; the key leaves the address bar as the page opens, so going to the site by hand still
   asks. Changing the password retires every link made before
+- `Private board (hidden)` - A board option (when starting a retro, or in Board Settings). It stays out of the team's
+  board list, search, current board, carry-over and action items; its link (`/b/<code>`, copied from Board Settings)
+  opens it for anyone, even people who aren't on the team, and they see only the people on the board, not the team.
+  Its creator and the team's admins always get in. `New Link` cuts off everyone who had the old one. It can have its
+  own password, typed once by everyone but its creator, and again after it changes. Archiving it keeps the link,
+  password and people on the fresh board, which stays private
 - `Instance Admin` - The first account created, plus anyone in `ADMIN_EMAILS`. Manages every account from the
   `Admin` page and acts as admin on every team
 

@@ -1,11 +1,16 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull, notInArray, or, sql } from 'drizzle-orm';
 import {
   canFacilitate, canVoteBoard, canWriteBoard, type BoardAccess, type BoardPermissions, type TeamRole,
 } from '@retro/shared';
 import type { Db } from '../db';
-import { boards, cards, columns, replies, teamMembers, teams, type Board, type Team, type User } from '../db/schema';
-import { forbidden, notFound } from './http';
+import { actionItems, boardAccess, boards, cards, columns, replies, teamMembers, teams, type Board, type Team, type User } from '../db/schema';
+import { HttpError, forbidden, notFound } from './http';
 import { requireOpen } from './team-lock';
+
+/** Action items that aren't from a private board (those stay on it) */
+export function notFromPrivate() {
+  return or(isNull(actionItems.boardId), notInArray(actionItems.boardId, sql`(select ${boards.id} from ${boards} where ${boards.private})`));
+}
 
 const RANK: Record<TeamRole, number> = { viewer: 1, member: 2, admin: 3 };
 
@@ -73,15 +78,43 @@ export function boardPermissions(board: Board, role: TeamRole, userId: string): 
 
 export type BoardNeed = 'read' | 'write' | 'vote' | 'facilitate' | 'admin';
 
+/** Sees a private board in the team's lists (and opens it without its link): its creator and real team admins */
+export function seesPrivate(board: Pick<Board, 'createdBy'>, user: User, role: TeamRole | null): boolean {
+  // with no sign-in everyone is an admin, so there it takes being the creator (or the link)
+  return board.createdBy === user.id || (role === 'admin' && !user.guest);
+}
+
+/**
+ * How this person gets into a private board, or why not. Hidden boards answer "not found" to anyone without a way
+ * in, so their existence doesn't leak. The board's own password is asked of everyone but its creator.
+ */
+async function privateEntry(db: Db, user: User, board: Board, role: TeamRole | null): Promise<{ role: TeamRole; viaLink: boolean }> {
+  const [row] = await db.select().from(boardAccess)
+    .where(and(eq(boardAccess.boardId, board.id), eq(boardAccess.userId, user.id))).limit(1);
+  const viaLink = !!board.shareToken && row?.linkVersion === board.linkVersion;
+  const insider = seesPrivate(board, user, role);
+  if (!insider && !viaLink) throw notFound('Board');
+  if (board.passwordHash && board.createdBy !== user.id && row?.passwordVersion !== board.passwordVersion) {
+    throw new HttpError(423, 'This board has a password', { lockedBoard: { id: board.id, name: board.title } });
+  }
+  // someone from outside the team who came by the link takes part like a member
+  return { role: role ?? 'member', viaLink: viaLink && !insider };
+}
+
 export async function requireBoard(db: Db, user: User, boardId: string, need: BoardNeed = 'read'): Promise<BoardContext> {
   const [board] = await db.select().from(boards).where(eq(boards.id, boardId)).limit(1);
   if (!board) throw notFound('Board');
-  const role = await teamRole(db, user, board.teamId);
+  let role = await teamRole(db, user, board.teamId);
+  let viaLink = false;
+  if (board.private) ({ role, viaLink } = await privateEntry(db, user, board, role));
   if (!role) throw notFound('Board');
-  const [lock] = await db.select({
-    id: teams.id, name: teams.name, passwordHash: teams.passwordHash, passwordVersion: teams.passwordVersion, ownerKeyHash: teams.ownerKeyHash,
-  }).from(teams).where(eq(teams.id, board.teamId)).limit(1);
-  if (lock) requireOpen(lock, user);
+  // the link stands in for the team's password: the board's own is the one that guards it
+  if (!viaLink) {
+    const [lock] = await db.select({
+      id: teams.id, name: teams.name, passwordHash: teams.passwordHash, passwordVersion: teams.passwordVersion, ownerKeyHash: teams.ownerKeyHash,
+    }).from(teams).where(eq(teams.id, board.teamId)).limit(1);
+    if (lock) requireOpen(lock, user);
+  }
   const { access, permissions } = boardPermissions(board, role, user.id);
   const ok =
     need === 'read' ||

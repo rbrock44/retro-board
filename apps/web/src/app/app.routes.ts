@@ -3,6 +3,8 @@ import { instanceAdmin, signedIn, signedOut } from './core/guards';
 
 export const routes: Routes = [
   { path: 'login', canActivate: [signedOut], title: 'Sign in · Retro Board', loadComponent: () => import('./pages/login.page').then(m => m.LoginPage) },
+  // a private board's link: signing in (or a guest name) first, then straight to the board
+  { path: 'b/:token', canActivate: [signedIn], title: 'Private board · Retro Board', loadComponent: () => import('./pages/private-link.page').then(m => m.PrivateLinkPage) },
   { path: 'invite/:token', title: 'Join a team · Retro Board', loadComponent: () => import('./pages/invite.page').then(m => m.InvitePage) },
   { path: '', canActivate: [signedIn], title: 'Teams · Retro Board', loadComponent: () => import('./pages/teams.page').then(m => m.TeamsPage) },
   { path: 'teams/:teamId', canActivate: [signedIn], title: 'Retro Board', loadComponent: () => import('./pages/current-board.page').then(m => m.CurrentBoardPage) },

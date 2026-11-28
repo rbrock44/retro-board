@@ -24,6 +24,8 @@ export interface DemoState {
   boards: {
     id: string; teamId: string; title: string; status: BoardStatus; settings: BoardSettings;
     createdAt: string; closedAt: string | null; createdBy: string;
+    /** Private (hidden): its link code, and its own password (the demo keeps it in the clear, like team passwords' hint) */
+    private?: boolean; shareToken?: string | null; passwordHash?: string | null;
   }[];
   columns: ColumnDto[];
   cards: DemoCard[];

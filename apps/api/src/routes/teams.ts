@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   BUILT_IN_TEMPLATES, TEAM_BOARD_SETTING_KEYS, TEAM_ROLES, sanitizeTokens, type BoardSettings, type InviteDto,
-  type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamSettings, type TemplateDto,
+  type SearchResultDto, type TeamDto, type TeamMemberDto, type TeamRole, type TeamSettings, type TemplateDto,
 } from '@retro/shared';
 import { findUserByEmail, toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
@@ -11,7 +11,7 @@ import {
   actionItems, attachments, boards, cards, invites, teamMembers, teams, templates, users, type Team, type User,
 } from '../db/schema';
 import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
-import { requireTeam, teamRole } from '../lib/access';
+import { notFromPrivate, requireTeam, teamRole } from '../lib/access';
 import { HttpError, badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
 import { hash, verify } from '@node-rs/argon2';
 import {
@@ -369,46 +369,54 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.get('/api/teams/:teamId/boards', async req => {
     const user = requireUser(req);
-    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
+    const { team, role } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
     const status = (req.query as { status?: string }).status;
-    const where = status && ['open', 'archived'].includes(status)
-      ? and(eq(boards.teamId, team.id), eq(boards.status, status as 'open'))
-      : eq(boards.teamId, team.id);
+    const where = and(
+      eq(boards.teamId, team.id),
+      status && ['open', 'archived'].includes(status) ? eq(boards.status, status as 'open') : undefined,
+      privateVisible(user, role),
+    );
     return boardDtos(db, await db.select().from(boards).where(where).orderBy(desc(boards.createdAt)));
   });
+
+  /** Private boards show in lists only to their creator and the team's admins */
+  function privateVisible(user: User, role: TeamRole) {
+    return role === 'admin' && !user.guest ? undefined : or(eq(boards.private, false), eq(boards.createdBy, user.id));
+  }
 
   app.get('/api/teams/:teamId/actions', async req => {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
     const status = (req.query as { status?: string }).status;
+    // a private board's action items stay on it
     return loadActions(db, status === 'open' || status === 'done'
-      ? and(eq(actionItems.teamId, team.id), eq(actionItems.status, status))
-      : eq(actionItems.teamId, team.id));
+      ? and(eq(actionItems.teamId, team.id), eq(actionItems.status, status), notFromPrivate())
+      : and(eq(actionItems.teamId, team.id), notFromPrivate()));
   });
 
   app.get('/api/teams/:teamId/carry-over', async req => {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
-    const teamBoards = db.select({ id: boards.id }).from(boards).where(eq(boards.teamId, team.id));
+    const teamBoards = db.select({ id: boards.id }).from(boards).where(and(eq(boards.teamId, team.id), eq(boards.private, false)));
     const [pending] = await db.select({ n: count() }).from(cards).where(and(
       inArray(cards.boardId, teamBoards), eq(cards.status, 'carry_over'), isNull(cards.carriedToBoardId),
     ));
     const [open] = await db.select({ n: count() }).from(actionItems)
-      .where(and(eq(actionItems.teamId, team.id), eq(actionItems.status, 'open')));
+      .where(and(eq(actionItems.teamId, team.id), eq(actionItems.status, 'open'), notFromPrivate()));
     return { cards: Number(pending.n), openActions: Number(open.n) };
   });
 
   app.get('/api/teams/:teamId/search', async (req): Promise<SearchResultDto> => {
     const user = requireUser(req);
-    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
+    const { team, role } = await requireTeam(db, user, (req.params as { teamId: string }).teamId);
     const q = String((req.query as { q?: string }).q ?? '').trim();
     if (q.length < 2) throw badRequest('Search for at least 2 characters');
     const like = `%${q.replace(/[\\%_]/g, m => `\\${m}`)}%`;
     const cardRows = await db.select({ card: { id: cards.id, body: cards.body, status: cards.status }, board: { id: boards.id, title: boards.title } })
       .from(cards).innerJoin(boards, eq(boards.id, cards.boardId))
-      .where(and(eq(boards.teamId, team.id), or(ilike(cards.body, like), ilike(cards.groupTitle, like))))
+      .where(and(eq(boards.teamId, team.id), privateVisible(user, role), or(ilike(cards.body, like), ilike(cards.groupTitle, like))))
       .orderBy(desc(cards.createdAt)).limit(50);
-    const actions = await loadActions(db, and(eq(actionItems.teamId, team.id), ilike(actionItems.title, like)));
+    const actions = await loadActions(db, and(eq(actionItems.teamId, team.id), ilike(actionItems.title, like), notFromPrivate()));
     return { cards: cardRows, actions: actions.slice(-50) };
   });
 

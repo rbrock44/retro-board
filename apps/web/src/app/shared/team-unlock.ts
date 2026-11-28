@@ -17,9 +17,10 @@ import { takeUnlockKey } from '../core/unlock-link';
         <p class="unlock-card card-surface muted" role="status">Opening {{ team().name }}…</p>
       } @else {
       <form class="unlock-card card-surface" (ngSubmit)="unlock()">
-        <app-team-photo [team]="{ id: team().id, name: team().name, photoUrl: null }" [size]="56" />
+        @if (!team().board) { <app-team-photo [team]="{ id: team().id, name: team().name, photoUrl: null }" [size]="56" /> }
         <h1><span aria-hidden="true">🔒</span> {{ team().name }}</h1>
-        <p class="muted">This team's boards need a password. Ask a team admin for it.</p>
+        <p class="muted">{{ team().board ? 'This private board needs a password. Ask whoever shared it with you.'
+          : "This team's boards need a password. Ask a team admin for it." }}</p>
         @if (demo.passwordHint(team().id); as hint) {
           <p class="notice small">In this demo the password is <strong>{{ hint }}</strong>.</p>
         }
@@ -45,7 +46,7 @@ export class TeamUnlock implements OnInit {
   protected error = signal('');
 
   async ngOnInit() {
-    const key = takeUnlockKey(this.team().id);
+    const key = this.team().board ? null : takeUnlockKey(this.team().id);
     if (!key) return;
     this.viaLink.set(true);
     try {
@@ -62,7 +63,8 @@ export class TeamUnlock implements OnInit {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.api.post(`/api/teams/${this.team().id}/unlock`, { password: this.password });
+      const t = this.team();
+      await this.api.post(t.board ? `/api/boards/${t.id}/unlock` : `/api/teams/${t.id}/unlock`, { password: this.password });
       // the page underneath failed to load: start it again, now unlocked
       location.reload();
     } catch (err) {

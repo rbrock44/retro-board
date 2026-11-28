@@ -172,6 +172,8 @@ export async function boardDtos(db: Db, rows: Board[]): Promise<BoardDto[]> {
       cardCount: Number(cardCounts.find(c => c.boardId === b.id)?.n ?? 0),
       actionCount: Number(actionCounts.find(c => c.boardId === b.id)?.n ?? 0),
       settings: boardSettings(b.settings),
+      private: b.private,
+      hasPassword: !!b.passwordHash,
     };
   });
 }

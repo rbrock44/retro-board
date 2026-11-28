@@ -78,6 +78,7 @@ import { unlockLink } from '../core/unlock-link';
                   <a [routerLink]="['/boards', b.id]" class="board-link">
                     <strong>{{ b.title }}</strong>
                     <span class="status" [attr.data-status]="b.status">{{ b.status }}</span>
+                    @if (b.private) { <span class="tag" title="Hidden from the team: only its link opens it">🔐 private</span> }
                   </a>
                   <span class="meta">{{ b.cardCount }} cards · {{ b.actionCount }} actions · {{ b.createdAt | ago }}
                     @if (b.createdBy) { · by {{ b.createdBy.name }} }</span>
@@ -287,12 +288,22 @@ import { unlockLink } from '../core/unlock-link';
             <div class="row wrap">
               <label class="check"><input name="anon" type="checkbox" [(ngModel)]="boardAnon"> Allow anonymous cards</label>
             </div>
-            <label class="check">
-              <input name="carry" type="checkbox" [(ngModel)]="boardCarry">
-              Carry over {{ carry().cards }} marked {{ carry().cards === 1 ? 'card' : 'cards' }} from earlier retros
-            </label>
-            @if (carry().openActions) { <p class="muted small">{{ carry().openActions }} open action items will show on the board too.</p> }
-            <div class="row end"><button class="btn primary" type="submit" [disabled]="!boardTitle.trim()">Start Retro</button></div>
+            <label class="check stacked"><input name="private" type="checkbox" [(ngModel)]="boardPrivate">
+              <span><strong>Private board (hidden)</strong>
+                <span class="muted small">Only people with its link can open it, plus you and the team's admins. Copy the link from
+                  Board Settings once it's made.</span></span></label>
+            @if (boardPrivate) {
+              <label>Password (optional)
+                <input name="boardPw" type="password" [(ngModel)]="boardPassword" minlength="4" maxlength="200" autocomplete="new-password"
+                       placeholder="No password"></label>
+            } @else {
+              <label class="check">
+                <input name="carry" type="checkbox" [(ngModel)]="boardCarry">
+                Carry over {{ carry().cards }} marked {{ carry().cards === 1 ? 'card' : 'cards' }} from earlier retros
+              </label>
+              @if (carry().openActions) { <p class="muted small">{{ carry().openActions }} open action items will show on the board too.</p> }
+            }
+            <div class="row end"><button class="btn primary" type="submit" [disabled]="!boardTitle.trim() || (boardPrivate && !!boardPassword && boardPassword.length < 4)">Start Retro</button></div>
           </form>
         </app-modal>
       }
@@ -352,6 +363,8 @@ export class TeamPage {
   protected boardTemplate = 'went-well';
   protected boardAnon = true;
   protected boardCarry = true;
+  protected boardPrivate = false;
+  protected boardPassword = '';
 
   protected isAdmin = computed(() => this.team()?.myRole === 'admin');
   protected canCreate = computed(() => this.team()?.myRole === 'admin' || this.team()?.myRole === 'member');
@@ -431,9 +444,12 @@ export class TeamPage {
       const b = await this.api.post<BoardSummaryDto>(`${this.base()}/boards`, {
         title: this.boardTitle,
         templateId: this.boardTemplate,
-        carryOver: this.boardCarry,
+        carryOver: this.boardCarry && !this.boardPrivate,
         settings: { allowAnonymous: this.boardAnon },
+        ...(this.boardPrivate ? { private: true, ...(this.boardPassword ? { password: this.boardPassword } : {}) } : {}),
       });
+      this.boardPrivate = false;
+      this.boardPassword = '';
       await this.router.navigate(['/boards', b.id]);
     } catch (err) {
       this.toast.error(err);

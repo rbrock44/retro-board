@@ -100,7 +100,26 @@ export const boards = pgTable('boards', {
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
+  /** Private (hidden): kept out of the team's lists; opened by its link, by its creator, or by team admins */
+  private: boolean('private').notNull().default(false),
+  /** The private link's code; replacing it (and bumping linkVersion) cuts off everyone who came by the old one */
+  shareToken: text('share_token').unique(),
+  linkVersion: integer('link_version').notNull().default(0),
+  /** A private board's own password (its creator never types it) */
+  passwordHash: text('password_hash'),
+  passwordVersion: integer('password_version').notNull().default(0),
 }, t => [index('boards_team_idx').on(t.teamId, t.createdAt)]);
+
+/**
+ * Who opened a private board's link (at which link version), and which version of its password they typed.
+ * Team admins and the creator get in without a link; they get a row only once they type the password.
+ */
+export const boardAccess = pgTable('board_access', {
+  boardId: text('board_id').notNull().references(() => boards.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  linkVersion: integer('link_version'),
+  passwordVersion: integer('password_version'),
+}, t => [primaryKey({ columns: [t.boardId, t.userId] }), index('board_access_user_idx').on(t.userId)]);
 
 export const columns = pgTable('columns', {
   id: id(),

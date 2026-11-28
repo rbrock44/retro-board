@@ -23,8 +23,11 @@ export class Api {
       return await this.send<T>(method, url, body);
     } catch (err) {
       // A team password this browser hasn't typed: the app shows the password prompt instead of the page
+      // (or a private board's own password)
       const team = err instanceof ApiError && err.status === 423 ? err.data?.['lockedTeam'] as LockedTeam | undefined : undefined;
+      const board = err instanceof ApiError && err.status === 423 ? err.data?.['lockedBoard'] as LockedTeam | undefined : undefined;
       if (team) this.lock.locked.set(team);
+      else if (board) this.lock.locked.set({ ...board, board: true });
       throw err;
     }
   }

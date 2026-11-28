@@ -26,6 +26,7 @@ import { Composer, type ComposerResult } from './composer';
 import { ClickOutside } from '../shared/click-outside';
 import { PersonDetails } from './person-details';
 import { PresenterPicker } from './presenter-picker';
+import { PrivateSettings } from './private-settings';
 
 /** focusColumn's value while the popup shows the action items rather than a column */
 const FOCUS_ACTIONS = '__actions__';
@@ -33,7 +34,7 @@ const FOCUS_ACTIONS = '__actions__';
 @Component({
   selector: 'app-board-page',
   providers: [BoardStore],
-  imports: [TeamPhoto, ClickOutside, 
+  imports: [TeamPhoto, ClickOutside, PrivateSettings,
     FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragPlaceholder,
     Card, Composer, Avatar, ActionList, Modal, ColorPicker, DatePipe, PersonDetails, PresenterPicker,
   ],
@@ -55,6 +56,7 @@ const FOCUS_ACTIONS = '__actions__';
               <h1 (dblclick)="editingTitle.set(perm().canFacilitate)">{{ s.board.title }}</h1>
             }
             <span class="status" [attr.data-status]="s.board.status">{{ s.board.status }}</span>
+            @if (s.board.private) { <span class="tag" title="Hidden from the team: only its link opens it">🔐 private</span> }
             @if (s.board.settings.locked) { <span class="tag" title="Only facilitators can add or edit cards; voting still works">🔒 locked</span> }
             @if (!store.connected()) { <span class="tag danger" title="Reconnecting for live updates">offline</span> }
           </div>
@@ -459,6 +461,8 @@ const FOCUS_ACTIONS = '__actions__';
               </dd>
               <dt>Status</dt><dd>{{ s.board.status === 'open' ? 'Current' : 'Archived' }}</dd>
             </dl>
+            <hr>
+            <app-private-settings [board]="s.board" [link]="s.privateLink" (changed)="store.reload()" />
             <hr>
             <div class="row wrap">
               @if (s.permissions.role === 'admin') {

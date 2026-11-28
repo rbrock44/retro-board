@@ -269,6 +269,7 @@ Pass options instead of answering questions, which suits scripts and servers:
 | `./launch.sh [options]` / `-y` | Build and start without asking |
 | `./launch.sh update` | Rebuild after pulling or downloading new code |
 | `./launch.sh backup` | Save everything to one file in `backups/` |
+| `./launch.sh backup --encrypt` | The same, locked with a passphrase (for copies kept elsewhere) |
 | `./launch.sh restore <file>` | Put a backup back |
 | `./launch.sh unlock ["<team>"]` | Remove a forgotten team password (no team: list the ones that have one) |
 | `./launch.sh logs` | Follow the app logs |
@@ -301,6 +302,7 @@ across, and leaves the old copy where it was. Admins also see where the data is 
 ```
 
 A backup restores on any computer, in either storage mode, and into newer versions of Retro Board.
+`./launch.sh backup --encrypt` locks the file with a passphrase (`.tar.gz.enc`); `restore` asks for it again.
 
 No command line? Admins can `Download Backup` and `Restore from Backup` in `Admin` → `Customize` → `Your Data`.
 It works on any host (embedded database, Postgres, S3), which makes moving from your computer to a server one upload.

@@ -76,7 +76,7 @@ grep -E '^PUBLIC_URL=http://[0-9.]+:8181$' .env >/dev/null && echo "  ok   netwo
 
 echo "-- bad options"
 fresh
-for a in "--disable telepathy" "--data cloud" "--theme neon" "--accent red" "--votes 5" "--port x" "--bind lan" "--bogus 1"; do
+for a in "--disable telepathy" "--data cloud" "--theme neon" "--accent red" "--votes 5" "--port x" "--bind lan" "--encrypt" "--bogus 1"; do
   if sh launch.sh $a </dev/null >/dev/null 2>&1; then echo "  FAIL accepted $a"; fail=1; else echo "  ok   rejects $a"; fi
 done
 sh launch.sh --help | grep -q "Your data" && echo "  ok   --help" || { echo "  FAIL --help"; fail=1; }

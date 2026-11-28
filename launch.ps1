@@ -5,6 +5,7 @@
 #   launch.cmd -y              starts with the current settings, no questions
 #   launch.cmd update          rebuild after pulling new code (no questions)
 #   launch.cmd backup          save everything (database + uploads) to one file in backups\
+#   launch.cmd backup --encrypt   the same, locked with a passphrase (for copies kept off this computer)
 #   launch.cmd restore FILE    put a backup back
 #   launch.cmd unlock [TEAM]   remove a forgotten team password (no TEAM: list the teams that have one)
 #   launch.cmd stop | logs
@@ -14,7 +15,10 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 $usage = @'
-Usage: launch.cmd [up|update|stop|logs|backup|restore FILE|unlock [TEAM]] [options]
+Usage: launch.cmd [up|update|stop|logs|backup [--encrypt]|restore FILE|unlock [TEAM]] [options]
+
+backup --encrypt asks for a passphrase (or reads BACKUP_PASSPHRASE) and saves a .tar.gz.enc that can't be
+opened without it; restore asks for it again. Keep the passphrase somewhere other than this computer.
 
 With no options, launch.cmd asks each question below, showing the current value; press Enter to keep it.
 Passing any option (or -y) skips the questions. Everything is saved in .env.
@@ -118,6 +122,7 @@ function Test-Features([string]$list) {
 
 $argList = @($args)
 $cmd = 'up'
+$encrypt = $false
 $restoreFile = ''
 $unlockTeam = ''
 if ($argList.Count -gt 0 -and @('up', 'update', 'stop', 'logs', 'backup', 'restore', 'unlock') -contains $argList[0]) {
@@ -161,6 +166,7 @@ for ($i = 0; $i -lt $argList.Count; $i++) {
   if (@('-h', '--help', '/?') -contains $opt) { Write-Host $usage; exit 0 }
   if (@('-y', '--yes') -contains $opt) { $ask = $false; continue }
   if ($opt -eq '--network') { $sets['ACCESS'] = 'network'; $ask = $false; continue }
+  if ($opt -eq '--encrypt') { $encrypt = $true; continue }
   if (-not $optionKeys.Contains($opt)) { Fail "Unknown option $opt (see launch.cmd --help)" 2 }
   if ($i + 1 -ge $argList.Count) { Fail "$opt needs a value (see launch.cmd --help)" 2 }
   $val = [string]$argList[++$i]
@@ -175,6 +181,8 @@ for ($i = 0; $i -lt $argList.Count; $i++) {
   $sets[$optionKeys[$opt]] = $val
   $ask = $false
 }
+
+if ($encrypt -and $cmd -ne 'backup') { Fail '--encrypt goes with backup: launch.cmd backup --encrypt' 2 }
 
 # ---- docker ------------------------------------------------------------------
 
@@ -279,12 +287,57 @@ function Restore-Backup([string]$file) {
   Invoke-Quiet { docker compose restart app } | Out-Null
 }
 
+# ---- encrypted backups -------------------------------------------------------
+# The app container does the crypto (node dist/cli.js encrypt|decrypt); the passphrase goes in on stdin,
+# so it never shows on a command line. BACKUP_PASSPHRASE skips the question (for scheduled tasks).
+
+function Get-BackupPassphrase([bool]$confirm) {
+  if ($env:BACKUP_PASSPHRASE) { return $env:BACKUP_PASSPHRASE }
+  if ([Console]::IsInputRedirected) { Fail 'No console to ask for the backup passphrase: set BACKUP_PASSPHRASE' }
+  $read = { param($label) $s = Read-Host $label -AsSecureString
+    [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)) }
+  $pass = & $read 'Backup passphrase (8 or more characters)'
+  if ($confirm) {
+    if ($pass.Length -lt 8) { Fail 'The passphrase needs at least 8 characters. Nothing saved.' }
+    if ((& $read 'Same again') -ne $pass) { Fail "The two passphrases don't match. Nothing saved." }
+  }
+  return $pass
+}
+
+function Test-Encrypted([string]$file) {
+  $fs = [IO.File]::OpenRead((Resolve-Path $file).Path)
+  try { $b = New-Object byte[] 6; $got = $fs.Read($b, 0, 6) } finally { $fs.Close() }
+  return $got -eq 6 -and [Text.Encoding]::ASCII.GetString($b) -eq 'RBENC1'
+}
+
+function Invoke-Crypt([string]$mode, [string]$in, [string]$out, [string]$pass) {
+  $n = "rb-" + [Guid]::NewGuid().ToString('N')
+  Invoke-Quiet { docker compose cp $in "app:/tmp/$n.in" } | Out-Null
+  $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  $pass | docker compose exec -T app node dist/cli.js $mode "/tmp/$n.in" "/tmp/$n.out"
+  $ok = $LASTEXITCODE -eq 0
+  $ErrorActionPreference = $prev
+  if ($ok) { Invoke-Quiet { docker compose cp "app:/tmp/$n.out" $out } | Out-Null }
+  Invoke-Quiet { docker compose exec -T -u root app rm -f "/tmp/$n.in" "/tmp/$n.out" } | Out-Null
+  return $ok -and (Test-Path $out) -and (Get-Item $out).Length -gt 0
+}
+
 if ($cmd -eq 'stop') { docker compose down; exit $LASTEXITCODE }
 if ($cmd -eq 'logs') { docker compose logs -f app; exit $LASTEXITCODE }
 if ($cmd -eq 'backup') {
   if (-not (Test-Path $envPath)) { Fail 'Nothing to back up yet: run launch.cmd first.' }
+  if ($encrypt) { $pass = Get-BackupPassphrase $true }
   $f = Save-Backup ''
-  Write-Host "Saved everything (database and uploads) to $f"
+  if ($encrypt) {
+    $ok = Invoke-Crypt 'encrypt' $f "$f.enc" $pass
+    Remove-Item -Force $f
+    if (-not $ok) { Remove-Item -Force "$f.enc" -ErrorAction SilentlyContinue; Fail "Couldn't encrypt the backup, so none was kept." }
+    $f = "$f.enc"
+    Write-Host "Saved everything (database and uploads), encrypted, to $f"
+    Write-Host "Without the passphrase it can't be opened, so keep that somewhere other than this computer."
+  } else {
+    Write-Host "Saved everything (database and uploads) to $f"
+  }
   Write-Host "Put it back any time with: launch.cmd restore $f"
   exit 0
 }
@@ -302,7 +355,19 @@ if ($cmd -eq 'restore') {
     $a = Read-Host 'Continue? [y/N]'
     if ($a -notmatch '^(y|yes)$') { Write-Host 'Nothing changed.'; exit 0 }
   }
-  Restore-Backup $restoreFile
+  $src = $restoreFile; $plain = ''
+  if ((Test-Path $src) -and (Test-Encrypted $src)) {
+    $pass = Get-BackupPassphrase $false
+    Confirm-Up
+    $plain = Join-Path ([IO.Path]::GetTempPath()) ("retro-" + [Guid]::NewGuid().ToString('N') + '.tar.gz')
+    if (-not (Invoke-Crypt 'decrypt' $src $plain $pass)) {
+      Remove-Item -Force $plain -ErrorAction SilentlyContinue
+      Fail "Couldn't open ${src}: wrong passphrase, or the file is damaged. Nothing changed."
+    }
+    $src = $plain
+  }
+  Restore-Backup $src
+  if ($plain) { Remove-Item -Force $plain -ErrorAction SilentlyContinue }
   Write-Host "Restored from $restoreFile."
   exit 0
 }

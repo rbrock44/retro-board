@@ -130,6 +130,17 @@ A backup restores into either storage mode and into newer versions (the database
 usual on start). Run `backup` from cron or Task Scheduler for regular copies, and keep some of them on another
 machine.
 
+**Encrypted:** `./launch.sh backup --encrypt` asks for a passphrase and saves `backups/<file>.tar.gz.enc`
+(AES-256-GCM, key from scrypt), which is useless without it. That's the one to copy to another drive or cloud
+storage. `./launch.sh restore <file>.enc` notices and asks for the passphrase; a wrong one changes nothing.
+For cron, set `BACKUP_PASSPHRASE` in the job's environment rather than in `.env`, and keep the passphrase
+somewhere other than the server: if the server dies with it, the backups can't be opened.
+
+```bash
+# crontab: every night at 3, encrypted, then copied off the box
+0 3 * * * cd /srv/retro-board && BACKUP_PASSPHRASE="$(cat ~/.retro-backup-pass)" ./launch.sh backup --encrypt && rclone copy backups r2:retro-backups
+```
+
 ### In the app
 
 Admins can also back up and restore from **Admin → Customize → Your Data**, with no command line: `Download Backup`

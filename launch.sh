@@ -6,6 +6,7 @@
 #   ./launch.sh -y              starts with the current settings, no questions
 #   ./launch.sh update          rebuild after pulling new code (no questions)
 #   ./launch.sh backup          save everything (database + uploads) to one file in backups/
+#   ./launch.sh backup --encrypt   the same, locked with a passphrase (for copies kept off this computer)
 #   ./launch.sh restore FILE    put a backup back
 #   ./launch.sh unlock [TEAM]   remove a forgotten team password (no TEAM: list the teams that have one)
 #   ./launch.sh stop | logs
@@ -16,7 +17,10 @@ cd "$(dirname "$0")"
 
 usage() {
   cat <<'EOF'
-Usage: ./launch.sh [up|update|stop|logs|backup|restore FILE|unlock [TEAM]] [options]
+Usage: ./launch.sh [up|update|stop|logs|backup [--encrypt]|restore FILE|unlock [TEAM]] [options]
+
+backup --encrypt asks for a passphrase (or reads BACKUP_PASSPHRASE) and saves a .tar.gz.enc that can't be
+opened without it; restore asks for it again. Keep the passphrase somewhere other than this computer.
 
 With no options, ./launch.sh asks each question below, showing the current value; press Enter to keep it.
 Passing any option (or -y) skips the questions. Everything is saved in .env.
@@ -115,6 +119,7 @@ valid_features() {
 # ---- arguments ---------------------------------------------------------------
 
 cmd=up
+encrypt=0
 restore_file=""
 unlock_team=""
 case "${1:-}" in
@@ -140,6 +145,7 @@ while [ $# -gt 0 ]; do
     -h|--help) usage; exit 0 ;;
     -y|--yes) ask=0; shift; continue ;;
     --network) add_set ACCESS network; shift; continue ;;
+    --encrypt) encrypt=1; shift; continue ;;
     --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--bind|--url|--giphy-key|--tenor-key) ;;
     --data|--site-name|--theme|--accent|--columns|--disable) ;;
     *) warn "Unknown option $opt (see ./launch.sh --help)"; exit 2 ;;
@@ -196,6 +202,8 @@ while [ $# -gt 0 ]; do
   esac
   shift 2
 done
+
+[ "$encrypt" = 0 ] || [ "$cmd" = backup ] || { warn "--encrypt goes with backup: ./launch.sh backup --encrypt"; exit 2; }
 
 # ---- docker ------------------------------------------------------------------
 
@@ -315,13 +323,48 @@ do_restore() { # do_restore file
   dc restart app >/dev/null 2>&1
 }
 
+# ---- encrypted backups -------------------------------------------------------
+# The app container does the crypto (node dist/cli.js encrypt|decrypt); the passphrase goes in on stdin,
+# so it never shows on a command line. BACKUP_PASSPHRASE skips the question (for cron).
+
+ask_pass() { # ask_pass [confirm] -> sets $pass
+  if [ -n "${BACKUP_PASSPHRASE:-}" ]; then pass=$BACKUP_PASSPHRASE; return; fi
+  [ -t 0 ] || { warn "No terminal to ask for the backup passphrase: set BACKUP_PASSPHRASE"; exit 1; }
+  printf 'Backup passphrase (8 or more characters): '; stty -echo; read -r pass || pass=""; stty echo; printf '\n'
+  if [ "${1:-}" = confirm ]; then
+    [ ${#pass} -ge 8 ] || { warn "The passphrase needs at least 8 characters. Nothing saved."; exit 1; }
+    printf 'Same again: '; stty -echo; read -r again || again=""; stty echo; printf '\n'
+    [ "$pass" = "$again" ] || { warn "The two passphrases don't match. Nothing saved."; exit 1; }
+  fi
+}
+
+is_encrypted() { [ "$(dd if="$1" bs=6 count=1 2>/dev/null)" = RBENC1 ]; }
+
+crypt_file() { # crypt_file encrypt|decrypt IN OUT
+  n=rb-$(date +%s)-$$
+  dc cp "$2" "app:/tmp/$n.in" >/dev/null 2>&1
+  if printf '%s' "$pass" | dc exec -T app node dist/cli.js "$1" "/tmp/$n.in" "/tmp/$n.out"; then
+    dc cp "app:/tmp/$n.out" "$3" >/dev/null 2>&1; ok=0
+  else ok=1; fi
+  dc exec -T -u root app rm -f "/tmp/$n.in" "/tmp/$n.out" >/dev/null 2>&1 || true
+  [ "$ok" = 0 ] && [ -s "$3" ]
+}
+
 case "$cmd" in
   stop) dc down; exit 0 ;;
   logs) dc logs -f app; exit 0 ;;
   backup)
     [ -f .env ] || { warn "Nothing to back up yet: run ./launch.sh first."; exit 1; }
+    [ "$encrypt" = 1 ] && ask_pass confirm
     f=$(do_backup)
-    say "Saved everything (database and uploads) to $f"
+    if [ "$encrypt" = 1 ]; then
+      crypt_file encrypt "$f" "$f.enc" || { rm -f "$f" "$f.enc"; warn "Couldn't encrypt the backup, so none was kept."; exit 1; }
+      rm -f "$f"; f="$f.enc"
+      say "Saved everything (database and uploads), encrypted, to $f"
+      say "Without the passphrase it can't be opened, so keep that somewhere other than this computer."
+    else
+      say "Saved everything (database and uploads) to $f"
+    fi
     say "Put it back any time with: ./launch.sh restore $f"
     exit 0 ;;
   unlock)
@@ -334,7 +377,14 @@ case "$cmd" in
     [ -f .env ] || { warn "Run ./launch.sh once first, then restore."; exit 1; }
     say "This replaces all current data with the backup in $restore_file."
     if [ -t 0 ]; then printf 'Continue? [y/N]: '; read -r a || a=""; case "$a" in y|Y|yes) ;; *) say "Nothing changed."; exit 0 ;; esac; fi
-    do_restore "$restore_file"
+    src=$restore_file; plain=""
+    if [ -f "$src" ] && is_encrypted "$src"; then
+      ask_pass; ensure_up; plain=$(mktemp)
+      crypt_file decrypt "$src" "$plain" || { rm -f "$plain"; warn "Couldn't open $src: wrong passphrase, or the file is damaged. Nothing changed."; exit 1; }
+      src=$plain
+    fi
+    do_restore "$src"
+    [ -n "$plain" ] && rm -f "$plain"
     say "Restored from $restore_file."
     exit 0 ;;
 esac

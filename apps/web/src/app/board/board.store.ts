@@ -33,6 +33,7 @@ export function applyEvent(s: BoardStateDto, e: BoardEvent): BoardStateDto {
       return { ...s, actions: s.actions.filter(a => a.id !== e.id) };
     case 'presence':
     case 'board.next':
+    case 'access.lost':
       return s;
   }
 }
@@ -72,6 +73,8 @@ export class BoardStore {
   private api = inject(Api);
   private toast = inject(ToastService);
   private socket: Socket | null = null;
+  /** The server said this connection lost access: the next connect shows what's true now */
+  private lostAccess = false;
   private demo = inject(DemoService);
   private demoOff: (() => void) | null = null;
   private boardId = '';
@@ -207,12 +210,18 @@ export class BoardStore {
     this.socket = socket;
     socket.on('connect', () => {
       socket.emit(SOCKET_EVENTS.join, boardId, async (r: { ok: boolean; error?: string }) => {
-        if (!r.ok) return this.toast.show(r.error ?? 'Live updates unavailable', 'error');
+        if (!r.ok) {
+          // no access any more: loading the board again brings up its password prompt or error
+          if (this.lostAccess) return this.recheckAccess();
+          return this.toast.show(r.error ?? 'Live updates unavailable', 'error');
+        }
         this.connected.set(true);
         // Catch up on anything missed while disconnected.
-        if (socket.recovered === false && this.state()) await this.reload();
+        if ((socket.recovered === false || this.lostAccess) && this.state()) { this.lostAccess = false; await this.reload(); }
       });
     });
+    // signed out elsewhere: the server turns the connection away
+    socket.on('connect_error', () => { if (this.lostAccess) void this.recheckAccess(); });
     socket.on('disconnect', () => this.connected.set(false));
     socket.on(SOCKET_EVENTS.event, (e: BoardEvent) => this.handle(e));
     socket.on(SOCKET_EVENTS.typing, (t: { user: UserDto; columnId: string }) => this.onTyping(t));
@@ -225,6 +234,17 @@ export class BoardStore {
       for (const [k, v] of Object.entries(next)) if (Date.now() - v.at > 2500) delete next[k];
       return next;
     }), 3000);
+  }
+
+  private async recheckAccess() {
+    this.lostAccess = false;
+    this.connected.set(false);
+    try {
+      await this.reload();
+    } catch (err) {
+      this.state.set(null);
+      this.error.set(err instanceof Error ? err.message : 'Could not load the board');
+    }
   }
 
   async reload() {
@@ -257,6 +277,15 @@ export class BoardStore {
   }
 
   handle(e: BoardEvent) {
+    if (e.type === 'access.lost') {
+      // reconnect with this browser's current cookies (a new password typed here, say); join says if access is gone
+      if (e.boardId === this.boardId && this.socket) {
+        this.lostAccess = true;
+        this.connected.set(false);
+        this.socket.disconnect().connect();
+      }
+      return;
+    }
     if (e.type === 'presence') {
       this.presence.set(e.users);
       return;

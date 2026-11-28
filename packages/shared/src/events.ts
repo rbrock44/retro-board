@@ -3,6 +3,8 @@ import type { ActionItemDto, BoardDto, CardDto, ColumnDto, UserDto } from './mod
 /** Every change to a board is broadcast to its room as one of these. Upserts carry the whole entity. */
 export type BoardEvent =
   | { type: 'board.update'; board: BoardDto }
+  /** This connection no longer has access to the board (removed, new team password, signed out) */
+  | { type: 'access.lost'; boardId: string }
   | { type: 'column.upsert'; column: ColumnDto }
   | { type: 'column.delete'; id: string }
   | { type: 'card.upsert'; card: CardDto }

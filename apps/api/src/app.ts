@@ -76,6 +76,16 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
   const webRoot = config.webDist ? resolve(config.webDist) : null;
   securityHeaders(app, webRoot);
 
+  // After anything that can take access away, check every live connection again
+  const accessRoutes = new Set([
+    'DELETE /api/teams/:teamId/members/:userId', 'PATCH /api/teams/:teamId/members/:userId', 'PUT /api/teams/:teamId/password',
+    'DELETE /api/teams/:teamId', 'POST /api/auth/logout', 'POST /api/auth/guest/new', 'POST /api/auth/guest/claim',
+    'PATCH /api/admin/users/:userId', 'POST /api/admin/restore',
+  ]);
+  app.addHook('onResponse', async (req, reply) => {
+    if (reply.statusCode < 300 && accessRoutes.has(`${req.method} ${req.routeOptions.url}`)) hubRef.current.recheck();
+  });
+
   app.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return;
     const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);

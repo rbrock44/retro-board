@@ -142,4 +142,39 @@ describe('realtime', () => {
     await expect(new Promise((_, reject) => rejected.on('connect_error', reject))).rejects.toThrow(/unauthorized/);
     for (const s of [a, b, rejected]) s.close();
   });
+
+  it('stops live changes for someone who loses access while connected', async () => {
+    t = await makeApp({ realtime: true });
+    await t.app.listen({ port: 0, host: '127.0.0.1' });
+    const { port } = t.app.server.address() as { port: number };
+    const { owner, team, board, state } = await teamWithBoard(t.app);
+    const sam = await addMember(t.app, owner.client, team.id, 'member', 'Sam');
+    const kim = await addMember(t.app, owner.client, team.id, 'member', 'Kim');
+
+    const open = (cookie: string) => new Promise<Socket>((resolve, reject) => {
+      const s = connect(`http://127.0.0.1:${port}`, { path: '/socket.io', transports: ['websocket'], extraHeaders: { cookie } });
+      s.on('connect', () => s.emit(SOCKET_EVENTS.join, board.id, (r: { ok: boolean }) => (r.ok ? resolve(s) : reject(new Error('join')))));
+      s.on('connect_error', reject);
+    });
+    const events = (s: Socket) => { const got: BoardEvent[] = []; s.on(SOCKET_EVENTS.event, (e: BoardEvent) => got.push(e)); return got; };
+    const settle = () => new Promise(r => setTimeout(r, 300));
+    const ownerSock = await open(owner.client.cookie), samSock = await open(sam.client.cookie), kimSock = await open(kim.client.cookie);
+    const ownerGot = events(ownerSock), samGot = events(samSock), kimGot = events(kimSock);
+
+    // Sam is removed from the team: told, and gets nothing after that
+    await owner.client.del(`/api/teams/${team.id}/members/${sam.user.id}`);
+    await settle();
+    expect(samGot.some(e => e.type === 'access.lost' && e.boardId === board.id)).toBe(true);
+    await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: state.columns[0].id, body: 'after removal' });
+    await settle();
+    expect(samGot.some(e => e.type === 'card.upsert')).toBe(false);
+    expect(kimGot.some(e => e.type === 'card.upsert')).toBe(true);
+
+    // a new team password: Kim hasn't typed it, the owner's own browser still gets in
+    await owner.client.put(`/api/teams/${team.id}/password`, { password: 'sprint' });
+    await settle();
+    expect(kimGot.some(e => e.type === 'access.lost')).toBe(true);
+    expect(ownerGot.some(e => e.type === 'access.lost')).toBe(false);
+    for (const s of [ownerSock, samSock, kimSock]) s.close();
+  });
 });

@@ -12,12 +12,17 @@ import { attachTeamKeys } from './lib/team-lock';
 export interface Hub {
   emitBoard(boardId: string, event: BoardEvent | ((viewerId: string) => BoardEvent | null)): void;
   emitUser(boardId: string, userId: string, event: BoardEvent): void;
+  /** Checks every live connection's access again (after a removal, a password change, a sign-out, …) */
+  recheck(): void;
   close(): Promise<void>;
 }
 
 interface SocketData {
   user: User;
   boards: Set<string>;
+  /** What the handshake sent, to check the session and team passwords again later */
+  token: string | undefined;
+  cookies: Record<string, string>;
 }
 
 const room = (boardId: string) => `board:${boardId}`;
@@ -49,7 +54,7 @@ export function readCookie(header: string | undefined, name: string): string | u
 }
 
 export function noopHub(): Hub {
-  return { emitBoard() {}, emitUser() {}, async close() {} };
+  return { emitBoard() {}, emitUser() {}, recheck() {}, async close() {} };
 }
 
 export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<boolean> = async () => true, cookieSecret = ''): Hub {
@@ -57,11 +62,15 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
 
   io.use(async (socket, next) => {
     try {
-      const found = await userForToken(db, readCookie(socket.handshake.headers.cookie, SESSION_COOKIE));
+      const token = readCookie(socket.handshake.headers.cookie, SESSION_COOKIE);
+      const found = await userForToken(db, token);
       if (!found) return next(new Error('unauthorized'));
-      (socket.data as SocketData).user = found.user;
-      attachTeamKeys(found.user, allCookies(socket.handshake.headers.cookie), cookieSecret);
-      (socket.data as SocketData).boards = new Set();
+      const data = socket.data as SocketData;
+      data.user = found.user;
+      data.token = token;
+      data.cookies = allCookies(socket.handshake.headers.cookie);
+      attachTeamKeys(found.user, data.cookies, cookieSecret);
+      data.boards = new Set();
       next();
     } catch (err) {
       next(err as Error);
@@ -117,7 +126,41 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
     });
   });
 
+  /**
+   * Access is checked on joining a board; this checks it again for everyone connected, so someone removed from
+   * a team, locked out by a new password or signed out stops getting live changes. They're told (`access.lost`)
+   * and their browser reconnects with its current cookies, which brings back whoever still has access.
+   */
+  async function recheckAll() {
+    const touched = new Set<string>();
+    for (const socket of io.of('/').sockets.values()) {
+      const data = socket.data as SocketData;
+      if (!data.boards?.size) continue;
+      const found = await userForToken(db, data.token).catch(() => null);
+      if (found) {
+        data.user = found.user;
+        attachTeamKeys(found.user, data.cookies, cookieSecret);
+      }
+      for (const boardId of [...data.boards]) {
+        const ok = !!found && await requireBoard(db, data.user, boardId, 'read').then(() => true, () => false);
+        if (ok) continue;
+        await socket.leave(room(boardId));
+        data.boards.delete(boardId);
+        socket.emit(SOCKET_EVENTS.event, { type: 'access.lost', boardId } satisfies BoardEvent);
+        touched.add(boardId);
+      }
+    }
+    for (const boardId of touched) await presence(boardId);
+  }
+  let recheckQueued = false;
+
   return {
+    recheck() {
+      // several changes in a row (e.g. removing a few members) make one pass
+      if (recheckQueued) return;
+      recheckQueued = true;
+      setTimeout(() => { recheckQueued = false; void recheckAll().catch(() => {}); }, 50);
+    },
     emitBoard(boardId, event) {
       if (typeof event !== 'function') {
         io.to(room(boardId)).emit(SOCKET_EVENTS.event, event);

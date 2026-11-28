@@ -332,6 +332,12 @@ app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
     &:hover, &:focus-visible { z-index: 1; transform: translateY(-2px); } }
   .more { font-size: 0.8rem; color: var(--muted); margin-left: 0.3rem; align-self: center; } }
 .board-tools { display: flex; align-items: center; gap: 0.75rem; padding: 0.25rem 1rem 0.5rem; flex-wrap: wrap;
+  .pick-presenter { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0;
+    svg { display: block; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; } }
+  .presenter-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.15rem 0.3rem 0.15rem 0.2rem; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+  .chip-x { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 0.25rem; font-size: 0.75rem; line-height: 1;
+    border-radius: 50%; &:hover { color: var(--text); } }
   label { flex-direction: row; align-items: center; gap: 0.4rem; font-weight: 400; color: var(--muted); }
   select { padding: 0.25rem 0.4rem; } }
 .banner { margin: 0 1rem 0.5rem; padding: 0.5rem 0.8rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-size: 0.9rem; }

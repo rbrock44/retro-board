@@ -128,6 +128,8 @@ its default template), so people always land in the right place.
   person button picks a random teammate to go over the column. They get `Yes, I'll Go` or `Not Right Now`: not right
   now asks someone else and keeps them on the list for later, but nobody who just passed is asked again until someone
   says yes. Everyone gets a turn, in random order, before anyone goes twice (remembered per team in your browser)
+- `Who presents next` - The person button after `Sort` picks someone the same way, without the full-screen view;
+  whoever says yes shows beside it until cleared with ✕
 - `Sort` - The board's own order comes first. It reads `Oldest First` until someone rearranges cards in Arrange Mode
   (including across columns), then `Custom`. `Oldest First`, `Newest First` and `Most Liked` show other views without
   changing it. Turning Arrange Mode on goes back to the board's own order

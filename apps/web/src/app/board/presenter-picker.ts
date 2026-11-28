@@ -8,18 +8,18 @@ import { accept, pass, pickNext, type Rotation } from './presenter-rotation';
 const storageKey = (teamId: string) => `retro.presenters.${teamId}`;
 
 /**
- * Picks a random teammate to go over a column, asking them first. Who has gone this round is remembered per team
+ * Picks a random teammate to go over a column (or, with no column, to present next), asking them first. Who has gone this round is remembered per team
  * (in this browser), so everyone gets a turn, in random order, before anyone goes twice.
  */
 @Component({
   selector: 'app-presenter-picker',
   imports: [Avatar, Modal],
   template: `
-    <app-modal [heading]="'Who goes over ' + columnTitle() + '?'" (closed)="closed.emit()">
+    <app-modal [heading]="columnTitle() ? 'Who goes over ' + columnTitle() + '?' : 'Who presents next?'" (closed)="closed.emit()">
       @if (current(); as u) {
         <div class="presenter-pick">
           <app-avatar [user]="u" [size]="96" />
-          <p class="presenter-ask"><strong>{{ u.name }}</strong>, you're up! Will you go over this column?</p>
+          <p class="presenter-ask"><strong>{{ u.name }}</strong>, you're up! {{ columnTitle() ? 'Will you go over this column?' : 'Will you present next?' }}</p>
           @if (skipped().length) { <p class="muted small">Not right now: {{ skipped().join(', ') }}</p> }
           <div class="row">
             <button type="button" class="btn ghost" (click)="notNow(u)" title="They can't right now (driving, away…). Ask someone else; they stay on the list for later">Not Right Now</button>
@@ -40,7 +40,8 @@ const storageKey = (teamId: string) => `retro.presenters.${teamId}`;
 })
 export class PresenterPicker {
   private store = inject(BoardStore);
-  readonly columnTitle = input.required<string>();
+  /** The column to go over; null picks who presents next on the board */
+  readonly columnTitle = input<string | null>(null);
   readonly closed = output<void>();
   /** Who said yes, for the column header */
   readonly picked = output<UserDto>();

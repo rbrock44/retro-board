@@ -94,6 +94,21 @@ const FOCUS_ACTIONS = '__actions__';
               @if (auth.on('likes')) { <option value="likes">Most Liked</option> }
             </select>
           </label>
+          <!-- pick who presents next, for teams that go over the board without the full-screen view -->
+          <span class="pick-presenter">
+            <button type="button" class="icon-btn" (click)="pickerOpen.set(true)" [disabled]="!s.members.length"
+                    aria-label="Pick who presents next" title="Pick someone at random to present next">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+                <path d="M17 4.5h4.5V9M21.5 4.5l-5 5M17 14.5h4.5V19M21.5 19l-3-3" /></svg>
+            </button>
+            @if (presenter(); as p) {
+              @if (p.columnId === null) {
+                <span class="presenter-chip" title="Presenting next"><app-avatar [user]="p.user" [size]="22" /> {{ p.user.name }}
+                  <button type="button" class="chip-x" (click)="presenter.set(null)" aria-label="Clear who's presenting" title="Clear">✕</button></span>
+              }
+            }
+          </span>
           <div class="spacer"></div>
           @if (auth.on('actions')) {
             <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
@@ -314,8 +329,9 @@ const FOCUS_ACTIONS = '__actions__';
         <app-person-details [user]="person" (closed)="store.personOpen.set(null)" />
       }
 
-      @if (pickerOpen() && focused(); as fc) {
-        <app-presenter-picker [columnTitle]="fc.col.title" (picked)="presenter.set({ columnId: fc.col.id, user: $event })"
+      @if (pickerOpen()) {
+        <!-- from a full-screen column: who goes over it; from the board's tools: who presents next -->
+        <app-presenter-picker [columnTitle]="focused()?.col?.title ?? null" (picked)="presenter.set({ columnId: focused()?.col?.id ?? null, user: $event })"
                               (closed)="pickerOpen.set(false)" />
       }
 
@@ -535,8 +551,8 @@ export class BoardPage implements OnDestroy {
     return { col: cols[index], index, cards: this.store.columnCards().get(cols[index].id) ?? [] };
   });
 
-  /** Who said yes to going over a column (picked at random in the column popup) */
-  protected presenter = signal<{ columnId: string; user: UserDto } | null>(null);
+  /** Who said yes: for a column (full screen), or to present next (columnId null) */
+  protected presenter = signal<{ columnId: string | null; user: UserDto } | null>(null);
   protected pickerOpen = signal(false);
   /** Cards in the focused column, grouped ones too, that have replies to open */
   protected focusReplyIds = computed(() => {

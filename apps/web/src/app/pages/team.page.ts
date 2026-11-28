@@ -290,7 +290,7 @@ import { unlockLink } from '../core/unlock-link';
             </div>
             <label class="check stacked"><input name="private" type="checkbox" [(ngModel)]="boardPrivate">
               <span><strong>Private board (hidden)</strong>
-                <span class="muted small">Only people with its link can open it, plus you and the team's admins. Copy the link from
+                <span class="muted small">Only you and people who open its link can see it, team admins included. Copy the link from
                   Board Settings once it's made.</span></span></label>
             @if (boardPrivate) {
               <label>Password (optional)

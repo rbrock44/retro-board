@@ -7,7 +7,7 @@ import { ToastService } from '../core/toast.service';
 
 /**
  * Board Settings > Private board (hidden): kept out of the team's lists and opened by its link (plus by its
- * creator and the team's admins). Here its facilitators copy the link, replace it to cut off everyone who had the
+ * creator). Only the people in it see it anywhere, team admins included. Here its facilitators copy the link, replace it to cut off everyone who had the
  * old one, and give the board its own password.
  */
 @Component({
@@ -17,8 +17,8 @@ import { ToastService } from '../core/toast.service';
     <section class="private-settings stack">
       <label class="check stacked"><input type="checkbox" [checked]="board().private" [disabled]="busy()" (change)="setPrivate($any($event.target).checked)">
         <span><strong>Private board (hidden)</strong>
-          <span class="muted small">Only people with its link can open it, plus you and the team's admins. It stays out of the
-            team's board list, search and action items.</span></span></label>
+          <span class="muted small">Only you and people who open its link can see it, team admins included. It stays out of the
+            team's board list, search, exports and action items for everyone else.</span></span></label>
       @if (board().private && link(); as code) {
         <div class="private-link">
           <code class="grow">{{ url(code) }}</code>

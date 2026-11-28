@@ -11,7 +11,7 @@ import {
   actionItems, attachments, boards, cards, invites, teamMembers, teams, templates, users, type Team, type User,
 } from '../db/schema';
 import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
-import { notFromPrivate, requireTeam, teamRole } from '../lib/access';
+import { boardsVisibleTo, notFromPrivate, requireTeam, teamRole } from '../lib/access';
 import { HttpError, badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
 import { hash, verify } from '@node-rs/argon2';
 import {
@@ -374,15 +374,11 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
     const where = and(
       eq(boards.teamId, team.id),
       status && ['open', 'archived'].includes(status) ? eq(boards.status, status as 'open') : undefined,
-      privateVisible(user, role),
+      boardsVisibleTo(user),
     );
     return boardDtos(db, await db.select().from(boards).where(where).orderBy(desc(boards.createdAt)));
   });
 
-  /** Private boards show in lists only to their creator and the team's admins */
-  function privateVisible(user: User, role: TeamRole) {
-    return role === 'admin' && !user.guest ? undefined : or(eq(boards.private, false), eq(boards.createdBy, user.id));
-  }
 
   app.get('/api/teams/:teamId/actions', async req => {
     const user = requireUser(req);
@@ -414,7 +410,7 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
     const like = `%${q.replace(/[\\%_]/g, m => `\\${m}`)}%`;
     const cardRows = await db.select({ card: { id: cards.id, body: cards.body, status: cards.status }, board: { id: boards.id, title: boards.title } })
       .from(cards).innerJoin(boards, eq(boards.id, cards.boardId))
-      .where(and(eq(boards.teamId, team.id), privateVisible(user, role), or(ilike(cards.body, like), ilike(cards.groupTitle, like))))
+      .where(and(eq(boards.teamId, team.id), boardsVisibleTo(user), or(ilike(cards.body, like), ilike(cards.groupTitle, like))))
       .orderBy(desc(cards.createdAt)).limit(50);
     const actions = await loadActions(db, and(eq(actionItems.teamId, team.id), ilike(actionItems.title, like), notFromPrivate()));
     return { cards: cardRows, actions: actions.slice(-50) };

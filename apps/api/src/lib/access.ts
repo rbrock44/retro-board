@@ -78,10 +78,24 @@ export function boardPermissions(board: Board, role: TeamRole, userId: string): 
 
 export type BoardNeed = 'read' | 'write' | 'vote' | 'facilitate' | 'admin';
 
-/** Sees a private board in the team's lists (and opens it without its link): its creator and real team admins */
-export function seesPrivate(board: Pick<Board, 'createdBy'>, user: User, role: TeamRole | null): boolean {
-  // with no sign-in everyone is an admin, so there it takes being the creator (or the link)
-  return board.createdBy === user.id || (role === 'admin' && !user.guest);
+/**
+ * Is this person in a private board: its creator, or someone who opened its current link? Only they see it in
+ * lists, search and exports, or open it at all; being a team admin isn't enough.
+ */
+export async function inPrivateBoard(db: Db, user: User, board: Pick<Board, 'id' | 'createdBy' | 'linkVersion'>): Promise<boolean> {
+  if (board.createdBy === user.id) return true;
+  const [row] = await db.select({ v: boardAccess.linkVersion }).from(boardAccess)
+    .where(and(eq(boardAccess.boardId, board.id), eq(boardAccess.userId, user.id))).limit(1);
+  return row?.v === board.linkVersion;
+}
+
+/** The boards this person may see listed: every board that isn't private, and the private ones they're in */
+export function boardsVisibleTo(user: User) {
+  return or(
+    eq(boards.private, false),
+    eq(boards.createdBy, user.id),
+    sql`exists (select 1 from ${boardAccess} where ${boardAccess.boardId} = ${boards.id} and ${boardAccess.userId} = ${user.id} and ${boardAccess.linkVersion} = ${boards.linkVersion})`,
+  );
 }
 
 /**
@@ -91,8 +105,9 @@ export function seesPrivate(board: Pick<Board, 'createdBy'>, user: User, role: T
 async function privateEntry(db: Db, user: User, board: Board, role: TeamRole | null): Promise<{ role: TeamRole; viaLink: boolean }> {
   const [row] = await db.select().from(boardAccess)
     .where(and(eq(boardAccess.boardId, board.id), eq(boardAccess.userId, user.id))).limit(1);
-  const viaLink = !!board.shareToken && row?.linkVersion === board.linkVersion;
-  const insider = seesPrivate(board, user, role);
+  // the link's people keep the board's history too (an archived private board has no link of its own)
+  const viaLink = row?.linkVersion === board.linkVersion;
+  const insider = board.createdBy === user.id;
   if (!insider && !viaLink) throw notFound('Board');
   if (board.passwordHash && board.createdBy !== user.id && row?.passwordVersion !== board.passwordVersion) {
     throw new HttpError(423, 'This board has a password', { lockedBoard: { id: board.id, name: board.title } });

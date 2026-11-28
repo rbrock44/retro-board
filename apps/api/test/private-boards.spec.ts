@@ -16,7 +16,7 @@ async function privateBoard(password?: string) {
 }
 
 describe('private boards', () => {
-  it('are hidden from the team, but listed for their creator and team admins', async () => {
+  it('are hidden from everyone on the team but the people in them, admins included', async () => {
     t = await makeApp();
     const { owner, team, board: current, secret, link } = await privateBoard();
     expect(secret).toMatchObject({ private: true, hasPassword: false });
@@ -28,13 +28,24 @@ describe('private boards', () => {
     const ids = async (c: typeof owner.client) => ((await c.get(`/api/teams/${team.id}/boards`)).body as BoardDto[]).map(b => b.id);
     expect(await ids(member.client)).not.toContain(secret.id);
     expect(await ids(owner.client)).toContain(secret.id);
-    expect(await ids(admin.client)).toContain(secret.id);
+    expect(await ids(admin.client)).not.toContain(secret.id);
     expect((await member.client.get(`/api/boards/${secret.id}`)).status).toBe(404);
+    expect((await admin.client.get(`/api/boards/${secret.id}`)).status).toBe(404);
+    // nor can they export it
+    expect((await admin.client.post('/api/export', { boardIds: [secret.id] })).status).toBe(404);
     expect((await member.client.get(`/api/teams/${team.id}/search?q=quiet`)).body.cards).toHaveLength(0);
     expect((await owner.client.get(`/api/teams/${team.id}/search?q=quiet`)).body.cards).toHaveLength(1);
-    // never the team's current board, and only facilitators get the link
+    // never the team's current board
     expect((await member.client.post(`/api/teams/${team.id}/current`)).body.boardId).toBe(current.id);
+
+    // once in (by the link), it's listed for them, and an admin can export it; only facilitators get the link
+    await admin.client.post(`/api/private/${link}`);
+    await member.client.post(`/api/private/${link}`);
+    expect(await ids(admin.client)).toContain(secret.id);
+    expect(await ids(member.client)).toContain(secret.id);
+    expect((await admin.client.post('/api/export', { boardIds: [secret.id] })).status).toBe(200);
     expect((await admin.client.get(`/api/boards/${secret.id}`)).body.privateLink).toBe(link);
+    expect((await member.client.get(`/api/boards/${secret.id}`)).body.privateLink).toBeNull();
   });
 
   it('open by their link for anyone, even off the team, without showing them the team', async () => {
@@ -120,8 +131,9 @@ describe('private boards', () => {
     expect(saved.private).toBe(true);
     expect((await guest.client.get(`/api/boards/${next.id}`)).status).toBe(200);
     expect((await guest.client.post(`/api/private/${link}`)).body).toEqual({ boardId: next.id });
-    // the saved one is kept for its creator and the team's admins
-    expect((await guest.client.get(`/api/boards/${saved.id}`)).status).toBe(404);
+    // the saved one stays with the people in it, and nobody else
+    expect((await guest.client.get(`/api/boards/${saved.id}`)).status).toBe(200);
     expect((await owner.client.get(`/api/boards/${saved.id}`)).status).toBe(200);
+    expect((await (await signUp(t.app, 'Stranger')).client.get(`/api/boards/${saved.id}`)).status).toBe(404);
   });
 });

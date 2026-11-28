@@ -59,7 +59,7 @@ Lost both the password and that browser: `./launch.sh unlock <team>` on the serv
 | GET / POST | `/api/teams/:teamId/templates` | POST: `name, description?, columns[{title,color,description?}]` | viewer / admin |
 | DELETE | `/api/templates/:templateId` | | admin |
 | POST | `/api/teams/:teamId/current` | | viewer. The team's current (newest open) board as `{ boardId }`, created from the default template if there is none and you're a member or admin; `null` for viewers |
-| GET | `/api/teams/:teamId/boards` | `?status=open\|archived` | viewer |
+| GET | `/api/teams/:teamId/boards` | `?status=open\|archived` | viewer. Private boards only for the people in them |
 | POST | `/api/teams/:teamId/boards` | `title, templateId? \| columns?, settings?, carryOver?, private?, password?` (password only with `private`) | member |
 | GET | `/api/teams/:teamId/actions` | `?status=open\|done` | viewer |
 | POST | `/api/teams/:teamId/actions` | `title, ownerId?, dueDate? (YYYY-MM-DD), boardId?, cardId?` | member |
@@ -70,12 +70,12 @@ Lost both the password and that browser: `./launch.sh unlock <team>` on the serv
 
 | Method | Path | Body / query | Needs |
 |---|---|---|---|
-| GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards (each with `likes` and whether you `liked` it), actions, members and your permissions. A private board answers 404 to anyone without its link (its creator and team admins excepted), and 423 with `lockedBoard` until its own password is typed |
+| GET | `/api/boards/:boardId` | | read. Full state: board, columns, cards (each with `likes` and whether you `liked` it), actions, members and your permissions. A private board answers 404 to anyone not in it (its creator, or someone who opened its link; team admins too), and 423 with `lockedBoard` until its own password is typed |
 | PATCH | `/api/boards/:boardId` | `title?, status?` (anonymous cards, lock and colors are team settings) | facilitate |
 | PUT | `/api/boards/:boardId/private` | `private`. On: hidden from the team, with a link code (`privateLink` in the board's state, for facilitators). Off: the link and password go. Returns `{ board, privateLink }` | facilitate |
 | POST | `/api/boards/:boardId/private/new-link` | | facilitate. A new code; everyone who came by the old one is cut off. `{ privateLink }` |
 | PUT | `/api/boards/:boardId/password` | `password` (min 4) or `null`. A private board's own password; everyone but its creator types the new one | facilitate |
-| POST | `/api/boards/:boardId/unlock` | `password`. Wrong: 400; too many tries: 429 | the board's link, creator or a team admin |
+| POST | `/api/boards/:boardId/unlock` | `password`. Wrong: 400; too many tries: 429 | in the board: its creator, or someone who opened its link |
 | POST | `/api/private/:code` | | signed in. Opens a private board's link for this person (until it's replaced): `{ boardId }`. Unknown or replaced: 404 |
 | POST | `/api/boards/:boardId/archive` | `name?, date? (YYYY-MM-DD)` | facilitate. Archives the board into the history as `date · name` (status `archived`) and starts a fresh current board with the same columns; carry-over cards move into same-named columns. Returns `{ saved, board }` and sends `board.next` to everyone on the old board |
 | DELETE | `/api/boards/:boardId` | | team admin |

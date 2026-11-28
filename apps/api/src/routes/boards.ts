@@ -12,7 +12,7 @@ import {
   actionItems, attachments, boardAccess, boards, cards, columns, replies, teamMembers, teams, templates, users,
 } from '../db/schema';
 import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
-import { notFromPrivate, requireBoard, requireTeam, seesPrivate, teamRole } from '../lib/access';
+import { inPrivateBoard, notFromPrivate, requireBoard, requireTeam } from '../lib/access';
 import { featureOn, getSettings, newBoardSettings, requireFeature, templateFor } from '../lib/instance';
 import { HttpError, badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
 import { newId, newToken } from '../lib/ids';
@@ -271,10 +271,8 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     if (!board?.private || !board.passwordHash) throw notFound('Board');
     const guessKey = `board:${board.id}:${req.ip}`;
     if (!guessAllowed(guessKey)) throw new HttpError(429, 'Too many tries. Wait a minute and try again');
-    // only someone who could get in but for the password may try it
-    const [row] = await db.select().from(boardAccess).where(and(eq(boardAccess.boardId, board.id), eq(boardAccess.userId, user.id)));
-    const role = await teamRole(db, user, board.teamId);
-    if (!(row?.linkVersion === board.linkVersion || seesPrivate(board, user, role))) throw notFound('Board');
+    // only someone in the board (but for the password) may try it
+    if (!(await inPrivateBoard(db, user, board))) throw notFound('Board');
     if (!(await verify(board.passwordHash, password))) {
       noteWrongGuess(guessKey);
       throw badRequest("That's not the password");
@@ -324,7 +322,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
     const nextId = newId();
     await db.transaction(async tx => {
       // a private board's link, password and people move to the fresh one, which stays private; the saved one is
-      // kept for its creator and the team's admins
+      // kept for the people in it
       await tx.update(boards).set({ title: savedTitle, status: 'archived', closedAt: new Date(), ...(board.private ? { shareToken: null } : {}) })
         .where(eq(boards.id, board.id));
       await tx.insert(boards).values({
@@ -335,6 +333,7 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
           passwordHash: board.passwordHash, passwordVersion: board.passwordVersion,
         } : {}),
       });
+      // everyone in it stays in both: the fresh board, and the saved one in its history
       if (board.private) {
         const people = await tx.select().from(boardAccess).where(eq(boardAccess.boardId, board.id));
         if (people.length) await tx.insert(boardAccess).values(people.map(p => ({ ...p, boardId: nextId })));

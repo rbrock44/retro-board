@@ -127,19 +127,28 @@ import { unlockLink } from '../core/unlock-link';
                 </ul>
               </details>
 
-              @if (isAdmin() && !auth.open()) {
+              @if (isAdmin()) {
                 <h2>Invite People</h2>
+                @if (auth.open()) {
+                  <p class="muted small">With no sign-in, people join a team only by its invite link. Send one to each person (or
+                    one with no limit to a group); without it, nobody else can see or open the team.</p>
+                }
                 <form class="row wrap" (ngSubmit)="createInvite()">
-                  <input name="email" type="email" [(ngModel)]="inviteEmail" placeholder="Email (optional, locks the link to one person)" class="grow">
+                  <!-- no sign-in: guests have no email, so links can't be locked to one -->
+                  @if (!auth.open()) {
+                    <input name="email" type="email" [(ngModel)]="inviteEmail" placeholder="Email (optional, locks the link to one person)" class="grow">
+                  }
                   <select name="role" [(ngModel)]="inviteRole" aria-label="Role">
                     @for (r of roles; track r) { <option [value]="r">{{ r }}</option> }
                   </select>
                   <button class="btn primary" type="submit">Create Invite Link</button>
                 </form>
-                <form class="row wrap" (ngSubmit)="addExisting()">
-                  <input name="existing" type="email" [(ngModel)]="existingEmail" placeholder="Add someone who already has an account, by email" class="grow">
-                  <button class="btn" type="submit" [disabled]="!existingEmail">Add</button>
-                </form>
+                @if (!auth.open()) {
+                  <form class="row wrap" (ngSubmit)="addExisting()">
+                    <input name="existing" type="email" [(ngModel)]="existingEmail" placeholder="Add someone who already has an account, by email" class="grow">
+                    <button class="btn" type="submit" [disabled]="!existingEmail">Add</button>
+                  </form>
+                }
                 @if (invites().length) {
                   <ul class="invite-list">
                     @for (i of invites(); track i.id) {

@@ -39,17 +39,18 @@ The startup log line `sign-in providers` shows which providers are on and which 
 `AUTH_MODE=none` (`./launch.sh --auth none`) switches accounts off for the whole site:
 
 - Each browser gets a **guest** identity on its first visit (a session cookie, no password, no email)
-- Guests see every team and can create teams, start retros and add cards. Opening a team joins it as a **member**
-  (so they can own action items); the guest who made a team is its **admin**, and team admins promote, demote or
-  remove people from the team's Members tab
+- Guests can make teams, and see only the teams they're on. The guest who made a team is its **admin**; others
+  join only by its invite link (as the role the link says), never by opening a team's address. Team admins promote,
+  demote or remove people from the team's Members tab
 - Nobody is a **site admin** at first. `./launch.sh admin-code` (also printed by `./launch.sh` while nobody is
   admin) makes a one-time setup code; typing it on **Claim Admin** makes that guest a site admin, who can then make
-  other guests admins from the Admin page. "Who are you?" never offers a site admin, so picking a name can't take
-  one over; an admin on a new device uses a new code. Upgrading from a version where every guest was an admin
+  other guests admins from the Admin page. "Who are you?" offers only people who share a team with this browser,
+  and never a site admin or team admin, so picking a name can't take over a team or the site; an admin on a new
+  device is made admin again by another admin, or uses a new setup code. Upgrading from a version where every guest was an admin
   demotes them all (each team keeps its creator as admin), so claim it once after updating
 - The first time a guest adds a card or reply, they're asked for their name. The API refuses the write until they
   give one
-- Sign-up, sign-in, providers and invite links are all switched off
+- Sign-up, sign-in and providers are switched off. Invite links work, without an email (guests have none)
 
 It's either/or: in `accounts` mode guest sessions are ignored, so switching back signs guests out (their cards stay,
 under the names they gave). Use it only where everyone who can reach the site is trusted.

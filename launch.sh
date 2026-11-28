@@ -675,7 +675,7 @@ if [ "$access" = network ]; then
 fi
 say ""
 if [ "$mode" = none ]; then
-  say "No sign-in: anyone who can open that address can join any team and add cards."
+  say "No sign-in: anyone who can open that address can make a team; others join it only by its invite link."
   say "Whoever makes a team runs it; the site admin (Admin page) runs everything."
   # nobody is admin yet: a setup code to claim it with (a new one any time: ./launch.sh admin-code)
   dc exec -T app node dist/cli.js admin-code --if-no-admin 2>/dev/null | while IFS= read -r line; do say "  $line"; done

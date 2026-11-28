@@ -650,7 +650,7 @@ if ($access -eq 'network') {
 }
 Write-Host ''
 if ($mode -eq 'none') {
-  Write-Host 'No sign-in: anyone who can open that address can join any team and add cards.'
+  Write-Host 'No sign-in: anyone who can open that address can make a team; others join it only by its invite link.'
   Write-Host 'Whoever makes a team runs it; the site admin (Admin page) runs everything.'
   # nobody is admin yet: a setup code to claim it with (a new one any time: launch.cmd admin-code)
   $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'

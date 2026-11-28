@@ -1,5 +1,5 @@
 import { hash, verify } from '@node-rs/argon2';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { sanitizeTokens, type AuthConfigDto } from '@retro/shared';
@@ -8,7 +8,7 @@ import {
 } from '../auth/sessions';
 import { createGuest, createUser, findUserByEmail, resolveExternalLogin, toMeDto, userCount } from '../auth/users';
 import type { Ctx } from '../context';
-import { identities, users, type User } from '../db/schema';
+import { identities, teamMembers, users, type User } from '../db/schema';
 import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser, unauthorized } from '../lib/http';
 import { getSettings } from '../lib/instance';
 import { acceptInvite, findValidInvite } from '../lib/invites';
@@ -49,12 +49,13 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
 
   const open = config.authMode === 'none';
 
-  // In no-sign-in mode there are no accounts to create or sign in to.
+  // In no-sign-in mode there are no accounts to create or sign in to. (Invite links still work: they're how a
+  // guest joins a team.)
   app.addHook('onRequest', async (req, reply) => {
     if (!open) return;
     const path = req.url.split('?')[0];
     const blocked = ['/api/auth/signup', '/api/auth/login', '/api/auth/password'].includes(path) ||
-      /^\/api\/auth\/[^/]+\/(start|callback)$/.test(path) || path.startsWith('/api/invites/');
+      /^\/api\/auth\/[^/]+\/(start|callback)$/.test(path);
     if (blocked) return reply.code(404).send({ error: 'Sign-in is turned off on this site' });
   });
 
@@ -93,14 +94,24 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
 
   /**
    * No-sign-in mode: "I'm one of these people". Switches this browser to an existing guest, so someone on a new
-   * device (or after clearing cookies) carries on as themselves. Never to a site admin: that would hand anyone
-   * the admin's rights; an admin on a new device uses a fresh setup code instead.
+   * device (or after clearing cookies) carries on as themselves, once they're back on one of their teams (an invite
+   * link). Only someone who shares a team with this browser, and never anyone who runs something: a site admin or
+   * a team admin, since picking their name would hand over their rights. They get back in another way (a new setup
+   * code, or a team admin promoting them again).
    */
   app.post('/api/auth/guest/claim', async (req, reply) => {
     if (!open) throw notFound();
     const { userId } = parse(z.object({ userId: z.string().min(1).max(64) }), req.body);
     const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!target || !target.guest || !target.name || target.disabled || target.role === 'admin') throw notFound('Person');
+    const me = req.user;
+    const runsATeam = await db.select({ t: teamMembers.teamId }).from(teamMembers)
+      .where(and(eq(teamMembers.userId, target.id), eq(teamMembers.role, 'admin'))).limit(1);
+    if (runsATeam.length) throw notFound('Person');
+    const shared = me ? await db.select({ t: teamMembers.teamId }).from(teamMembers)
+      .where(and(eq(teamMembers.userId, target.id), inArray(teamMembers.teamId,
+        db.select({ t: teamMembers.teamId }).from(teamMembers).where(eq(teamMembers.userId, me.id))))).limit(1) : [];
+    if (!shared.length) throw notFound('Person');
     if (req.sessionId) await deleteSession(db, req.sessionId);
     await startSession(reply, target, req.headers['user-agent']);
     return toMeDto(db, target);

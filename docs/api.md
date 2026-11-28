@@ -20,7 +20,7 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/auth/config` | | `mode` (`accounts` or `none`), `site` (name, theme, `features` switched on), enabled sign-in methods, whether GIF search is on, `needsSetup` on a fresh install, `needsAdmin` with no sign-in and no site admin yet |
 | POST | `/api/auth/guest` | | `AUTH_MODE=none` only: gives the browser a guest session (or returns the current one) |
-| POST | `/api/auth/guest/claim` | `userId` | `AUTH_MODE=none` only: "that's me", switch this browser to an existing named guest (never a site admin: 404) |
+| POST | `/api/auth/guest/claim` | `userId` | `AUTH_MODE=none` only: "that's me", switch this browser to an existing named guest who shares a team with it (never a site admin or team admin: 404) |
 | POST | `/api/auth/admin-code` | `code` | `AUTH_MODE=none` only: the setup code from `./launch.sh admin-code` makes this guest a site admin; the code then stops working. Wrong: 400; too many tries: 429 |
 | POST | `/api/auth/guest/new` | | `AUTH_MODE=none` only: start over as a new, unnamed guest |
 | POST | `/api/auth/signup` | `email, name, password, inviteToken?` | Subject to `local.signup` |

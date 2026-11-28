@@ -56,11 +56,16 @@ describe('upload size limits (Admin > Customize > Features)', () => {
 
     // room for about one and a half of these
     await owner.client.patch('/api/admin/settings', { maxStorageGb: (first.body.size * 1.5) / 1024 ** 3 });
+    expect((await owner.client.get('/api/auth/config')).body.site.uploadsFull).toBe(false);
     const full = await upload(owner.client.cookie, board.id, 'b.mp4', 'video/mp4', video(0.001));
     expect(full.status).toBe(507);
     expect(full.body.error).toMatch(/room for uploads .* is full/);
+    // used up: the app turns attaching off and says why
+    await owner.client.patch('/api/admin/settings', { maxStorageGb: first.body.size / 1024 ** 3 });
+    expect((await owner.client.get('/api/auth/config')).body.site.uploadsFull).toBe(true);
 
     await owner.client.patch('/api/admin/settings', { maxStorageGb: null });
+    expect((await owner.client.get('/api/auth/config')).body.site.uploadsFull).toBe(false);
     expect((await upload(owner.client.cookie, board.id, 'b.mp4', 'video/mp4', video(0.001))).status).toBe(200);
   });
 });

@@ -504,7 +504,8 @@ export class DemoBackend {
   private routes: [string, RegExp, (p: string[], body: any, q: URLSearchParams) => unknown][] = [
     // ---- auth ----
     ['GET', /^\/api\/auth\/config$/, (): AuthConfigDto => ({
-      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features, maxImageMb: this.site().maxImageMb, maxVideoMb: this.site().maxVideoMb }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: 'demo', needsSetup: false,
+      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features, maxImageMb: this.site().maxImageMb, maxVideoMb: this.site().maxVideoMb,
+        uploadsFull: this.site().maxStorageGb !== null && this.uploadUsage().bytes >= this.site().maxStorageGb! * 1024 ** 3 }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: 'demo', needsSetup: false,
     })],
     ['GET', /^\/api\/auth\/me$/, () => this.meDto()],
     ['POST', /^\/api\/auth\/guest$/, () => this.meDto()],

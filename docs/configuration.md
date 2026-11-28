@@ -103,8 +103,9 @@ uploads that never made it onto a card after a day (an add-card box that was clo
 bucket is touched.
 
 Admin → Customize → Your Data shows how much uploads use, and can limit the room for all of them together (in GB, no
-limit to start with). Once it's full, new uploads are refused with a message saying so, until files are deleted or the
-limit goes up.
+limit to start with). Once it's full, the attach button in the add-card box is turned off and says why (on the next
+page load, or straight away for someone whose upload hit the limit), and new uploads are refused, until files are
+deleted or the limit goes up.
 
 ## GIF search
 

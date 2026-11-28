@@ -123,7 +123,9 @@ export interface InstanceSettingsAdminDto {
 export interface AuthConfigDto {
   mode: AuthMode;
   /** Public bits of the instance settings */
-  site: { name: string; theme: ThemePreference | null; features: Features; maxImageMb: number; maxVideoMb: number };
+  site: { name: string; theme: ThemePreference | null; features: Features; maxImageMb: number; maxVideoMb: number;
+    /** The room for uploads (Admin > Customize > Your Data) is used up: attaching files is off until there's room */
+    uploadsFull?: boolean };
   /** PUBLIC_URL: the address people are meant to use (links that get shared are built from it) */
   publicUrl: string;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };

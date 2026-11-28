@@ -12,6 +12,7 @@ import { identities, users, type User } from '../db/schema';
 import { badRequest, forbidden, noContent, notFound, parse, requireUser, unauthorized } from '../lib/http';
 import { getSettings } from '../lib/instance';
 import { acceptInvite, findValidInvite } from '../lib/invites';
+import { uploadUsage } from '../lib/storage-usage';
 
 const email = z.string().trim().toLowerCase().email('enter a valid email').max(200);
 const password = z.string().min(8, 'use at least 8 characters').max(200);
@@ -60,7 +61,10 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     const local = { enabled: ctx.auth.local.enabled, signup: site.signup };
     return {
     mode: config.authMode,
-    site: { name: site.siteName, theme: site.theme, features: site.features, maxImageMb: site.maxImageMb, maxVideoMb: site.maxVideoMb },
+    site: {
+      name: site.siteName, theme: site.theme, features: site.features, maxImageMb: site.maxImageMb, maxVideoMb: site.maxVideoMb,
+      uploadsFull: site.maxStorageGb !== null && (await uploadUsage(db)).bytes >= site.maxStorageGb * 1024 ** 3,
+    },
     publicUrl: config.publicUrl,
     local: open ? { ...local, enabled: false } : local,
     providers: open ? [] : ctx.auth.list(),

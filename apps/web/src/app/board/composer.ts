@@ -2,7 +2,7 @@ import { Component, ElementRef, afterNextRender, computed, inject, input, output
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { AttachmentDto } from '@retro/shared';
-import { Api, errorMessage } from '../core/api.service';
+import { Api, ApiError, errorMessage } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
 import { GifPicker } from './gif-picker';
@@ -61,7 +61,9 @@ let hintCount = 0;
       <div class="composer-bar">
         <input #file type="file" hidden multiple [accept]="acceptTypes()" (change)="onPick($event)">
         @if (acceptTypes()) {
-          <button type="button" class="icon-btn" (click)="file.click()" [title]="attachLabel()" [attr.aria-label]="attachLabel()">📎</button>
+          <!-- off while the site's room for uploads is full, saying so, rather than failing after the file is picked -->
+          <button type="button" class="icon-btn" (click)="file.click()" [disabled]="uploadsFull()"
+                  [title]="uploadsFull() ? fullMessage : attachLabel()" [attr.aria-label]="uploadsFull() ? fullMessage : attachLabel()">📎</button>
         }
         @if (auth.config()?.gifSearch && auth.on('gifs')) {
           <button type="button" class="icon-btn gif-btn" (click)="gifOpen.set(true)" title="Add a GIF" aria-label="Add a GIF">GIF</button>
@@ -187,8 +189,12 @@ export class Composer {
     return 'Attach ' + (kinds.length > 1 ? kinds.slice(0, -1).join(', ') + ' or ' + kinds.at(-1) : kinds[0] ?? 'a file');
   });
 
+  protected uploadsFull = computed(() => !!this.auth.config()?.site.uploadsFull);
+  protected readonly fullMessage = "Attaching files is off: this site's room for uploads is full. An admin can make room or raise the limit";
+
   /** Pasted or dropped files skip the picker, so check them here too */
   private allowed(file: File): string | null {
+    if (this.uploadsFull()) return this.fullMessage;
     if (file.type === 'image/gif' && !this.auth.on('gifs')) return 'GIFs are turned off on this site';
     if (file.type.startsWith('image/') && file.type !== 'image/gif' && !this.auth.on('images')) return 'Image uploads are turned off on this site';
     if (file.type.startsWith('video/') && !this.auth.on('videos')) return 'Video uploads are turned off on this site';
@@ -219,6 +225,10 @@ export class Composer {
       this.dropUpload(key);
     } catch (err) {
       this.uploads.update(list => list.map(x => (x.key === key ? { ...x, error: errorMessage(err) } : x)));
+      // it filled up since the page loaded: turn attaching off now, not on the next visit
+      if (err instanceof ApiError && err.status === 507) {
+        this.auth.config.update(c => (c ? { ...c, site: { ...c.site, uploadsFull: true } } : c));
+      }
     }
   }
 

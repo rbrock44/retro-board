@@ -151,30 +151,38 @@ describe('realtime', () => {
     const sam = await addMember(t.app, owner.client, team.id, 'member', 'Sam');
     const kim = await addMember(t.app, owner.client, team.id, 'member', 'Kim');
 
+    const sockets: Socket[] = [];
     const open = (cookie: string) => new Promise<Socket>((resolve, reject) => {
       const s = connect(`http://127.0.0.1:${port}`, { path: '/socket.io', transports: ['websocket'], extraHeaders: { cookie } });
+      sockets.push(s); // closed at the end even when turned away
       s.on('connect', () => s.emit(SOCKET_EVENTS.join, board.id, (r: { ok: boolean }) => (r.ok ? resolve(s) : reject(new Error('join')))));
       s.on('connect_error', reject);
     });
     const events = (s: Socket) => { const got: BoardEvent[] = []; s.on(SOCKET_EVENTS.event, (e: BoardEvent) => got.push(e)); return got; };
     const settle = () => new Promise(r => setTimeout(r, 300));
-    const ownerSock = await open(owner.client.cookie), samSock = await open(sam.client.cookie), kimSock = await open(kim.client.cookie);
-    const ownerGot = events(ownerSock), samGot = events(samSock), kimGot = events(kimSock);
+    try {
+      const samSock = await open(sam.client.cookie), kimSock = await open(kim.client.cookie);
+      await open(owner.client.cookie);
+      const samGot = events(samSock), kimGot = events(kimSock);
 
-    // Sam is removed from the team: told, and gets nothing after that
-    await owner.client.del(`/api/teams/${team.id}/members/${sam.user.id}`);
-    await settle();
-    expect(samGot.some(e => e.type === 'access.lost' && e.boardId === board.id)).toBe(true);
-    await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: state.columns[0].id, body: 'after removal' });
-    await settle();
-    expect(samGot.some(e => e.type === 'card.upsert')).toBe(false);
-    expect(kimGot.some(e => e.type === 'card.upsert')).toBe(true);
+      // Sam is removed from the team: told, and gets nothing after that
+      await owner.client.del(`/api/teams/${team.id}/members/${sam.user.id}`);
+      await settle();
+      expect(samGot.some(e => e.type === 'access.lost' && e.boardId === board.id)).toBe(true);
+      await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: state.columns[0].id, body: 'after removal' });
+      await settle();
+      expect(samGot.some(e => e.type === 'card.upsert')).toBe(false);
+      expect(kimGot.some(e => e.type === 'card.upsert')).toBe(true);
 
-    // a new team password: Kim hasn't typed it, the owner's own browser still gets in
-    await owner.client.put(`/api/teams/${team.id}/password`, { password: 'sprint' });
-    await settle();
-    expect(kimGot.some(e => e.type === 'access.lost')).toBe(true);
-    expect(ownerGot.some(e => e.type === 'access.lost')).toBe(false);
-    for (const s of [ownerSock, samSock, kimSock]) s.close();
+      // a new team password: Kim hasn't typed it, so she's out. Every connection made before it is told (their
+      // cookies are from before), and the browser reconnects with its current ones: the owner's gets back in.
+      await owner.client.put(`/api/teams/${team.id}/password`, { password: 'sprint' });
+      await settle();
+      expect(kimGot.some(e => e.type === 'access.lost')).toBe(true);
+      await expect(open(kim.client.cookie)).rejects.toThrow('join');
+      await expect(open(owner.client.cookie)).resolves.toBeTruthy();
+    } finally {
+      for (const s of sockets) s.close();
+    }
   });
 });

@@ -33,6 +33,10 @@ Who opens it
   --network                 same as --access network
   --url URL                 address people open, e.g. https://retro.example.com (sets --access domain)
   --port N                  port on this machine (default 8080)
+  --bind local|all          local: only this computer can reach the port (a tunnel or proxy on this
+                                   computer passes people in, e.g. cloudflared)
+                            all:   any computer that can reach this one
+                            Default: local with --access local, all otherwise
 
 Sign-in
   --auth accounts|none      accounts: people sign in to see anything (default)
@@ -138,13 +142,14 @@ $optionKeys = [ordered]@{
   '--github-id' = 'GITHUB_CLIENT_ID'; '--github-secret' = 'GITHUB_CLIENT_SECRET'
   '--ms-id' = 'MS_CLIENT_ID'; '--ms-secret' = 'MS_CLIENT_SECRET'; '--ms-tenant' = 'MS_TENANT'
   '--okta-issuer' = 'OKTA_ISSUER'; '--okta-id' = 'OKTA_CLIENT_ID'; '--okta-secret' = 'OKTA_CLIENT_SECRET'
-  '--port' = 'PORT'; '--url' = 'PUBLIC_URL'; '--giphy-key' = 'GIPHY_API_KEY'; '--tenor-key' = 'TENOR_API_KEY'
+  '--port' = 'PORT'; '--bind' = 'BIND'; '--url' = 'PUBLIC_URL'; '--giphy-key' = 'GIPHY_API_KEY'; '--tenor-key' = 'TENOR_API_KEY'
   '--auth' = 'AUTH_MODE'; '--signup' = 'LOCAL_SIGNUP'; '--access' = 'ACCESS'
   '--data' = 'DATA_STORAGE'; '--site-name' = 'SITE_NAME'; '--theme' = 'DEFAULT_THEME'; '--accent' = 'DEFAULT_ACCENT'
   '--columns' = 'DEFAULT_TEMPLATE'; '--disable' = 'DISABLED_FEATURES'
 }
 $choices = @{
   '--auth' = @('accounts', 'none'); '--signup' = @('open', 'invite', 'closed'); '--access' = @('local', 'network', 'domain')
+  '--bind' = @('local', 'all')
   '--data' = @('folder', 'volumes')
   '--theme' = @('auto', 'light', 'dark', 'midnight', 'forest', 'sunset', 'grape', 'high-contrast')
   '--columns' = @('went-well', 'start-stop-continue', 'mad-sad-glad', '4ls', 'sailboat', 'blank')
@@ -491,6 +496,9 @@ function Resolve-Address {
     default { if (-not $script:url) { $script:url = "http://localhost:$($script:port)" } }
   }
   Set-EnvValue 'PUBLIC_URL' $script:url
+  # Who can reach the port: Docker otherwise publishes it on every network the computer is on
+  $bind = Or (Get-EnvValue 'BIND') $(if ($script:access -eq 'local') { 'local' } else { 'all' })
+  Set-EnvValue 'PUBLISH_ON' $(if ($bind -eq 'local') { '127.0.0.1:' } else { '' })
 }
 Resolve-Address
 $mode = Get-EnvValue 'AUTH_MODE'

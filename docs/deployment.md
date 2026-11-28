@@ -76,8 +76,12 @@ server {
 
 **Traefik**: add labels to the `app` service in `docker-compose.yml`; WebSockets work without extra config.
 
-When the proxy runs on the same host, you can stop publishing the port publicly by changing `ports` in
-`docker-compose.yml` to `"127.0.0.1:${PORT:-8080}:8080"`.
+When the proxy or tunnel runs on the same host, keep the port to that host with `./launch.sh --bind local`
+(Docker otherwise publishes it on every network the server is on, past its firewall).
+
+The app believes the client address a proxy reports only when the proxy connects from this machine or a
+private network (`TRUST_PROXY`, see [configuration](configuration.md)), so visitors can't fake it to get around
+the limits on password guesses. A proxy on a public address needs `TRUST_PROXY` set to it.
 
 ## S3 storage for uploads
 

@@ -14,6 +14,7 @@ import { openDatabase } from './db';
 import { users } from './db/schema';
 import { HttpError } from './lib/http';
 import { attachTeamKeys } from './lib/team-lock';
+import { securityHeaders } from './lib/security';
 import { featureOn } from './lib/instance';
 import { createStorage, type Storage } from './lib/storage';
 import { createHub, noopHub, type Hub } from './realtime';
@@ -41,7 +42,7 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
   const { config } = opts;
   const app = Fastify({
     logger: config.logLevel === 'silent' ? false : { level: config.logLevel },
-    trustProxy: true,
+    trustProxy: config.trustProxy,
     bodyLimit: 1024 * 1024,
   });
 
@@ -71,6 +72,9 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
 
   app.decorateRequest('user', null);
   app.decorateRequest('sessionId', null);
+
+  const webRoot = config.webDist ? resolve(config.webDist) : null;
+  securityHeaders(app, webRoot);
 
   app.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return;
@@ -106,7 +110,6 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
     return reply.type('text/html').sendFile('index.html');
   });
 
-  const webRoot = config.webDist ? resolve(config.webDist) : null;
   if (webRoot && existsSync(resolve(webRoot, 'index.html'))) {
     await app.register(fastifyStatic, { root: webRoot, wildcard: false, index: ['index.html'] });
   }

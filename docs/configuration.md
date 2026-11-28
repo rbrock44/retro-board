@@ -14,6 +14,8 @@ Google, GitHub, Microsoft and Okta credentials from the `GOOGLE_*`, `GITHUB_*`, 
 |---|---|---|
 | `PORT` | `8080` | Port to listen on. With Docker, the port on the host |
 | `HOST` | `0.0.0.0` | Interface to bind (outside Docker) |
+| `BIND` | | Read only by the launch scripts (`--bind`): `local` publishes the Docker port on `127.0.0.1` only, for a proxy or tunnel on the same machine; `all` on every network. Empty: `local` when `ACCESS=local`, else `all`. They write it to `PUBLISH_ON` for Docker |
+| `TRUST_PROXY` | `loopback, linklocal, uniquelocal` | Which hops may report the visitor's address (`X-Forwarded-For`), used for the limits on password guesses. The default trusts this machine and private networks; `true` every hop (only behind a proxy that overwrites the header), a number that many hops, `false` none, or a list of addresses and ranges |
 | `ACCESS` | `local` | Read only by the launch scripts: `local`, `network` (sets `PUBLIC_URL` to this computer's network address on every launch) or `domain` (keeps your `PUBLIC_URL`) |
 | `PUBLIC_URL` | `http://localhost:<PORT>` | The address people type. Used for OAuth redirect URLs and secure-cookie detection |
 | `SESSION_SECRET` | random per start | Signs cookies. **Set it**: without one, everyone is signed out on every restart. Launch scripts generate one |

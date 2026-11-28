@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseTrustProxy } from './lib/security';
 
 export interface AppConfig {
   port: number;
@@ -15,6 +16,8 @@ export interface AppConfig {
   authConfigPath: string;
   /** accounts (default) or none: no sign-in, every visitor gets a guest identity that can do everything */
   authMode: 'accounts' | 'none';
+  /** Which hops may report the visitor's address (TRUST_PROXY; see lib/security.ts) */
+  trustProxy: boolean | number | string;
   /** Where the data is on the host, as the launch scripts describe it (shown to admins) */
   dataLocation: string | null;
   /** Starting values for the instance settings (admins can change them in the app) */
@@ -112,6 +115,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     cookieSecure: secureSetting === 'auto' ? publicUrl.startsWith('https://') : secureSetting === 'true',
     authConfigPath: env.AUTH_CONFIG || defaultAuthConfig(),
     authMode: env.AUTH_MODE === 'none' ? 'none' : 'accounts',
+    trustProxy: parseTrustProxy(env.TRUST_PROXY),
     dataLocation: env.DATA_LOCATION?.trim() || null,
     defaults: {
       siteName: (env.SITE_NAME ?? '').trim() || 'Retro Board',

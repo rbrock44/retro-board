@@ -42,6 +42,14 @@ check DISABLED_FEATURES 'videos,gifs'
 [ -d data/postgres ] && [ -d data/uploads ] && echo "  ok   ./data folders made" || { echo "  FAIL ./data folders"; fail=1; }
 grep -q "Your data stays on this computer, in $WORK/w/data" out.txt && echo "  ok   says where data lives" || { echo "  FAIL data message"; fail=1; }
 if [ "$(id -u)" != 0 ]; then check APP_UID "$(id -u)"; fi
+check PUBLISH_ON '127.0.0.1:'
+
+echo "-- who can reach the port"
+sh launch.sh --url https://retro.example.com -y </dev/null >out.txt 2>&1
+check PUBLISH_ON ''
+sh launch.sh --bind local -y </dev/null >out.txt 2>&1
+check BIND local
+check PUBLISH_ON '127.0.0.1:'
 
 echo "-- switching to volumes"
 sh launch.sh --data volumes -y </dev/null >out.txt 2>&1
@@ -68,7 +76,7 @@ grep -E '^PUBLIC_URL=http://[0-9.]+:8181$' .env >/dev/null && echo "  ok   netwo
 
 echo "-- bad options"
 fresh
-for a in "--disable telepathy" "--data cloud" "--theme neon" "--accent red" "--votes 5" "--port x" "--bogus 1"; do
+for a in "--disable telepathy" "--data cloud" "--theme neon" "--accent red" "--votes 5" "--port x" "--bind lan" "--bogus 1"; do
   if sh launch.sh $a </dev/null >/dev/null 2>&1; then echo "  FAIL accepted $a"; fail=1; else echo "  ok   rejects $a"; fi
 done
 sh launch.sh --help | grep -q "Your data" && echo "  ok   --help" || { echo "  FAIL --help"; fail=1; }

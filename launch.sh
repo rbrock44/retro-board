@@ -35,6 +35,10 @@ Who opens it
   --network                 same as --access network
   --url URL                 address people open, e.g. https://retro.example.com (sets --access domain)
   --port N                  port on this machine (default 8080)
+  --bind local|all          local: only this computer can reach the port (a tunnel or proxy on this
+                                   computer passes people in, e.g. cloudflared)
+                            all:   any computer that can reach this one
+                            Default: local with --access local, all otherwise
 
 Sign-in
   --auth accounts|none      accounts: people sign in to see anything (default)
@@ -136,7 +140,7 @@ while [ $# -gt 0 ]; do
     -h|--help) usage; exit 0 ;;
     -y|--yes) ask=0; shift; continue ;;
     --network) add_set ACCESS network; shift; continue ;;
-    --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--url|--giphy-key|--tenor-key) ;;
+    --access|--auth|--signup|--admin-emails|--google-*|--github-*|--ms-*|--okta-*|--port|--bind|--url|--giphy-key|--tenor-key) ;;
     --data|--site-name|--theme|--accent|--columns|--disable) ;;
     *) warn "Unknown option $opt (see ./launch.sh --help)"; exit 2 ;;
   esac
@@ -163,6 +167,9 @@ while [ $# -gt 0 ]; do
     --port)
       case "$val" in ''|*[!0-9]*) warn "--port is a number"; exit 2 ;; esac
       add_set PORT "$val" ;;
+    --bind)
+      case "$val" in local|all) ;; *) warn "--bind is local or all"; exit 2 ;; esac
+      add_set BIND "$val" ;;
     --url) add_set PUBLIC_URL "${val%/}"; add_set ACCESS domain ;;
     --access)
       case "$val" in local|network|domain) ;; *) warn "--access is local, network or domain"; exit 2 ;; esac
@@ -542,6 +549,10 @@ work_out_address() {
     domain) url=${url:-http://localhost:$port} ;;
   esac
   set_env PUBLIC_URL "$url"
+  # Who can reach the port: Docker otherwise publishes it on every network the computer is on
+  bind=$(get_env BIND)
+  if [ -z "$bind" ]; then if [ "$access" = local ]; then bind=local; else bind=all; fi; fi
+  if [ "$bind" = local ]; then set_env PUBLISH_ON "127.0.0.1:"; else set_env PUBLISH_ON ""; fi
 }
 work_out_address
 mode=$(get_env AUTH_MODE)

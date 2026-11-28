@@ -8,8 +8,9 @@ import {
 import { toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
 import {
-  actionItems, attachments, boards, cards, columns, teamMembers, teams, templates, users,
+  actionItems, attachments, boards, cards, columns, replies, teamMembers, teams, templates, users,
 } from '../db/schema';
+import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
 import { requireBoard, requireTeam } from '../lib/access';
 import { featureOn, getSettings, newBoardSettings, requireFeature, templateFor } from '../lib/instance';
 import { badRequest, noContent, notFound, parse, requireUser, zColor, zPosition } from '../lib/http';
@@ -275,7 +276,9 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
   app.delete('/api/boards/:boardId', async (req, reply) => {
     const user = requireUser(req);
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'admin');
+    const files = await attachmentFiles(ctx, eq(attachments.boardId, board.id));
     await db.delete(boards).where(eq(boards.id, board.id));
+    await dropUnusedFiles(ctx, files);
     return noContent(reply);
   });
 
@@ -359,7 +362,12 @@ export async function boardRoutes(app: FastifyInstance, ctx: Ctx) {
       return noContent(reply);
     }
     const gone = await db.select({ id: cards.id }).from(cards).where(eq(cards.columnId, col.id));
+    const goneIds = gone.map(c => c.id);
+    const replyIds = goneIds.length ? (await db.select({ id: replies.id }).from(replies).where(inArray(replies.cardId, goneIds))).map(r => r.id) : [];
+    const files = goneIds.length ? await attachmentFiles(ctx, replyIds.length
+      ? or(inArray(attachments.cardId, goneIds), inArray(attachments.replyId, replyIds)) : inArray(attachments.cardId, goneIds)) : [];
     await db.delete(columns).where(eq(columns.id, col.id));
+    await dropUnusedFiles(ctx, files);
     ctx.hub.emitBoard(col.boardId, { type: 'column.delete', id: col.id });
     for (const c of gone) ctx.hub.emitBoard(col.boardId, { type: 'card.delete', id: c.id });
     return noContent(reply);

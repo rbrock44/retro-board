@@ -8,6 +8,7 @@ import { attachments, cards, columns, reactions, replies, votes, type User } fro
 import { canEditOwn, loadCard, loadReply, requireBoard } from '../lib/access';
 import { badRequest, forbidden, noContent, notFound, parse, requireNamed, requireUser, zBody, zId, zPosition } from '../lib/http';
 import { requireFeature } from '../lib/instance';
+import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
 import { newId } from '../lib/ids';
 import { loadCards } from '../lib/serialize';
 import { broadcastCards } from './boards';
@@ -90,7 +91,10 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     }).where(eq(cards.id, card.id));
     if (body.attachmentIds?.length) await claimAttachments(db, user, card.boardId, body.attachmentIds, { cardId: card.id });
     if (body.removeAttachmentIds?.length) {
-      await db.delete(attachments).where(and(eq(attachments.cardId, card.id), inArray(attachments.id, body.removeAttachmentIds)));
+      const which = and(eq(attachments.cardId, card.id), inArray(attachments.id, body.removeAttachmentIds));
+      const files = await attachmentFiles(ctx, which);
+      await db.delete(attachments).where(which);
+      await dropUnusedFiles(ctx, files);
     }
     await emit(card.boardId, [card.id]);
     return { ok: true };
@@ -204,7 +208,11 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     const kids = await db.update(cards).set({ parentId: null }).where(eq(cards.parentId, card.id)).returning({ id: cards.id });
     const replyIds = (await db.select({ id: replies.id }).from(replies).where(eq(replies.cardId, card.id))).map(r => r.id);
     await db.delete(reactions).where(inArray(reactions.targetId, [card.id, ...replyIds]));
+    // its files (and its replies'), removed once the rows are gone
+    const files = await attachmentFiles(ctx, replyIds.length
+      ? or(eq(attachments.cardId, card.id), inArray(attachments.replyId, replyIds)) : eq(attachments.cardId, card.id));
     await db.delete(cards).where(eq(cards.id, card.id));
+    await dropUnusedFiles(ctx, files);
     ctx.hub.emitBoard(card.boardId, { type: 'card.delete', id: card.id });
     if (kids.length) await emit(card.boardId, kids.map(k => k.id));
     return noContent(reply);
@@ -294,7 +302,9 @@ export async function cardRoutes(app: FastifyInstance, ctx: Ctx) {
     if (!canEditOwn(bctx, r.authorId, user.id)) throw forbidden('Only the author can delete this reply');
     const childIds = (await db.select({ id: replies.id }).from(replies).where(eq(replies.parentId, r.id))).map(x => x.id);
     await db.delete(reactions).where(inArray(reactions.targetId, [r.id, ...childIds]));
+    const files = await attachmentFiles(ctx, inArray(attachments.replyId, [r.id, ...childIds]));
     await db.delete(replies).where(or(eq(replies.id, r.id), eq(replies.parentId, r.id)));
+    await dropUnusedFiles(ctx, files);
     await emit(r.boardId, [r.cardId]);
     return noContent(reply);
   });

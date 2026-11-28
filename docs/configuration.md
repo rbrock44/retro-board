@@ -96,6 +96,12 @@ bytes, never the name or claimed type, so SVG, HTML and other files are refused.
 EXIF metadata (location, camera) and rotated upright, and large images get an 800px thumbnail. Files are served
 only to people who can see the board, with headers that stop browsers from running them.
 
+Deleting a card, reply, column, board or team removes its files too (a carried-over card shares its files with the
+original, so they stay while either uses them). A few minutes after starting, and then daily, the app also sweeps up
+uploads that never made it onto a card after a day (an add-card box that was closed) and any file under `boards/` or
+`teams/` that nothing points at, such as leftovers from versions before this cleanup. Nothing else in the folder or
+bucket is touched.
+
 ## GIF search
 
 | Variable | Default | Meaning |

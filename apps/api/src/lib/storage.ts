@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
-import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, resolve, sep } from 'node:path';
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
 import type { StorageConfig } from '../config';
 
@@ -11,6 +11,13 @@ export interface Storage {
   get(key: string, range?: ByteRange): Promise<{ stream: Readable; size: number | null } | null>;
   size(key: string): Promise<number | null>;
   remove(key: string): Promise<void>;
+  /** Every stored file whose key starts with `prefix`, with when it was written (for sweeping up files nothing uses) */
+  list(prefix: string): AsyncIterable<StoredFile>;
+}
+
+export interface StoredFile {
+  key: string;
+  modified: Date;
 }
 
 export interface ByteRange {
@@ -53,6 +60,23 @@ function localStorage(dir: string): Storage {
     },
     async remove(key) {
       await rm(pathFor(key), { force: true });
+    },
+    async *list(prefix) {
+      const start = resolve(root, prefix);
+      if (start !== root && !start.startsWith(root + sep)) return;
+      const walk = async function* (dir: string): AsyncGenerator<StoredFile> {
+        let entries;
+        try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries) {
+          const p = join(dir, e.name);
+          if (e.isDirectory()) yield* walk(p);
+          else if (e.isFile()) {
+            const s = await stat(p).catch(() => null);
+            if (s) yield { key: relative(root, p).split(sep).join('/'), modified: s.mtime };
+          }
+        }
+      };
+      yield* walk(start);
     },
   };
 }
@@ -99,6 +123,15 @@ function s3Storage(config: Extract<StorageConfig, { driver: 's3' }>): Storage {
     async remove(key) {
       const { sdk, client } = await clientPromise;
       await client.send(new sdk.DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
+    },
+    async *list(prefix) {
+      const { sdk, client } = await clientPromise;
+      let token: string | undefined;
+      do {
+        const out = await client.send(new sdk.ListObjectsV2Command({ Bucket: config.bucket, Prefix: prefix, ContinuationToken: token }));
+        for (const o of out.Contents ?? []) if (o.Key) yield { key: o.Key, modified: o.LastModified ?? new Date() };
+        token = out.IsTruncated ? out.NextContinuationToken : undefined;
+      } while (token);
     },
   };
 }

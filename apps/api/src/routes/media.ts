@@ -1,10 +1,11 @@
-import { and, eq, ne } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import sharp, { type Metadata } from 'sharp';
 import { z } from 'zod';
 import { FEATURE_FOR_ATTACHMENT, type AttachmentKind, type GifResultDto } from '@retro/shared';
 import type { Ctx } from '../context';
 import { attachments, teams } from '../db/schema';
+import { dropUnusedFiles } from '../lib/file-cleanup';
 import { canEditOwn, requireBoard, requireTeam } from '../lib/access';
 import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser } from '../lib/http';
 import { featureOn, requireFeature } from '../lib/instance';
@@ -281,15 +282,8 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
     const bctx = await requireBoard(db, user, a.boardId, 'write');
     if (!canEditOwn(bctx, a.uploaderId, user.id)) throw forbidden();
     await db.delete(attachments).where(eq(attachments.id, a.id));
-    // Carried-over cards share files with the original, so only delete bytes nobody else points at.
-    if (a.storageKey) {
-      const [other] = await db.select({ id: attachments.id }).from(attachments)
-        .where(and(eq(attachments.storageKey, a.storageKey), ne(attachments.id, a.id))).limit(1);
-      if (!other) {
-        await storage.remove(a.storageKey).catch(() => {});
-        if (a.thumbKey) await storage.remove(a.thumbKey).catch(() => {});
-      }
-    }
+    // carried-over cards share files with the original, so only files nobody else points at go
+    await dropUnusedFiles(ctx, [a.storageKey, a.thumbKey]);
     if (a.cardId) {
       const { broadcastCards } = await import('./boards');
       await broadcastCards(ctx, a.boardId, [a.cardId]);

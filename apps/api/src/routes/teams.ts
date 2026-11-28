@@ -8,8 +8,9 @@ import {
 import { findUserByEmail, toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
 import {
-  actionItems, boards, cards, invites, teamMembers, teams, templates, users, type Team, type User,
+  actionItems, attachments, boards, cards, invites, teamMembers, teams, templates, users, type Team, type User,
 } from '../db/schema';
+import { attachmentFiles, dropUnusedFiles } from '../lib/file-cleanup';
 import { requireTeam, teamRole } from '../lib/access';
 import { HttpError, badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
 import { hash, verify } from '@node-rs/argon2';
@@ -223,8 +224,9 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
   app.delete('/api/teams/:teamId', async (req, reply) => {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin');
+    const files = await attachmentFiles(ctx, inArray(attachments.boardId, db.select({ id: boards.id }).from(boards).where(eq(boards.teamId, team.id))));
     await db.delete(teams).where(eq(teams.id, team.id));
-    if (team.photoKey) await ctx.storage.remove(team.photoKey).catch(() => undefined);
+    await dropUnusedFiles(ctx, [...files, team.photoKey]);
     return noContent(reply);
   });
 

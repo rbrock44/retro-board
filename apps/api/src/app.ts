@@ -17,6 +17,7 @@ import { attachTeamKeys } from './lib/team-lock';
 import { securityHeaders } from './lib/security';
 import { featureOn } from './lib/instance';
 import { createStorage, type Storage } from './lib/storage';
+import { sweepFiles } from './lib/file-cleanup';
 import { createHub, noopHub, type Hub } from './realtime';
 import { actionRoutes } from './routes/actions';
 import { adminRoutes } from './routes/admin';
@@ -130,9 +131,17 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
 
   const prune = setInterval(() => void pruneSessions(ctx.db).catch(() => {}), 6 * 3600_000);
   prune.unref();
+  // files nothing uses (abandoned uploads, leftovers): a few minutes after starting, then daily
+  const sweep = () => void sweepFiles(ctx).then(r => { if (r.removed) app.log.info({ removed: r.removed }, 'removed unused files'); }, () => {});
+  const firstSweep = setTimeout(sweep, 5 * 60_000);
+  const sweeper = setInterval(sweep, 24 * 3600_000);
+  firstSweep.unref();
+  sweeper.unref();
 
   app.addHook('onClose', async () => {
     clearInterval(prune);
+    clearTimeout(firstSweep);
+    clearInterval(sweeper);
     await hubRef.current.close().catch(() => {});
     await database.close();
   });

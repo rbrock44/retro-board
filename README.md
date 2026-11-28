@@ -146,7 +146,9 @@ its default template), so people always land in the right place.
   column with the same name, linked back to where they came from and marked with a purple `Carried Over` band. If the
   new board has no such column they go in a `Carried Over` column instead. Each card is carried once
 - `Action Items` - Create them from a card (`⋯` → `Create Action Item`), from the board's `Action Items` panel, or on
-  the team page. Each has an owner and due date. Open items from every retro show on every new board until done
+  the team page. Each has an owner and due date. Open items from every retro show on every new board until done.
+  The panel opens from `Action Items (n)` in the board's tools, or the `A` button under Add Column (its badge counts
+  the open ones), as a popup that grows out of the button and shrinks back into it
 
 ### Demo Mode
 

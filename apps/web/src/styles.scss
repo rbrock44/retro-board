@@ -141,6 +141,10 @@ label.btn { flex-direction: row; font-size: inherit;
 .notice { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin: 0; }
 .card-surface { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 section.card-surface { padding: 1rem 1.25rem; }
+/* the stack's gap spaces a section; a paragraph's own margins would double it */
+section.card-surface.stack > p { margin: 0; }
+/* a hint under a checkbox belongs to it */
+section.card-surface.stack > .check + p.small { margin-top: -0.55rem; }
 .tag {
   display: inline-block; font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px;
   background: var(--surface-2); color: var(--muted); white-space: nowrap;

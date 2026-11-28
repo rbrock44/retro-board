@@ -261,11 +261,14 @@ const FOCUS_ACTIONS = '__actions__';
 
           @if (sidebar() && auth.on('actions')) {
             <aside #actionsPanel class="sidebar card-surface" aria-label="Action Items" (keydown.escape)="closeActions()">
-              <div class="row"><h2>Action Items</h2><div class="spacer"></div>
-                <button type="button" class="icon-btn" (click)="closeActions()" aria-label="Close action items">✕</button></div>
-              <p class="muted small">Open items from every retro in this team, plus the ones made here.</p>
-              <app-action-list [actions]="store.boardActions()" [members]="s.members" [teamId]="s.team.id" [boardId]="s.board.id"
-                               [canEdit]="perm().canVote" [showBoard]="true" />
+              <!-- a set width inside, so nothing rewraps while the column widens or folds -->
+              <div class="sidebar-inner">
+                <div class="row"><h2>Action Items</h2><div class="spacer"></div>
+                  <button type="button" class="icon-btn" (click)="closeActions()" aria-label="Close action items">✕</button></div>
+                <p class="muted small">Open items from every retro in this team, plus the ones made here.</p>
+                <app-action-list [actions]="store.boardActions()" [members]="s.members" [teamId]="s.team.id" [boardId]="s.board.id"
+                                 [canEdit]="perm().canVote" [showBoard]="true" />
+              </div>
             </aside>
           }
         </div>
@@ -497,7 +500,7 @@ export class BoardPage implements OnDestroy {
   protected sidebar = signal(false);
   private injector = inject(Injector);
   private actionsPanel = viewChild<ElementRef<HTMLElement>>('actionsPanel');
-  /** The button that opened Action Items: the popup grows out of it and goes back into it */
+  /** The button that opened Action Items: the column grows out of it and folds back into it */
   private actionsFrom: HTMLElement | null = null;
   private actionsMotion: Animation | null = null;
 
@@ -508,7 +511,6 @@ export class BoardPage implements OnDestroy {
     afterNextRender(() => {
       const panel = this.actionsPanel()?.nativeElement;
       if (!panel) return;
-      this.placeActions(panel, from);
       this.actionsMotion = this.morph(panel, from, false);
       panel.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
     }, { injector: this.injector });
@@ -524,31 +526,27 @@ export class BoardPage implements OnDestroy {
   }
 
   /**
-   * Puts the popup by the button that opened it: beside the one under Add Column, below the one in the board's tools.
-   * Phones get a full-screen sheet instead (the stylesheet's), so nothing is set there.
+   * Grows the Action Items column out of `button` (or, reversed, folds it back in): it widens from nothing, so the
+   * columns slide over to make room, while its contents grow from the button. Phones, where it's a full-screen sheet,
+   * only get the growing. Nothing moves for people who'd rather it didn't.
    */
-  private placeActions(panel: HTMLElement, from: HTMLElement) {
-    if (matchMedia('(max-width: 720px)').matches) return;
-    const b = from.getBoundingClientRect(), w = panel.offsetWidth, gap = 8, edge = 16;
-    const beside = from.classList.contains('actions-btn') && b.left - gap - w >= edge;
-    const top = Math.max(edge, beside ? b.top : b.bottom + gap);
-    const right = Math.max(edge, innerWidth - (beside ? b.left - gap : b.right));
-    Object.assign(panel.style, { top: `${top}px`, right: `${right}px`, maxHeight: `${innerHeight - top - edge}px` });
-  }
-
-  /** Grows `panel` out of `button` (or, reversed, shrinks it back in). Nothing moves for people who'd rather it didn't */
   private morph(panel: HTMLElement, button: HTMLElement, reverse: boolean): Animation | null {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
     const p = panel.getBoundingClientRect(), b = button.getBoundingClientRect();
     if (!p.width || !p.height) return null;
-    const small = `translate(${b.left - p.left}px, ${b.top - p.top}px) scale(${b.width / p.width}, ${b.height / p.height})`;
-    const frames: Keyframe[] = [
-      { transform: small, opacity: 0, borderRadius: '50%' },
-      { opacity: 1, offset: 0.35 },
-      { transform: 'none', opacity: 1, borderRadius: getComputedStyle(panel).borderRadius },
-    ];
-    return panel.animate(reverse ? [...frames].reverse() : frames,
-      { duration: reverse ? 200 : 280, easing: reverse ? 'cubic-bezier(.4,0,1,1)' : 'cubic-bezier(.2,.8,.2,1)', fill: reverse ? 'forwards' : 'none' });
+    const origin = `${b.left + b.width / 2 - p.left}px ${b.top + b.height / 2 - p.top}px`;
+    const sheet = matchMedia('(max-width: 720px)').matches;
+    const pad = getComputedStyle(panel).paddingLeft;
+    const closed: Keyframe = { transform: 'scale(0.12)', opacity: 0, transformOrigin: origin,
+      ...(sheet ? {} : { width: '0px', paddingLeft: '0px', paddingRight: '0px', marginLeft: '-1rem' }) };
+    const open: Keyframe = { transform: 'none', opacity: 1, transformOrigin: origin,
+      ...(sheet ? {} : { width: `${p.width}px`, paddingLeft: pad, paddingRight: pad, marginLeft: '0px' }) };
+    const frames = reverse ? [open, { opacity: 1, offset: 0.6 }, closed] : [closed, { opacity: 1, offset: 0.4 }, open];
+    panel.style.overflow = 'hidden'; // while it changes width; scrolls again once settled
+    const a = panel.animate(frames, { duration: reverse ? 240 : 320, easing: reverse ? 'cubic-bezier(.4,0,.8,.6)' : 'cubic-bezier(.2,.8,.2,1)',
+      fill: reverse ? 'forwards' : 'none' });
+    if (!reverse) a.finished.then(() => panel.style.removeProperty('overflow'), () => panel.style.removeProperty('overflow'));
+    return a;
   }
   protected exportOpen = signal(false);
   protected editingTitle = signal(false);

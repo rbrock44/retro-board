@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  COLOR_PRESETS, FEATURES, MAX_UPLOAD_MB_LIMIT, THEME_PRESETS, type FeatureKey, type Features,
+  COLOR_PRESETS, FEATURES, MAX_STORAGE_GB_LIMIT, MAX_UPLOAD_MB_LIMIT, THEME_PRESETS, type FeatureKey, type Features,
   type ColumnSpec, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto, type ThemePreference,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
@@ -148,6 +148,23 @@ type Key = keyof InstanceSettings;
           <h2>Your Data</h2>
           <p>Everything stays on the computer or server running this app. Nothing is sent anywhere else, except
             GIF searches (to Giphy or Tenor, if turned on) and signing in with a provider you set up.</p>
+          <!-- how much uploads take up, and the most they may -->
+          <div class="storage-use">
+            <p><strong>Uploads use {{ size(d.storage.used.bytes) }}</strong>
+              ({{ d.storage.used.files }} {{ d.storage.used.files === 1 ? 'file' : 'files' }})@if (form.maxStorageGb) { of {{ form.maxStorageGb }} GB }</p>
+            @if (form.maxStorageGb) {
+              <div class="meter" role="meter" aria-label="Room used for uploads" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="usedPct()">
+                <span [style.width.%]="usedPct()" [class.full]="usedPct() >= 90"></span></div>
+            }
+            <label class="check"><input type="checkbox" [checked]="form.maxStorageGb !== null" (change)="setStorageCap($any($event.target).checked)">
+              Limit the room for all uploads together</label>
+            @if (form.maxStorageGb !== null) {
+              <label class="size-limit">At most <input type="number" min="1" step="1" [max]="storageLimit" [(ngModel)]="form.maxStorageGb"> GB</label>
+              <p class="muted small">When it's full, new uploads are refused (with a message saying so) until files are deleted or this goes up.</p>
+            }
+            <p class="muted small">{{ hint('maxStorageGb') }}
+              @if (overridden('maxStorageGb')) { <button type="button" class="link-btn" (click)="reset('maxStorageGb')">Reset</button> }</p>
+          </div>
           @if (d.storage.location) {
             <p>It's kept in <code>{{ d.storage.location }}</code>.</p>
           } @else {
@@ -211,6 +228,26 @@ Every team, board and person here now is removed and the backup's take their pla
   protected saving = signal(false);
   protected form: InstanceSettings = null!;
   protected sizeLimit = MAX_UPLOAD_MB_LIMIT;
+  protected storageLimit = MAX_STORAGE_GB_LIMIT;
+
+  /** Bytes as people read them: 820 KB, 14.2 MB, 1.3 GB */
+  protected size(bytes: number) {
+    const units = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+    let v = bytes, i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${i ? v.toFixed(v < 10 ? 1 : 0) : v} ${units[i]}`;
+  }
+
+  protected usedPct() {
+    const cap = this.form.maxStorageGb, used = this.data()?.storage.used.bytes ?? 0;
+    return cap ? Math.min(100, Math.round((used / (cap * 1024 ** 3)) * 100)) : 0;
+  }
+
+  protected setStorageCap(on: boolean) {
+    // a starting point: room for what's there now and then some, in whole GB
+    const used = (this.data()?.storage.used.bytes ?? 0) / 1024 ** 3;
+    this.form.maxStorageGb = on ? Math.max(10, Math.ceil(used * 2)) : null;
+  }
   private loaded = '';
   protected colorPresets = COLOR_PRESETS;
   protected draftName = '';
@@ -249,7 +286,8 @@ Every team, board and person here now is removed and the backup's take their pla
     const shown = key === 'theme' ? (v ? (v as ThemePreference).preset : 'light or dark') :
       key === 'defaultTemplateId' ? this.data()!.templates.find(t => t.id === v)?.name ?? v :
       key === 'allowAnonymous' ? `anonymous ${v ? 'on' : 'off'}` :
-      key === 'maxImageMb' || key === 'maxVideoMb' ? `${v} MB` : v;
+      key === 'maxImageMb' || key === 'maxVideoMb' ? `${v} MB` :
+      key === 'maxStorageGb' ? (v === null ? 'no limit' : `${v} GB`) : v;
     return `${this.overridden(key) ? 'Changed here. ' : ''}Launch setting: ${shown}.`;
   }
 

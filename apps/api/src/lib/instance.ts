@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import {
-  BUILT_IN_TEMPLATES, DEFAULT_BOARD_SETTINGS, MAX_UPLOAD_MB_LIMIT, THEME_PRESETS, featureLabel, featuresFromDisabledList, readableTextOn,
+  BUILT_IN_TEMPLATES, DEFAULT_BOARD_SETTINGS, MAX_STORAGE_GB_LIMIT, MAX_UPLOAD_MB_LIMIT, THEME_PRESETS, featureLabel, featuresFromDisabledList, readableTextOn,
   sanitizeTokens, withFeatureDefaults, type FeatureKey, type InstanceSettings, type ThemePreference,
 } from '@retro/shared';
 import { forbidden } from './http';
@@ -25,6 +25,7 @@ export function launchDefaults(ctx: Pick<Ctx, 'config' | 'auth'>): InstanceSetti
     // MAX_UPLOAD_MB starts both off; admins can set each on their own
     maxImageMb: Math.round(ctx.config.maxUploadBytes / 1048576),
     maxVideoMb: Math.round(ctx.config.maxUploadBytes / 1048576),
+    maxStorageGb: null,
   };
 }
 
@@ -87,6 +88,8 @@ function cleanOverrides(raw: Record<string, unknown>): Partial<InstanceSettings>
     const v = raw[k];
     if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_UPLOAD_MB_LIMIT) out[k] = v;
   }
+  const cap = raw['maxStorageGb'];
+  if (cap === null || (typeof cap === 'number' && cap > 0 && cap <= MAX_STORAGE_GB_LIMIT)) out.maxStorageGb = cap;
   return out;
 }
 

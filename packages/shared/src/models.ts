@@ -96,7 +96,12 @@ export interface InstanceSettings {
   maxImageMb: number;
   /** Largest video upload, in MB */
   maxVideoMb: number;
+  /** All uploads together may use at most this much, in GB; null for no limit */
+  maxStorageGb: number | null;
 }
+
+/** The most an admin can set the total upload limit to, in GB */
+export const MAX_STORAGE_GB_LIMIT = 100_000;
 
 /** What an admin can set a size limit to, in MB */
 export const MAX_UPLOAD_MB_LIMIT = 2000;
@@ -110,7 +115,9 @@ export interface InstanceSettingsAdminDto {
   overridden: (keyof InstanceSettings)[];
   templates: TemplateDto[];
   /** Where this install keeps its data, for the "your data stays here" note */
-  storage: { location: string | null; database: string; uploads: string };
+  storage: { location: string | null; database: string; uploads: string;
+    /** What uploads use now: each stored file once (carried-over cards share theirs) */
+    used: { bytes: number; files: number } };
 }
 
 export interface AuthConfigDto {

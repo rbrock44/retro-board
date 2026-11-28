@@ -123,7 +123,7 @@ Unused uploads (never attached to a card or reply) stay in storage; they are sma
 | Method | Path | Body |
 |---|---|---|
 | GET | `/api/admin/settings` | Instance settings in effect, the launch defaults, which ones were changed, templates, and where data is stored |
-| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, features: { videos: false, … }, allowAnonymous, signup, maxImageMb, maxVideoMb` (1-2000), plus `reset: [keys]` to go back to launch defaults |
+| PATCH | `/api/admin/settings` | Any of `siteName, theme (or null), defaultTemplateId, features: { videos: false, … }, allowAnonymous, signup, maxImageMb, maxVideoMb` (1-2000), `maxStorageGb` (or null for no limit), plus `reset: [keys]` to go back to launch defaults |
 | GET | `/api/admin/backup` | Downloads every table and upload as one `.tar.gz` (`retro-board-backup.json` + `files/<key>`); sessions left out |
 | POST | `/api/admin/restore` | multipart `file`: a backup from the route above. Replaces all data (uploads first, then every table in one transaction); returns `{ rows, files }`. Everyone signs in again |
 | POST | `/api/admin/templates` | `name, description?, columns[{title,color,description?}]`. A template every team can use; delete with `DELETE /api/templates/:id` |

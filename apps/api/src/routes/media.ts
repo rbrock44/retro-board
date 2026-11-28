@@ -9,11 +9,12 @@ import { dropUnusedFiles } from '../lib/file-cleanup';
 import { canEditOwn, requireBoard, requireTeam } from '../lib/access';
 import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser } from '../lib/http';
 import { featureOn, getSettings, requireFeature } from '../lib/instance';
-
-const MB = 1024 * 1024;
+import { uploadUsage } from '../lib/storage-usage';
 import { newId } from '../lib/ids';
 import { attachmentDto } from '../lib/serialize';
 import { teamDto } from './teams';
+
+const MB = 1024 * 1024;
 
 const IMAGE_FORMATS: Record<string, { mime: string; ext: string }> = {
   jpeg: { mime: 'image/jpeg', ext: 'jpg' },
@@ -93,6 +94,9 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
     const video = sniffVideo(buf);
     const cap = video ? site.maxVideoMb : site.maxImageMb;
     if (buf.length > cap * MB) throw new HttpError(413, `${video ? 'Videos' : 'Images'} can be at most ${cap} MB`);
+    if (site.maxStorageGb !== null && (await uploadUsage(db)).bytes + buf.length > site.maxStorageGb * 1024 * MB) {
+      throw new HttpError(507, `This site's room for uploads (${site.maxStorageGb} GB) is full. An admin can make room or raise the limit`);
+    }
     if (video) {
       await requireFeature(ctx, 'videos');
       kind = 'video';

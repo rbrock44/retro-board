@@ -6,7 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { BUILT_IN_TEMPLATES, MAX_UPLOAD_MB_LIMIT, withFeatureDefaults, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
+import { BUILT_IN_TEMPLATES, MAX_STORAGE_GB_LIMIT, MAX_UPLOAD_MB_LIMIT, withFeatureDefaults, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
 import { backupStream, restoreBackup } from '../lib/backup';
 import { getOverrides, getSettings, launchDefaults, saveOverrides } from '../lib/instance';
 import { newId } from '../lib/ids';
@@ -15,6 +15,7 @@ import { deleteUserSessions } from '../auth/sessions';
 import { toUserDto } from '../auth/users';
 import type { Ctx } from '../context';
 import { templates, users } from '../db/schema';
+import { uploadUsage } from '../lib/storage-usage';
 
 
 /** Instance-level administration. Team-level roles live in routes/teams.ts. */
@@ -87,6 +88,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: Ctx) {
       location: ctx.config.dataLocation,
       database: ctx.config.databaseUrl.startsWith('postgres') ? 'Postgres' : ctx.config.databaseUrl,
       uploads: ctx.config.storage.driver === 's3' ? `S3 bucket ${ctx.config.storage.bucket}` : ctx.config.storage.dir,
+      used: await uploadUsage(db),
     },
   });
 
@@ -108,8 +110,9 @@ export async function adminRoutes(app: FastifyInstance, ctx: Ctx) {
       signup: z.enum(['open', 'invite', 'closed']).optional(),
       maxImageMb: z.number().int().min(1, 'At least 1 MB').max(MAX_UPLOAD_MB_LIMIT, `At most ${MAX_UPLOAD_MB_LIMIT} MB`).optional(),
       maxVideoMb: z.number().int().min(1, 'At least 1 MB').max(MAX_UPLOAD_MB_LIMIT, `At most ${MAX_UPLOAD_MB_LIMIT} MB`).optional(),
+      maxStorageGb: z.number().positive('More than 0 GB').max(MAX_STORAGE_GB_LIMIT).nullable().optional(),
       /** Settings to put back to their launch default */
-      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'features', 'allowAnonymous', 'signup', 'maxImageMb', 'maxVideoMb'])).default([]),
+      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'features', 'allowAnonymous', 'signup', 'maxImageMb', 'maxVideoMb', 'maxStorageGb'])).default([]),
     }), req.body);
     const { reset, ...set } = body;
     if (set.defaultTemplateId && !(await adminDto()).templates.some(t => t.id === set.defaultTemplateId)) {

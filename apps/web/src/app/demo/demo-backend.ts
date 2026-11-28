@@ -257,7 +257,7 @@ export class DemoBackend {
 
   private static readonly SITE_DEFAULTS: InstanceSettings = {
     siteName: 'Retro Board', theme: null, defaultTemplateId: 'went-well',
-    allowAnonymous: true, signup: 'open', features: ALL_FEATURES_ON, maxImageMb: 25, maxVideoMb: 25,
+    allowAnonymous: true, signup: 'open', features: ALL_FEATURES_ON, maxImageMb: 25, maxVideoMb: 25, maxStorageGb: null,
   };
 
   private site(): InstanceSettings {
@@ -267,13 +267,21 @@ export class DemoBackend {
     return { ...site, features: withFeatureDefaults(site.features) };
   }
 
+  /** What the demo's uploads take up (GIFs from search are links, not uploads) */
+  private uploadUsage() {
+    const files = Object.values(this.state.attachments).filter(a => !a.url.startsWith('http'));
+    // the sample pictures carry no size: count what their data URLs hold
+    const bytes = files.reduce((n, a) => n + (a.size ?? (a.url.startsWith('data:') ? Math.round((a.url.length - a.url.indexOf(',') - 1) * 0.75) : 0)), 0);
+    return { bytes, files: files.length };
+  }
+
   private siteAdminDto(): InstanceSettingsAdminDto {
     return {
       settings: this.site(),
       launchDefaults: DemoBackend.SITE_DEFAULTS,
       overridden: Object.keys(this.state.site ?? {}) as (keyof InstanceSettings)[],
       templates: [...this.instanceTemplates(), ...BUILT_IN_TEMPLATES],
-      storage: { location: 'this browser (the demo has no server)', database: 'this browser', uploads: 'this browser' },
+      storage: { location: 'this browser (the demo has no server)', database: 'this browser', uploads: 'this browser', used: this.uploadUsage() },
     };
   }
 
@@ -426,6 +434,10 @@ export class DemoBackend {
     if (!kind) fail(400, 'Only images, GIFs and videos can be attached');
     const cap = kind === 'video' ? this.site().maxVideoMb : this.site().maxImageMb;
     if (file.size > cap * 1024 * 1024) fail(413, `${kind === 'video' ? 'Videos' : 'Images'} can be at most ${cap} MB`);
+    const room = this.site().maxStorageGb;
+    if (room !== null && this.uploadUsage().bytes + file.size > room * 1024 ** 3) {
+      fail(507, `This site's room for uploads (${room} GB) is full. An admin can make room or raise the limit`);
+    }
     onProgress?.(0.3);
     // Small files are kept as data URLs so they survive a reload and travel in share links; big ones (video)
     // only last for this visit.

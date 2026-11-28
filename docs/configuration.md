@@ -102,6 +102,10 @@ uploads that never made it onto a card after a day (an add-card box that was clo
 `teams/` that nothing points at, such as leftovers from versions before this cleanup. Nothing else in the folder or
 bucket is touched.
 
+Admin → Customize → Your Data shows how much uploads use, and can limit the room for all of them together (in GB, no
+limit to start with). Once it's full, new uploads are refused with a message saying so, until files are deleted or the
+limit goes up.
+
 ## GIF search
 
 | Variable | Default | Meaning |

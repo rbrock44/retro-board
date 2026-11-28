@@ -43,4 +43,24 @@ describe('upload size limits (Admin > Customize > Features)', () => {
     await owner.client.patch('/api/admin/settings', { reset: ['maxVideoMb'] });
     expect((await new Client(t.app).get('/api/auth/config')).body.site.maxVideoMb).toBe(3);
   });
+
+  it('shows what uploads use, and refuses new ones once the room for them is full', async () => {
+    t = await makeApp();
+    const { owner, board, state } = await teamWithBoard(t.app);
+    const first = await upload(owner.client.cookie, board.id, 'a.mp4', 'video/mp4', video(0.001));
+    expect(first.status).toBe(200);
+    // counted once it's on a card too
+    await owner.client.post(`/api/boards/${board.id}/cards`, { columnId: state.columns[0].id, body: 'x', attachmentIds: [first.body.id] });
+    const used = (await owner.client.get('/api/admin/settings')).body.storage.used;
+    expect(used).toEqual({ bytes: first.body.size, files: 1 });
+
+    // room for about one and a half of these
+    await owner.client.patch('/api/admin/settings', { maxStorageGb: (first.body.size * 1.5) / 1024 ** 3 });
+    const full = await upload(owner.client.cookie, board.id, 'b.mp4', 'video/mp4', video(0.001));
+    expect(full.status).toBe(507);
+    expect(full.body.error).toMatch(/room for uploads .* is full/);
+
+    await owner.client.patch('/api/admin/settings', { maxStorageGb: null });
+    expect((await upload(owner.client.cookie, board.id, 'b.mp4', 'video/mp4', video(0.001))).status).toBe(200);
+  });
 });

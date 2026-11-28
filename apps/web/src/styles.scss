@@ -483,7 +483,11 @@ button.likes { cursor: pointer;
 .reactions { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
 .reaction { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 0 0.45rem; font-size: 0.8rem; cursor: pointer; line-height: 1.6;
   &.mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
-  &.add { color: var(--muted); border-style: dashed; }
+  &.add { color: var(--muted); border-style: dashed; display: inline-flex; align-items: center; justify-content: center; vertical-align: top;
+    /* same height as its neighbours: the line box, plus the border */
+    height: calc(1lh + 2px);
+    svg { display: block; width: 1.55em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round;
+      .eye { fill: currentColor; stroke: none; } } }
   &:disabled { cursor: default; } }
 .react-wrap { position: relative; }
 .react-pop { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 30; display: flex; gap: 2px; padding: 0.25rem; background: var(--surface);

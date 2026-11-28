@@ -16,7 +16,11 @@ import { EmojiPicker } from '../shared/emoji-picker';
       }
       @if (enabled()) {
         <span class="react-wrap" (clickOutside)="open.set(false)">
-          <button #add type="button" class="reaction add" (click)="open.set(!open())" aria-label="Add reaction" [attr.aria-expanded]="open()">☺+</button>
+          <button #add type="button" class="reaction add" (click)="open.set(!open())" aria-label="Add reaction" [attr.aria-expanded]="open()" title="Add reaction">
+            <!-- an SVG, not "☺+": font glyphs sit below the middle of the pill -->
+            <svg viewBox="0 0 22 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" /><path d="M4.9 8.4c.9 1.2 3.3 1.2 4.2 0" />
+              <circle class="eye" cx="5.2" cy="5.6" r=".55" /><circle class="eye" cx="8.8" cy="5.6" r=".55" /><path d="M15.5 7h5M18 4.5v5" /></svg>
+          </button>
           @if (open()) {
             <span class="react-pop" role="menu">
               @for (e of emoji; track e) {

@@ -389,9 +389,13 @@ app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
     border-radius: 4px; background: var(--surface-2); } }
 .composer:focus-within .composer-hint { display: block; }
 /* Settings > Board: the add-card box as a one-line bar, or just ＋ in the column header */
-.add-card-bar { display: block; width: 100%; text-align: left; padding: 0.45rem 0.6rem; border: 1px dashed var(--border);
-  border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; font-size: 0.9rem; cursor: pointer;
-  &:hover, &:focus-visible { border-color: var(--col, var(--accent)); color: var(--text); background: var(--surface); } }
+/* tinted with the column's color so it reads as the place to start, not part of the page */
+.add-card-bar { display: block; width: 100%; text-align: left; padding: 0.45rem 0.6rem;
+  border: 1px dashed color-mix(in srgb, var(--col, var(--accent)) 60%, var(--border));
+  border-radius: var(--radius-sm); background: color-mix(in srgb, var(--col, var(--accent)) 8%, transparent);
+  color: color-mix(in srgb, var(--col, var(--accent)) 55%, var(--text)); font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  &:hover, &:focus-visible { border-style: solid; border-color: var(--col, var(--accent)); color: var(--text);
+    background: color-mix(in srgb, var(--col, var(--accent)) 16%, var(--surface)); } }
 .add-card-btn { color: var(--muted);
   &.on { background: var(--accent); color: var(--accent-text); } }
 .composer-style { border: 0; padding: 0; gap: 0.4rem; legend { padding: 0; margin-bottom: 0.4rem; }

@@ -282,7 +282,7 @@ export class DemoBackend {
     const set = this.listeners.get(boardId) ?? new Set();
     set.add(listener);
     this.listeners.set(boardId, set);
-    queueMicrotask(() => this.emit(boardId, { type: 'presence', users: this.presence(boardId) }));
+    queueMicrotask(() => this.emit(boardId, { type: 'presence', users: this.presence(boardId), watching: this.watching(boardId) }));
     this.startBot();
     return () => {
       set.delete(listener);
@@ -295,7 +295,17 @@ export class DemoBackend {
     if (!board) return [];
     const others = this.state.members.filter(m => m.teamId === board.teamId && m.userId !== this.state.meId && m.role !== 'viewer')
       .slice(0, board.status === 'open' ? 3 : 0).map(m => this.user(m.userId)!);
-    return [this.user(this.state.meId)!, ...others];
+    // and one viewer following along, on an open board, to show who's only watching
+    const watcher = board.status === 'open' ? this.watching(boardId).map(id => this.user(id)!) : [];
+    return [this.user(this.state.meId)!, ...others, ...watcher];
+  }
+
+  /** The viewer-role people in the demo's presence (at most one) */
+  private watching(boardId: string): string[] {
+    const board = this.state.boards.find(b => b.id === boardId);
+    if (!board || board.status !== 'open') return [];
+    return this.state.members.filter(m => m.teamId === board.teamId && m.userId !== this.state.meId && m.role === 'viewer')
+      .slice(0, 1).map(m => m.userId);
   }
 
   private emit(boardId: string, e: BoardEvent) {
@@ -333,7 +343,8 @@ export class DemoBackend {
     if (!boardId) return;
     const board = this.state.boards.find(b => b.id === boardId);
     if (!board || board.status !== 'open') return;
-    const crew = this.presence(boardId).filter(u => u.id !== this.state.meId);
+    const watchers = this.watching(boardId);
+    const crew = this.presence(boardId).filter(u => u.id !== this.state.meId && !watchers.includes(u.id));
     if (!crew.length) return;
     const who = crew[Math.floor(Math.random() * crew.length)];
     const cards = this.state.cards.filter(c => c.boardId === boardId);

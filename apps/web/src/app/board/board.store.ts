@@ -81,6 +81,8 @@ export class BoardStore {
 
   readonly state = signal<BoardStateDto | null>(null);
   readonly presence = signal<UserDto[]>([]);
+  /** Who in `presence` can only watch (the viewer role) */
+  readonly watching = signal<ReadonlySet<string>>(new Set());
   readonly typing = signal<Record<string, { name: string; at: number }>>({});
   readonly connected = signal(false);
   readonly error = signal<string | null>(null);
@@ -288,6 +290,7 @@ export class BoardStore {
     }
     if (e.type === 'presence') {
       this.presence.set(e.users);
+      this.watching.set(new Set(e.watching ?? []));
       return;
     }
     if (e.type === 'board.next') {

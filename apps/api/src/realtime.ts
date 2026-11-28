@@ -20,6 +20,8 @@ export interface Hub {
 interface SocketData {
   user: User;
   boards: Set<string>;
+  /** The boards this person can only watch (viewer role), for the presence list */
+  watching: Set<string>;
   /** What the handshake sent, to check the session and team passwords again later */
   token: string | undefined;
   cookies: Record<string, string>;
@@ -71,6 +73,7 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
       data.cookies = allCookies(socket.handshake.headers.cookie);
       attachTeamKeys(found.user, data.cookies, cookieSecret);
       data.boards = new Set();
+      data.watching = new Set();
       next();
     } catch (err) {
       next(err as Error);
@@ -84,11 +87,13 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
     }
     const sockets = await io.in(room(boardId)).fetchSockets();
     const seen = new Map<string, UserDto>();
+    const watching = new Set<string>();
     for (const s of sockets) {
-      const u = (s.data as SocketData).user;
-      seen.set(u.id, toUserDto(u));
+      const d = s.data as SocketData;
+      seen.set(d.user.id, toUserDto(d.user));
+      if (d.watching?.has(boardId)) watching.add(d.user.id);
     }
-    io.to(room(boardId)).emit(SOCKET_EVENTS.event, { type: 'presence', users: [...seen.values()] } satisfies BoardEvent);
+    io.to(room(boardId)).emit(SOCKET_EVENTS.event, { type: 'presence', users: [...seen.values()], watching: [...watching] } satisfies BoardEvent);
   }
 
   io.on('connection', (socket: Socket) => {
@@ -97,9 +102,11 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
     socket.on(SOCKET_EVENTS.join, async (boardId: unknown, ack?: (r: { ok: boolean; error?: string }) => void) => {
       try {
         if (typeof boardId !== 'string') throw new Error('bad board id');
-        await requireBoard(db, data.user, boardId, 'read');
+        const { role } = await requireBoard(db, data.user, boardId, 'read');
         await socket.join(room(boardId));
         data.boards.add(boardId);
+        data.watching ??= new Set();
+        if (role === 'viewer') data.watching.add(boardId); else data.watching.delete(boardId);
         ack?.({ ok: true });
         await presence(boardId);
       } catch (err) {
@@ -142,8 +149,17 @@ export function createHub(server: HttpServer, db: Db, presenceOn: () => Promise<
         attachTeamKeys(found.user, data.cookies, cookieSecret);
       }
       for (const boardId of [...data.boards]) {
-        const ok = !!found && await requireBoard(db, data.user, boardId, 'read').then(() => true, () => false);
-        if (ok) continue;
+        const role = found ? await requireBoard(db, data.user, boardId, 'read').then(c => c.role, () => null) : null;
+        if (role) {
+          // a role change (viewer <-> member) shows in the presence list
+          data.watching ??= new Set();
+          if ((role === 'viewer') !== data.watching.has(boardId)) {
+            if (role === 'viewer') data.watching.add(boardId); else data.watching.delete(boardId);
+            touched.add(boardId);
+          }
+          continue;
+        }
+        data.watching?.delete(boardId);
         await socket.leave(room(boardId));
         data.boards.delete(boardId);
         socket.emit(SOCKET_EVENTS.event, { type: 'access.lost', boardId } satisfies BoardEvent);

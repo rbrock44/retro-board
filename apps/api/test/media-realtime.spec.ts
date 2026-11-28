@@ -143,6 +143,40 @@ describe('realtime', () => {
     for (const s of [a, b, rejected]) s.close();
   });
 
+  it('marks viewers in the presence list as watching', async () => {
+    t = await makeApp({ realtime: true });
+    await t.app.listen({ port: 0, host: '127.0.0.1' });
+    const { port } = t.app.server.address() as { port: number };
+    const { owner, team, board } = await teamWithBoard(t.app);
+    const viewer = await addMember(t.app, owner.client, team.id, 'viewer', 'Vic');
+
+    const sockets: Socket[] = [];
+    const open = (cookie: string) => new Promise<Socket>((resolve, reject) => {
+      const s = connect(`http://127.0.0.1:${port}`, { path: '/socket.io', transports: ['websocket'], extraHeaders: { cookie } });
+      sockets.push(s);
+      s.on('connect', () => s.emit(SOCKET_EVENTS.join, board.id, (r: { ok: boolean }) => (r.ok ? resolve(s) : reject(new Error('join')))));
+      s.on('connect_error', reject);
+    });
+    try {
+      const mine = await open(owner.client.cookie);
+      const both = new Promise<BoardEvent>(resolve => mine.on(SOCKET_EVENTS.event, (e: BoardEvent) => {
+        if (e.type === 'presence' && e.users.length === 2) resolve(e);
+      }));
+      await open(viewer.client.cookie);
+      const e = await both;
+      expect(e.type === 'presence' && e.watching).toEqual([viewer.user.id]);
+
+      // made a member: no longer only watching
+      const after = new Promise<BoardEvent>(resolve => mine.on(SOCKET_EVENTS.event, (ev: BoardEvent) => {
+        if (ev.type === 'presence' && ev.users.length === 2 && !ev.watching?.length) resolve(ev);
+      }));
+      await owner.client.patch(`/api/teams/${team.id}/members/${viewer.user.id}`, { role: 'member' });
+      await after;
+    } finally {
+      for (const s of sockets) s.close();
+    }
+  });
+
   it('stops live changes for someone who loses access while connected', async () => {
     t = await makeApp({ realtime: true });
     await t.app.listen({ port: 0, host: '127.0.0.1' });

@@ -60,12 +60,19 @@ const FOCUS_ACTIONS = '__actions__';
           </div>
           <div class="spacer"></div>
           @if (auth.on('presence')) {
-            <div class="presence" role="group" aria-label="People here now">
-              <!-- each face opens that person's details, like a name on a card -->
-              @for (u of store.presence().slice(0, 8); track u.id) {
-                <button type="button" class="person-btn" (click)="store.personOpen.set(u)" [attr.aria-label]="'About ' + u.name" [title]="u.name"><app-avatar [user]="u" [size]="26" /></button>
+            <div class="presence-wrap">
+              <div class="presence" role="group" aria-label="People here now">
+                <!-- each face opens that person's details, like a name on a card; 👁 marks viewers, who can only watch -->
+                @for (u of store.presence().slice(0, 8); track u.id) {
+                  <button type="button" class="person-btn" [class.watching]="store.watching().has(u.id)" (click)="store.personOpen.set(u)"
+                        [attr.aria-label]="'About ' + u.name + (store.watching().has(u.id) ? ', watching' : '')"
+                        [title]="u.name + (store.watching().has(u.id) ? ' (viewer, watching)' : '')"><app-avatar [user]="u" [size]="26" /></button>
+                }
+                @if (store.presence().length > 8) { <span class="more">+{{ store.presence().length - 8 }}</span> }
+              </div>
+              @if (store.presence().length) {
+                <span class="presence-count">{{ store.presence().length }} here@if (store.watching().size) { · {{ store.watching().size }} watching }</span>
               }
-              @if (store.presence().length > 8) { <span class="more">+{{ store.presence().length - 8 }}</span> }
             </div>
           }
         </header>
@@ -290,7 +297,9 @@ const FOCUS_ACTIONS = '__actions__';
               @if (auth.on('presence') && store.presence().length) {
                 <div class="presence focus-presence" role="group" [attr.aria-label]="store.presence().length + ' here now'">
                   @for (u of store.presence().slice(0, 6); track u.id) {
-                    <button type="button" class="person-btn" (click)="store.personOpen.set(u)" [attr.aria-label]="'About ' + u.name" [title]="u.name"><app-avatar [user]="u" [size]="26" /></button>
+                    <button type="button" class="person-btn" [class.watching]="store.watching().has(u.id)" (click)="store.personOpen.set(u)"
+                        [attr.aria-label]="'About ' + u.name + (store.watching().has(u.id) ? ', watching' : '')"
+                        [title]="u.name + (store.watching().has(u.id) ? ' (viewer, watching)' : '')"><app-avatar [user]="u" [size]="26" /></button>
                   }
                   @if (store.presence().length > 6) { <span class="more">+{{ store.presence().length - 6 }}</span> }
                 </div>

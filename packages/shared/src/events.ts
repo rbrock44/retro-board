@@ -11,7 +11,8 @@ export type BoardEvent =
   | { type: 'card.delete'; id: string }
   | { type: 'action.upsert'; action: ActionItemDto }
   | { type: 'action.delete'; id: string }
-  | { type: 'presence'; users: UserDto[] }
+  /** Who has the board open; `watching` lists the ones with the read-only viewer role */
+  | { type: 'presence'; users: UserDto[]; watching?: string[] }
   /** The board was archived to history and a fresh one started; everyone on it moves to the new one */
   | { type: 'board.next'; boardId: string; savedTitle: string };
 

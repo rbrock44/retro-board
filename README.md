@@ -107,6 +107,8 @@ its default template), so people always land in the right place.
   emoji with search, categories, skin tones and your most used
 - `People` - Click someone's face or name on a card or reply for their details: email (shown to team admins), team
   role, when they joined, their named cards and likes on this board, and whether they're here now
+- `Who's Here` - Faces at the top right of a board show everyone with it open, with a count underneath (`5 here · 1 watching`).
+  👁 marks viewers, who can only watch, so you know who's following along without posting
 - `🎨 Color by Person` - Each person's cards get their own light shade (the same on every board), so you can see
   who wrote what at a glance. Their avatar on the board gets a matching ring. Anonymous cards stay neutral, so the
   shade never gives them away. An admin turns it on or off for everyone in **Admin → Customize → Features**

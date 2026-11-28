@@ -174,7 +174,7 @@ errors and live updates reconnect as usual, rather than quietly swapping in samp
   back to the current board
 - `Search` - Searches every card, group name and action item the team has ever written
 - `Export` - For team admins (and instance admins). The `Current` board has no Export button of its own; export it, and any past boards, from the Export popup:
-  - **Settings → Export → `Export Retros…`** opens a popup with every team you're on, each with its Current board and past boards.
+  - **Settings → Export → `Export Retros…`** opens a popup with every team you admin, each with its Current board and past boards (the section only shows if you admin a team).
     Tick whole teams or single boards, pick Markdown (a readable summary) or a spreadsheet (one row per card), and
     get one file, grouped by team
   - A team's **History** has an `Export` button for that team's boards, and each past board has its own `Export`

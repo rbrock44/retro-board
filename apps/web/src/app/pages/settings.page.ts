@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { ComposerStyle, ThemePreference } from '@retro/shared';
+import type { ComposerStyle, TeamDto, ThemePreference } from '@retro/shared';
 import { Api } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ThemeService } from '../core/theme.service';
@@ -79,7 +79,7 @@ import { ExportDialog } from '../shared/export-dialog';
           </section>
         }
 
-        @if (auth.on('export')) {
+        @if (auth.on('export') && adminSomewhere()) {
         <section class="card-surface stack">
           <h2>Export</h2>
           <p class="muted">Download retros from any of your teams, the current board and the history, as one Markdown or spreadsheet file.</p>
@@ -93,6 +93,8 @@ import { ExportDialog } from '../shared/export-dialog';
 })
 export class SettingsPage {
   protected exportOpen = signal(false);
+  /** Exports are for team admins, so the section shows only to someone who admins a team */
+  protected adminSomewhere = signal(false);
   protected auth = inject(AuthService);
   protected theme = inject(ThemeService);
   private api = inject(Api);
@@ -105,6 +107,14 @@ export class SettingsPage {
   protected providers = computed(() => this.auth.config()?.providers ?? []);
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private pending = signal<ThemePreference | null>(null);
+
+  constructor() {
+    if (this.auth.on('export')) {
+      this.api.get<TeamDto[]>('/api/teams')
+        .then(teams => this.adminSomewhere.set(teams.some(t => t.myRole === 'admin')))
+        .catch(() => this.adminSomewhere.set(false));
+    }
+  }
 
   linked(id: string) { return this.auth.me()?.identities.find(i => i.provider === id); }
 

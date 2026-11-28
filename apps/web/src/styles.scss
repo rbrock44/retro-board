@@ -480,6 +480,11 @@ app-team-photo { display: inline-flex; flex-shrink: 0; vertical-align: middle; }
 /* The column popup's "who goes over this?" picker */
 .presenter-pick { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; text-align: center;
   p { margin: 0; }
+  /* who said not right now, each with ↶ to ask them again */
+  .skipped { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.25rem 0.6rem; }
+  .skipped-name { display: inline-flex; align-items: center; gap: 0.15rem; }
+  .undo-skip { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0 0.2rem; font-size: 1rem; line-height: 1;
+    border-radius: var(--radius-sm); &:hover, &:focus-visible { background: color-mix(in srgb, var(--accent) 14%, transparent); } }
   .presenter-ask { font-size: 1.1rem; } }
 .person-details { display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap; }
 .status-badge { font-size: 0.7rem; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--surface-2);

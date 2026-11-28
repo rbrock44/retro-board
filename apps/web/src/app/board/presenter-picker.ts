@@ -20,7 +20,14 @@ const storageKey = (teamId: string) => `retro.presenters.${teamId}`;
         <div class="presenter-pick">
           <app-avatar [user]="u" [size]="96" />
           <p class="presenter-ask"><strong>{{ u.name }}</strong>, you're up! {{ columnTitle() ? 'Will you go over this column?' : 'Will you present next?' }}</p>
-          @if (skipped().length) { <p class="muted small">Not right now: {{ skipped().join(', ') }}</p> }
+          @if (skipped().length) {
+            <p class="muted small skipped">Not right now:
+              @for (m of skipped(); track m.id) {
+                <span class="skipped-name"><button type="button" class="undo-skip" (click)="undoSkip(m)"
+                        [attr.aria-label]="'Go back to ' + m.name" [title]="'Go back to ' + m.name">↶</button>{{ m.name }}</span>
+              }
+            </p>
+          }
           <div class="row">
             <button type="button" class="btn ghost" (click)="notNow(u)" title="They can't right now (driving, away…). Ask someone else; they stay on the list for later">Not Right Now</button>
             <button type="button" class="btn primary" (click)="yes(u)" autofocus>Yes, I'll Go</button>
@@ -30,6 +37,14 @@ const storageKey = (teamId: string) => `retro.presenters.${teamId}`;
       } @else {
         <div class="presenter-pick">
           <p>{{ members().length ? 'Everyone left to ask said not right now.' : 'Nobody is on this team to pick.' }}</p>
+          @if (skipped().length) {
+            <p class="muted small skipped">Not right now:
+              @for (m of skipped(); track m.id) {
+                <span class="skipped-name"><button type="button" class="undo-skip" (click)="undoSkip(m)"
+                        [attr.aria-label]="'Go back to ' + m.name" [title]="'Go back to ' + m.name">↶</button>{{ m.name }}</span>
+              }
+            </p>
+          }
           @if (members().length) {
             <div class="row"><button type="button" class="btn primary" (click)="askAgain()">Ask Them Again</button></div>
           }
@@ -51,7 +66,7 @@ export class PresenterPicker {
   private teamId = computed(() => this.store.board()?.teamId ?? '');
   private rotation = signal<Rotation>({ done: [], passed: [] });
   protected current = signal<UserDto | null>(null);
-  protected skipped = computed(() => this.rotation().passed.map(id => this.members().find(m => m.id === id)?.name ?? 'Someone'));
+  protected skipped = computed(() => this.rotation().passed.map(id => this.members().find(m => m.id === id) ?? { id, name: 'Someone' }));
   protected goneCount = computed(() => this.rotation().done.filter(id => this.memberIds().includes(id)).length);
 
   constructor() {
@@ -70,6 +85,12 @@ export class PresenterPicker {
   protected notNow(u: UserDto) {
     this.rotation.set(pass(this.rotation(), u.id));
     this.next();
+  }
+
+  /** ↶ beside a name: they said not right now by mistake (or can now), so ask them again */
+  protected undoSkip(m: { id: string }) {
+    this.rotation.update(r => ({ ...r, passed: r.passed.filter(id => id !== m.id) }));
+    this.current.set(this.members().find(x => x.id === m.id) ?? null);
   }
 
   protected askAgain() {

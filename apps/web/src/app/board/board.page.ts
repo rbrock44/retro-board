@@ -109,6 +109,17 @@ const FOCUS_ACTIONS = '__actions__';
               }
             }
           </span>
+          @if (auth.on('replies')) {
+            <!-- every reply thread on the board at once -->
+            <span class="reply-all" role="group" aria-label="Reply threads">
+              <button type="button" class="icon-btn" (click)="setAllReplies(true)" [disabled]="!closedReplyIds().length"
+                      aria-label="Open all replies" [title]="boardReplyIds().length ? 'Open all replies' : 'No replies on this board yet'">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 6l5 5 5-5M7 13l5 5 5-5" /></svg></button>
+              <button type="button" class="icon-btn" (click)="setAllReplies(false)" [disabled]="closedReplyIds().length === boardReplyIds().length"
+                      aria-label="Close all replies" [title]="boardReplyIds().length ? 'Close all replies' : 'No replies on this board yet'">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg></button>
+            </span>
+          }
           <div class="spacer"></div>
           @if (auth.on('actions')) {
             <button type="button" class="btn ghost" data-tour="actions" (click)="sidebar.set(!sidebar())" [attr.aria-expanded]="sidebar()">
@@ -566,6 +577,17 @@ export class BoardPage implements OnDestroy {
     const open = this.store.openReplies();
     return ids.length > 0 && ids.every(id => open.has(id));
   });
+
+  /** Every card on the board with replies, and the ones whose thread is closed */
+  protected boardReplyIds = computed(() => this.store.cards().filter(c => c.replies.length).map(c => c.id));
+  protected closedReplyIds = computed(() => {
+    const open = this.store.openReplies();
+    return this.boardReplyIds().filter(id => !open.has(id));
+  });
+
+  setAllReplies(open: boolean) {
+    this.store.setReplies(this.boardReplyIds(), open);
+  }
 
   toggleFocusReplies() {
     this.store.setReplies(this.focusReplyIds(), !this.focusRepliesOpen());

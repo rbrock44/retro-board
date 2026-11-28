@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  COLOR_PRESETS, FEATURES, THEME_PRESETS, type FeatureKey, type Features,
+  COLOR_PRESETS, FEATURES, MAX_UPLOAD_MB_LIMIT, THEME_PRESETS, type FeatureKey, type Features,
   type ColumnSpec, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto, type ThemePreference,
 } from '@retro/shared';
 import { Api } from '../core/api.service';
@@ -103,6 +103,15 @@ type Key = keyof InstanceSettings;
                           [attr.aria-label]="'About ' + f.label" [title]="f.info" (click)="infoOpen.set(infoOpen() === f.key ? null : f.key)">ⓘ</button>
                   <label [attr.for]="'feature-' + f.key" [class.off]="!form.features[f.key]">{{ f.label }}</label>
                   @if (infoOpen() === f.key) { <p class="feature-info" role="note">{{ f.info }}</p> }
+                  @if ((f.key === 'images' && form.features.images) || (f.key === 'videos' && form.features.videos)) {
+                    @let sizeKey = f.key === 'videos' ? 'maxVideoMb' : 'maxImageMb';
+                    <div class="feature-sub">
+                      <label class="size-limit">Largest {{ f.key === 'videos' ? 'video' : 'image or GIF' }}
+                        <input type="number" min="1" [max]="sizeLimit" step="1" [(ngModel)]="form[sizeKey]"> MB</label>
+                      <p class="muted small">{{ hint(sizeKey) }}
+                        @if (overridden(sizeKey)) { <button type="button" class="link-btn" (click)="reset(sizeKey)">Reset</button> }</p>
+                    </div>
+                  }
                   @if (f.key === 'anonymous' && form.features.anonymous) {
                     <div class="feature-sub">
                       <label class="check"><input type="checkbox" [(ngModel)]="form.allowAnonymous"> On by default for new boards</label>
@@ -201,6 +210,7 @@ Every team, board and person here now is removed and the backup's take their pla
   protected data = signal<InstanceSettingsAdminDto | null>(null);
   protected saving = signal(false);
   protected form: InstanceSettings = null!;
+  protected sizeLimit = MAX_UPLOAD_MB_LIMIT;
   private loaded = '';
   protected colorPresets = COLOR_PRESETS;
   protected draftName = '';
@@ -238,7 +248,8 @@ Every team, board and person here now is removed and the backup's take their pla
     const v = d[key];
     const shown = key === 'theme' ? (v ? (v as ThemePreference).preset : 'light or dark') :
       key === 'defaultTemplateId' ? this.data()!.templates.find(t => t.id === v)?.name ?? v :
-      key === 'allowAnonymous' ? `anonymous ${v ? 'on' : 'off'}` : v;
+      key === 'allowAnonymous' ? `anonymous ${v ? 'on' : 'off'}` :
+      key === 'maxImageMb' || key === 'maxVideoMb' ? `${v} MB` : v;
     return `${this.overridden(key) ? 'Changed here. ' : ''}Launch setting: ${shown}.`;
   }
 

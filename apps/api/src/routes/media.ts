@@ -8,7 +8,9 @@ import { attachments, teams } from '../db/schema';
 import { dropUnusedFiles } from '../lib/file-cleanup';
 import { canEditOwn, requireBoard, requireTeam } from '../lib/access';
 import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser } from '../lib/http';
-import { featureOn, requireFeature } from '../lib/instance';
+import { featureOn, getSettings, requireFeature } from '../lib/instance';
+
+const MB = 1024 * 1024;
 import { newId } from '../lib/ids';
 import { attachmentDto } from '../lib/serialize';
 import { teamDto } from './teams';
@@ -67,13 +69,15 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
   app.post('/api/boards/:boardId/attachments', async req => {
     const user = requireUser(req);
     const { board } = await requireBoard(db, user, (req.params as { boardId: string }).boardId, 'write');
-    const file = await req.file({ limits: { fileSize: config.maxUploadBytes, files: 1 } });
+    // read up to the bigger of the two limits; which one applies is known once the file's type is
+    const site = await getSettings(ctx);
+    const file = await req.file({ limits: { fileSize: Math.max(site.maxImageMb, site.maxVideoMb) * MB, files: 1 } });
     if (!file) throw badRequest('No file was sent');
     let buf: Buffer;
     try {
       buf = await file.toBuffer();
     } catch {
-      throw new HttpError(413, `Files can be at most ${Math.round(config.maxUploadBytes / 1048576)} MB`);
+      throw new HttpError(413, `Files can be at most ${Math.max(site.maxImageMb, site.maxVideoMb)} MB`);
     }
 
     const id = newId();
@@ -87,6 +91,8 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
     let stored: Buffer = buf;
 
     const video = sniffVideo(buf);
+    const cap = video ? site.maxVideoMb : site.maxImageMb;
+    if (buf.length > cap * MB) throw new HttpError(413, `${video ? 'Videos' : 'Images'} can be at most ${cap} MB`);
     if (video) {
       await requireFeature(ctx, 'videos');
       kind = 'video';
@@ -227,13 +233,14 @@ export async function mediaRoutes(app: FastifyInstance, ctx: Ctx) {
   app.post('/api/teams/:teamId/photo', async req => {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin');
-    const file = await req.file({ limits: { fileSize: config.maxUploadBytes, files: 1 } });
+    const { maxImageMb } = await getSettings(ctx);
+    const file = await req.file({ limits: { fileSize: maxImageMb * MB, files: 1 } });
     if (!file) throw badRequest('No file was sent');
     let buf: Buffer;
     try {
       buf = await file.toBuffer();
     } catch {
-      throw new HttpError(413, `Files can be at most ${Math.round(config.maxUploadBytes / 1048576)} MB`);
+      throw new HttpError(413, `Images can be at most ${maxImageMb} MB`);
     }
     let meta: Metadata;
     try {

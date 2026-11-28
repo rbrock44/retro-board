@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import {
-  BUILT_IN_TEMPLATES, DEFAULT_BOARD_SETTINGS, THEME_PRESETS, featureLabel, featuresFromDisabledList, readableTextOn,
+  BUILT_IN_TEMPLATES, DEFAULT_BOARD_SETTINGS, MAX_UPLOAD_MB_LIMIT, THEME_PRESETS, featureLabel, featuresFromDisabledList, readableTextOn,
   sanitizeTokens, withFeatureDefaults, type FeatureKey, type InstanceSettings, type ThemePreference,
 } from '@retro/shared';
 import { forbidden } from './http';
@@ -22,6 +22,9 @@ export function launchDefaults(ctx: Pick<Ctx, 'config' | 'auth'>): InstanceSetti
     allowAnonymous: env.allowAnonymous,
     signup: ctx.auth.local.signup,
     features: featuresFromDisabledList(env.disabledFeatures),
+    // MAX_UPLOAD_MB starts both off; admins can set each on their own
+    maxImageMb: Math.round(ctx.config.maxUploadBytes / 1048576),
+    maxVideoMb: Math.round(ctx.config.maxUploadBytes / 1048576),
   };
 }
 
@@ -80,6 +83,10 @@ function cleanOverrides(raw: Record<string, unknown>): Partial<InstanceSettings>
   if (typeof raw['allowAnonymous'] === 'boolean') out.allowAnonymous = raw['allowAnonymous'];
   if (raw['signup'] === 'open' || raw['signup'] === 'invite' || raw['signup'] === 'closed') out.signup = raw['signup'];
   if (raw['features'] && typeof raw['features'] === 'object') out.features = raw['features'] as InstanceSettings['features'];
+  for (const k of ['maxImageMb', 'maxVideoMb'] as const) {
+    const v = raw[k];
+    if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_UPLOAD_MB_LIMIT) out[k] = v;
+  }
   return out;
 }
 

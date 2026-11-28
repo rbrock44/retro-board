@@ -6,7 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { BUILT_IN_TEMPLATES, withFeatureDefaults, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
+import { BUILT_IN_TEMPLATES, MAX_UPLOAD_MB_LIMIT, withFeatureDefaults, type InstanceSettings, type InstanceSettingsAdminDto, type TemplateDto } from '@retro/shared';
 import { backupStream, restoreBackup } from '../lib/backup';
 import { getOverrides, getSettings, launchDefaults, saveOverrides } from '../lib/instance';
 import { newId } from '../lib/ids';
@@ -106,8 +106,10 @@ export async function adminRoutes(app: FastifyInstance, ctx: Ctx) {
       allowAnonymous: z.boolean().optional(),
       features: z.record(z.string(), z.boolean()).optional(),
       signup: z.enum(['open', 'invite', 'closed']).optional(),
+      maxImageMb: z.number().int().min(1, 'At least 1 MB').max(MAX_UPLOAD_MB_LIMIT, `At most ${MAX_UPLOAD_MB_LIMIT} MB`).optional(),
+      maxVideoMb: z.number().int().min(1, 'At least 1 MB').max(MAX_UPLOAD_MB_LIMIT, `At most ${MAX_UPLOAD_MB_LIMIT} MB`).optional(),
       /** Settings to put back to their launch default */
-      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'features', 'allowAnonymous', 'signup'])).default([]),
+      reset: z.array(z.enum(['siteName', 'theme', 'defaultTemplateId', 'features', 'allowAnonymous', 'signup', 'maxImageMb', 'maxVideoMb'])).default([]),
     }), req.body);
     const { reset, ...set } = body;
     if (set.defaultTemplateId && !(await adminDto()).templates.some(t => t.id === set.defaultTemplateId)) {

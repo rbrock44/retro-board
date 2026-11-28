@@ -92,7 +92,14 @@ export interface InstanceSettings {
   signup: 'open' | 'invite' | 'closed';
   /** What's switched on for everyone (Admin > Customize > Features) */
   features: Features;
+  /** Largest image (and GIF) upload, in MB */
+  maxImageMb: number;
+  /** Largest video upload, in MB */
+  maxVideoMb: number;
 }
+
+/** What an admin can set a size limit to, in MB */
+export const MAX_UPLOAD_MB_LIMIT = 2000;
 
 export interface InstanceSettingsAdminDto {
   /** What's in effect */
@@ -109,7 +116,7 @@ export interface InstanceSettingsAdminDto {
 export interface AuthConfigDto {
   mode: AuthMode;
   /** Public bits of the instance settings */
-  site: { name: string; theme: ThemePreference | null; features: Features };
+  site: { name: string; theme: ThemePreference | null; features: Features; maxImageMb: number; maxVideoMb: number };
   /** PUBLIC_URL: the address people are meant to use (links that get shared are built from it) */
   publicUrl: string;
   local: { enabled: boolean; signup: 'open' | 'invite' | 'closed' };

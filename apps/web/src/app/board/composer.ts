@@ -189,9 +189,16 @@ export class Composer {
 
   /** Pasted or dropped files skip the picker, so check them here too */
   private allowed(file: File): string | null {
-    if (file.type === 'image/gif') return this.auth.on('gifs') ? null : 'GIFs are turned off on this site';
-    if (file.type.startsWith('image/')) return this.auth.on('images') ? null : 'Image uploads are turned off on this site';
-    if (file.type.startsWith('video/')) return this.auth.on('videos') ? null : 'Video uploads are turned off on this site';
+    if (file.type === 'image/gif' && !this.auth.on('gifs')) return 'GIFs are turned off on this site';
+    if (file.type.startsWith('image/') && file.type !== 'image/gif' && !this.auth.on('images')) return 'Image uploads are turned off on this site';
+    if (file.type.startsWith('video/') && !this.auth.on('videos')) return 'Video uploads are turned off on this site';
+    // the size limit, checked before sending so nobody waits on an upload that will be refused
+    const site = this.auth.config()?.site;
+    const video = file.type.startsWith('video/');
+    const cap = video ? site?.maxVideoMb : site?.maxImageMb;
+    if (cap && file.size > cap * 1024 * 1024) {
+      return `${file.name} is ${(file.size / 1048576).toFixed(1)} MB. ${video ? 'Videos' : 'Images'} can be at most ${cap} MB`;
+    }
     return null;
   }
 

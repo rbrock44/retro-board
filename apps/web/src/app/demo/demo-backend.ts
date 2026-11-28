@@ -257,7 +257,7 @@ export class DemoBackend {
 
   private static readonly SITE_DEFAULTS: InstanceSettings = {
     siteName: 'Retro Board', theme: null, defaultTemplateId: 'went-well',
-    allowAnonymous: true, signup: 'open', features: ALL_FEATURES_ON,
+    allowAnonymous: true, signup: 'open', features: ALL_FEATURES_ON, maxImageMb: 25, maxVideoMb: 25,
   };
 
   private site(): InstanceSettings {
@@ -424,7 +424,8 @@ export class DemoBackend {
     this.requireBoard(m[1], 'write');
     const kind = file.type.startsWith('video/') ? 'video' : file.type === 'image/gif' ? 'gif' : file.type.startsWith('image/') ? 'image' : null;
     if (!kind) fail(400, 'Only images, GIFs and videos can be attached');
-    if (file.size > 25 * 1024 * 1024) fail(413, 'That file is too big (25 MB max)');
+    const cap = kind === 'video' ? this.site().maxVideoMb : this.site().maxImageMb;
+    if (file.size > cap * 1024 * 1024) fail(413, `${kind === 'video' ? 'Videos' : 'Images'} can be at most ${cap} MB`);
     onProgress?.(0.3);
     // Small files are kept as data URLs so they survive a reload and travel in share links; big ones (video)
     // only last for this visit.
@@ -479,7 +480,7 @@ export class DemoBackend {
   private routes: [string, RegExp, (p: string[], body: any, q: URLSearchParams) => unknown][] = [
     // ---- auth ----
     ['GET', /^\/api\/auth\/config$/, (): AuthConfigDto => ({
-      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: 'demo', needsSetup: false,
+      mode: 'none', publicUrl: location.origin, site: { name: this.site().siteName, theme: this.site().theme, features: this.site().features, maxImageMb: this.site().maxImageMb, maxVideoMb: this.site().maxVideoMb }, local: { enabled: false, signup: 'closed' }, providers: [], gifSearch: 'demo', needsSetup: false,
     })],
     ['GET', /^\/api\/auth\/me$/, () => this.meDto()],
     ['POST', /^\/api\/auth\/guest$/, () => this.meDto()],

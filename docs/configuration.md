@@ -82,7 +82,7 @@ There are no vote settings: everyone can like every card, once. Vote settings le
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAX_UPLOAD_MB` | `25` | Largest image or video |
+| `MAX_UPLOAD_MB` | `25` | Largest image or video to start with. Admins can then set images and videos apart in Customize → Features (up to 2000 MB each) |
 | `STORAGE_DRIVER` | `local` | `local` stores files on disk (a Docker volume). `s3` uses any S3-compatible service |
 | `UPLOAD_DIR` | `./data/uploads` (Docker: `/data/uploads`) | Folder for `local` |
 | `S3_BUCKET` | `retro-board` | Bucket for `s3` |

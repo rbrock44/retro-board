@@ -26,6 +26,7 @@ const zTeamSettings = z.object({
   allowAnonymous: z.boolean().optional(),
   locked: z.boolean().optional(),
   theme: z.record(z.string(), z.string()).nullable().optional(),
+  pickerSkipsViewers: z.boolean().optional(),
 });
 
 /** Only the settings teams still have; older rows may carry keys that are gone (like vote limits). */
@@ -36,6 +37,7 @@ export function teamSettings(stored: (TeamSettings & { anonymousByDefault?: bool
   if (anon !== undefined) out.allowAnonymous = anon;
   if (stored?.locked !== undefined) out.locked = stored.locked;
   if (stored?.theme !== undefined) out.theme = stored.theme ? sanitizeTokens(stored.theme) : null;
+  if (stored?.pickerSkipsViewers !== undefined) out.pickerSkipsViewers = stored.pickerSkipsViewers;
   return out;
 }
 

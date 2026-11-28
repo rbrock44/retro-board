@@ -40,8 +40,6 @@ export interface UserPrefs {
   focusRepliesOpen?: boolean;
   /** An open thread shows its reply box right away; off: behind "↩ Reply" (unset: on). Full screen always folds it */
   replyBoxOpen?: boolean;
-  /** Who presents next never asks viewers, who can only watch (unset: off, everyone is asked) */
-  pickerSkipsViewers?: boolean;
   /** The add-card box at the top of each column (unset: compact) */
   composerStyle?: ComposerStyle;
 }
@@ -155,6 +153,8 @@ export interface TeamSettings {
   locked?: boolean;
   /** The team's colors on its boards; null for the site's look */
   theme?: ThemeTokens | null;
+  /** Who presents next leaves out viewers, who can only watch (unset: off, everyone can be picked) */
+  pickerSkipsViewers?: boolean;
 }
 
 /** The parts of TeamSettings that every board of the team carries */
@@ -311,7 +311,7 @@ export interface BoardPermissions {
 
 export interface BoardStateDto {
   board: BoardDto;
-  team: { id: string; name: string; photoUrl: string | null };
+  team: { id: string; name: string; photoUrl: string | null; pickerSkipsViewers?: boolean };
   columns: ColumnDto[];
   cards: CardDto[];
   actions: ActionItemDto[];

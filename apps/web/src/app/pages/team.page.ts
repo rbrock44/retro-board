@@ -187,6 +187,7 @@ import { unlockLink } from '../core/unlock-link';
                 <label class="check"><input type="checkbox" [(ngModel)]="edit.allowAnonymous"> Allow anonymous cards</label>
               }
               <label class="check"><input type="checkbox" [(ngModel)]="edit.locked"> Lock boards: no new or edited cards (likes and reactions still work)</label>
+              <label class="check"><input type="checkbox" [(ngModel)]="edit.pickerSkipsViewers"> Leave viewers out when picking who presents next (they can only watch)</label>
               <fieldset class="stack">
                 <legend>Colors</legend>
                 <label class="check"><input type="checkbox" [(ngModel)]="edit.themed"> Give this team's boards their own colors (everyone sees them)</label>
@@ -342,7 +343,7 @@ export class TeamPage {
   protected inviteRole: TeamRole = 'member';
   protected existingEmail = '';
   protected edit = {
-    name: '', description: '', defaultTemplateId: 'went-well', allowAnonymous: true, locked: false,
+    name: '', description: '', defaultTemplateId: 'went-well', allowAnonymous: true, locked: false, pickerSkipsViewers: false,
     themed: false, theme: { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } } as ThemePreference,
   };
   protected tplName = '';
@@ -393,6 +394,7 @@ export class TeamPage {
         defaultTemplateId: team.settings.defaultTemplateId ?? 'went-well',
         allowAnonymous: team.settings.allowAnonymous ?? true,
         locked: !!team.settings.locked,
+        pickerSkipsViewers: team.settings.pickerSkipsViewers === true,
         themed: !!team.settings.theme,
         theme: team.settings.theme ? { preset: 'custom', tokens: team.settings.theme } : { preset: THEME_PRESETS[0].id, tokens: { ...THEME_PRESETS[0].tokens } },
       };
@@ -574,6 +576,7 @@ export class TeamPage {
           defaultTemplateId: this.edit.defaultTemplateId,
           ...(this.auth.on('anonymous') ? { allowAnonymous: this.edit.allowAnonymous } : {}),
           locked: this.edit.locked,
+          pickerSkipsViewers: this.edit.pickerSkipsViewers,
           theme: this.edit.themed ? this.edit.theme.tokens : null,
         },
       }));

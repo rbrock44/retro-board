@@ -23,6 +23,18 @@ describe('teams and roles', () => {
     expect(r.status).toBe(403);
   });
 
+  it('tells the board which members are viewers, and whether the team leaves them out of picking', async () => {
+    const { owner, team, board } = await teamWithBoard(t.app);
+    const viewer = await addMember(t.app, owner.client, team.id, 'viewer');
+    let s = (await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto;
+    expect(s.viewerIds).toEqual([viewer.user.id]);
+    expect(s.team.pickerSkipsViewers).toBe(false);
+    await owner.client.patch(`/api/teams/${team.id}`, { settings: { pickerSkipsViewers: true } });
+    s = (await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto;
+    expect(s.team.pickerSkipsViewers).toBe(true);
+    expect((await owner.client.get(`/api/teams/${team.id}`)).body.settings.pickerSkipsViewers).toBe(true);
+  });
+
   it('keeps at least one team admin', async () => {
     const { owner, team } = await teamWithBoard(t.app);
     const r = await owner.client.patch(`/api/teams/${team.id}/members/${owner.user.id}`, { role: 'member' });

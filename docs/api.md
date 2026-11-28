@@ -26,7 +26,7 @@ curl -b jar http://localhost:8080/api/teams
 | POST | `/api/auth/login` | `email, password` | |
 | POST | `/api/auth/logout` | | |
 | GET | `/api/auth/me` | | Profile, prefs (theme), linked providers |
-| PATCH | `/api/auth/me` | `name?, avatarUrl?, prefs?: { theme?: {preset, tokens} \| null, focusRepliesOpen?, replyBoxOpen?, pickerSkipsViewers?, composerStyle?: 'full'\|'compact'\|'button' }` | |
+| PATCH | `/api/auth/me` | `name?, avatarUrl?, prefs?: { theme?: {preset, tokens} \| null, focusRepliesOpen?, replyBoxOpen?, composerStyle?: 'full'\|'compact'\|'button' }` | |
 | POST | `/api/auth/password` | `current?, next` | `current` required when a password exists. Signs out other sessions |
 | DELETE | `/api/auth/identities/:provider` | | Unlink a provider |
 | GET | `/api/auth/:provider/start` | `?invite=&next=` | Browser redirect to the provider |
@@ -38,7 +38,7 @@ curl -b jar http://localhost:8080/api/teams
 |---|---|---|---|
 | GET | `/api/teams` | `?all=1` (instance admins) | |
 | POST | `/api/teams` | `name, description?` | any user; creator becomes admin |
-| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme}`. `allowAnonymous`, `locked` and `theme` are copied onto the team's open boards (sent live) and used for new ones; archived and closed boards keep theirs | viewer / admin / admin |
+| GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme, pickerSkipsViewers}`. `pickerSkipsViewers` leaves viewers out of who presents next. `allowAnonymous`, `locked` and `theme` are copied onto the team's open boards (sent live) and used for new ones; archived and closed boards keep theirs | viewer / admin / admin |
 | POST / DELETE | `/api/teams/:teamId/photo` | POST: `multipart/form-data` with one image `file`, stored as a 256px square webp. Both return the team, whose `photoUrl` changes with each new photo | admin |
 | GET | `/api/teams/:teamId/photo` | The photo (`image/webp`); 404 when there is none. Works without the team password (it's on the prompt) | viewer |
 | POST | `/api/teams/:teamId/unlock` | `password`, or `key` from a link (`#unlock=<teamId>.<key>`). Right: sets `rb_unlock_<team>` (until the password changes). Wrong (or a key from before the password changed): 400; too many tries: 429 | viewer |

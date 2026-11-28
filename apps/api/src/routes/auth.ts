@@ -160,7 +160,6 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
         theme: z.object({ preset: z.string().max(40), tokens: z.record(z.string(), z.string()) }).nullable().optional(),
         focusRepliesOpen: z.boolean().optional(),
         replyBoxOpen: z.boolean().optional(),
-        pickerSkipsViewers: z.boolean().optional(),
         composerStyle: z.enum(['full', 'compact', 'button']).optional(),
       }).optional(),
     }), req.body);
@@ -171,7 +170,6 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     }
     if (typeof body.prefs?.focusRepliesOpen === 'boolean') prefs.focusRepliesOpen = body.prefs.focusRepliesOpen;
     if (typeof body.prefs?.replyBoxOpen === 'boolean') prefs.replyBoxOpen = body.prefs.replyBoxOpen;
-    if (typeof body.prefs?.pickerSkipsViewers === 'boolean') prefs.pickerSkipsViewers = body.prefs.pickerSkipsViewers;
     if (body.prefs?.composerStyle) prefs.composerStyle = body.prefs.composerStyle;
     const [updated] = await db.update(users).set({
       name: body.name ?? user.name,

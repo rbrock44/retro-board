@@ -135,7 +135,7 @@ its default template), so people always land in the right place.
   says yes. Everyone gets a turn, in random order, before anyone goes twice (remembered per team in your browser)
 - `Who presents next` - The person button after `Sort` picks someone the same way, without the full-screen view;
   whoever says yes shows beside it until cleared with ✕. `↶` beside a name under `Not right now` asks them again.
-  Settings → Board can leave viewers out of the picking (off by default)
+  A team setting (History → Settings) can leave viewers out of the picking (off by default)
 - `Sort` - The board's own order comes first. It reads `Oldest First` until someone rearranges cards in Arrange Mode
   (including across columns), then `Custom`. `Oldest First`, `Newest First` and `Most Liked` show other views without
   changing it. Turning Arrange Mode on goes back to the board's own order

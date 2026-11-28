@@ -144,6 +144,7 @@ export class DemoBackend {
     if (anon !== undefined) out.allowAnonymous = anon;
     if (raw.locked !== undefined) out.locked = raw.locked;
     if (raw.theme !== undefined) out.theme = raw.theme;
+    if (raw.pickerSkipsViewers !== undefined) out.pickerSkipsViewers = raw.pickerSkipsViewers;
     return out;
   }
 
@@ -493,7 +494,6 @@ export class DemoBackend {
         this.state.prefs.focusRepliesOpen = b.prefs.focusRepliesOpen;
       }
       if (typeof b.prefs?.replyBoxOpen === 'boolean') this.state.prefs.replyBoxOpen = b.prefs.replyBoxOpen;
-      if (typeof b.prefs?.pickerSkipsViewers === 'boolean') this.state.prefs.pickerSkipsViewers = b.prefs.pickerSkipsViewers;
       if (b.prefs?.composerStyle) {
         if (!COMPOSER_STYLES.includes(b.prefs.composerStyle)) fail(400, 'Invalid composer style');
         this.state.prefs.composerStyle = b.prefs.composerStyle;
@@ -717,7 +717,7 @@ export class DemoBackend {
       const team = this.team(ctx.board.teamId);
       return {
         board: this.boardDto(ctx.board),
-        team: { id: team.id, name: team.name, photoUrl: team.photoUrl ?? null },
+        team: { id: team.id, name: team.name, photoUrl: team.photoUrl ?? null, pickerSkipsViewers: this.teamSettings(team).pickerSkipsViewers === true },
         columns: this.state.columns.filter(c => c.boardId === id).sort(byPosition),
         cards: this.state.cards.filter(c => c.boardId === id).map(c => this.cardDto(c)),
         actions: this.teamActions(team.id),

@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
+import type { BoardStateDto } from '@retro/shared';
 import { buildApp } from '../src/app';
 import type { AuthFileConfig } from '../src/auth/providers';
 import { loadConfig } from '../src/config';
@@ -106,7 +107,7 @@ export async function teamWithBoard(app: FastifyInstance, boardBody: Record<stri
   const owner = await signUp(app, 'Owner');
   const team = (await owner.client.post('/api/teams', { name: 'Platform' })).body;
   const board = (await owner.client.post(`/api/teams/${team.id}/boards`, { title: 'Sprint 1', templateId: 'start-stop-continue', ...boardBody })).body;
-  const state = (await owner.client.get(`/api/boards/${board.id}`)).body;
+  const state = (await owner.client.get(`/api/boards/${board.id}`)).body as BoardStateDto;
   return { owner, team, board, state };
 }
 

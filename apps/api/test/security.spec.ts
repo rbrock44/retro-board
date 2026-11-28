@@ -42,7 +42,8 @@ describe('security', () => {
     expect(parseTrustProxy(undefined)).toBe('loopback, linklocal, uniquelocal');
     expect(parseTrustProxy('true')).toBe(true);
     expect(parseTrustProxy('false')).toBe(false);
-    expect(parseTrustProxy('2')).toBe(2);
+    const twoHops = parseTrustProxy('2') as (address: string, hop: number) => boolean;
+    expect([0, 1, 2].map(hop => twoHops('10.0.0.1', hop))).toEqual([true, true, false]);
     expect(parseTrustProxy('10.0.0.0/8')).toBe('10.0.0.0/8');
   });
 });

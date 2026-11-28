@@ -10,12 +10,15 @@ import type { FastifyInstance } from 'fastify';
  * limits on password guesses. `true` trusts every hop (only behind a proxy that strips the header), a number
  * trusts that many hops, `false` none; anything else is a list of addresses or ranges.
  */
-export function parseTrustProxy(value: string | undefined): boolean | number | string {
+export type TrustProxy = boolean | string | ((address: string, hop: number) => boolean);
+
+export function parseTrustProxy(value: string | undefined): TrustProxy {
   const v = (value ?? '').trim();
   if (!v) return 'loopback, linklocal, uniquelocal';
   if (v === 'true') return true;
   if (v === 'false') return false;
-  if (/^\d+$/.test(v)) return Number(v);
+  // a hop count, as a function: Fastify takes a number too, but its types don't say so
+  if (/^\d+$/.test(v)) { const hops = Number(v); return (_address, hop) => hop < hops; }
   return v;
 }
 

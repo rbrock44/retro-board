@@ -111,13 +111,18 @@ const FOCUS_ACTIONS = '__actions__';
           </span>
           @if (auth.on('replies')) {
             <!-- every reply thread on the board at once -->
-            <span class="reply-all" role="group" aria-label="Reply threads">
-              <button type="button" class="icon-btn" (click)="setAllReplies(true)" [disabled]="!closedReplyIds().length"
-                      aria-label="Open all replies" [title]="boardReplyIds().length ? 'Open all replies' : 'No replies on this board yet'">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 6l5 5 5-5M7 13l5 5 5-5" /></svg></button>
-              <button type="button" class="icon-btn" (click)="setAllReplies(false)" [disabled]="closedReplyIds().length === boardReplyIds().length"
-                      aria-label="Close all replies" [title]="boardReplyIds().length ? 'Close all replies' : 'No replies on this board yet'">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg></button>
+            <!-- one button: opens every thread, or closes them all once they're all open -->
+            <span class="reply-all">
+              @let allOpen = boardReplyIds().length > 0 && !closedReplyIds().length;
+              <button type="button" class="icon-btn" (click)="setAllReplies(!allOpen)" [disabled]="!boardReplyIds().length"
+                      [attr.aria-label]="allOpen ? 'Close all replies' : 'Open all replies'"
+                      [title]="!boardReplyIds().length ? 'No replies on this board yet' : allOpen ? 'Close all replies' : 'Open all replies'">
+                @if (allOpen) {
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 6l5 5 5-5M7 13l5 5 5-5" /></svg>
+                }
+              </button>
             </span>
           }
           <div class="spacer"></div>

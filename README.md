@@ -102,7 +102,7 @@ its default template), so people always land in the right place.
   the mouse wheel zooms in and out, a click zooms in (and back to fit once fully zoomed), drag to move around, and the
   scale at the top right shows how far it's zoomed. It never fills the screen, so a click around it always closes it
 - `Replies` - 💬 opens a thread on any card. Replies support markdown, media and reactions, and can be answered
-  one level deep. The two arrow buttons after `Sort` open or close every thread on the board
+  one level deep. The arrow button after `Sort` opens every thread on the board, or closes them all once they are all open
 - `Reactions` - Emoji reactions on cards and replies, separate from likes. `☺+` offers a quick row; 🔍 opens every
   emoji with search, categories, skin tones and your most used
 - `People` - Click someone's face or name on a card or reply for their details: email (shown to team admins), team

@@ -14,7 +14,7 @@ import { requireTeam, teamRole } from '../lib/access';
 import { HttpError, badRequest, noContent, notFound, parse, requireAdmin, requireUser, zColor } from '../lib/http';
 import { hash, verify } from '@node-rs/argon2';
 import {
-  clearTeamCookies, guessAllowed, isLockOwner, makeOwner, noteWrongGuess, setUnlocked, teamOpen,
+  clearTeamCookies, guessAllowed, isLockOwner, linkKey, linkKeyOpens, makeOwner, noteWrongGuess, setUnlocked, teamOpen,
 } from '../lib/team-lock';
 import { newId, newToken } from '../lib/ids';
 import { acceptInvite, findValidInvite } from '../lib/invites';
@@ -100,20 +100,38 @@ export async function teamRoutes(app: FastifyInstance, ctx: Ctx) {
 
   // ---- team password ----
 
-  /** Typing the team's password: this browser stays unlocked until the password changes. */
+  /**
+   * Typing the team's password, or arriving by a link that carries its key: this browser stays unlocked until the
+   * password changes.
+   */
   app.post('/api/teams/:teamId/unlock', async (req, reply) => {
     const user = requireUser(req);
     const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'viewer', { skipPassword: true });
-    const { password } = parse(z.object({ password: z.string().max(200) }), req.body);
+    const body = parse(z.union([
+      z.object({ password: z.string().max(200) }),
+      z.object({ key: z.string().max(200) }),
+    ]), req.body);
     if (!team.passwordHash) return { ok: true };
     const guessKey = `${team.id}:${req.ip}`;
     if (!guessAllowed(guessKey)) throw new HttpError(429, 'Too many tries. Wait a minute and try again');
-    if (!(await verify(team.passwordHash, password))) {
+    if ('key' in body) {
+      if (!linkKeyOpens(ctx.config.sessionSecret, team, body.key)) {
+        noteWrongGuess(guessKey);
+        throw badRequest('That link is from before the password changed. Ask for a new one, or type the password');
+      }
+    } else if (!(await verify(team.passwordHash, body.password))) {
       noteWrongGuess(guessKey);
       throw badRequest("That's not the password");
     }
     setUnlocked(reply, ctx.config, team.id, team.passwordVersion);
     return { ok: true };
+  });
+
+  /** For a team admin: the key for a link that opens the team without typing the password (null with no password). */
+  app.get('/api/teams/:teamId/link-key', async req => {
+    const user = requireUser(req);
+    const { team } = await requireTeam(db, user, (req.params as { teamId: string }).teamId, 'admin');
+    return { key: team.passwordHash ? linkKey(ctx.config.sessionSecret, team.id, team.passwordVersion) : null };
   });
 
   /**

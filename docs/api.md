@@ -41,7 +41,8 @@ curl -b jar http://localhost:8080/api/teams
 | GET / PATCH / DELETE | `/api/teams/:teamId` | PATCH: `name?, description?, settings?{defaultTemplateId, allowAnonymous, locked, theme}`. `allowAnonymous`, `locked` and `theme` are copied onto the team's open boards (sent live) and used for new ones; archived and closed boards keep theirs | viewer / admin / admin |
 | POST / DELETE | `/api/teams/:teamId/photo` | POST: `multipart/form-data` with one image `file`, stored as a 256px square webp. Both return the team, whose `photoUrl` changes with each new photo | admin |
 | GET | `/api/teams/:teamId/photo` | The photo (`image/webp`); 404 when there is none. Works without the team password (it's on the prompt) | viewer |
-| POST | `/api/teams/:teamId/unlock` | `password`. Right: sets `rb_unlock_<team>` (until the password changes). Wrong: 400; too many tries: 429 | viewer |
+| POST | `/api/teams/:teamId/unlock` | `password`, or `key` from a link (`#unlock=<teamId>.<key>`). Right: sets `rb_unlock_<team>` (until the password changes). Wrong (or a key from before the password changed): 400; too many tries: 429 | viewer |
+| GET | `/api/teams/:teamId/link-key` | `{ key }` for a link that opens the team without typing the password: signed for the current password version, so a new password retires it. `null` with no password | admin |
 | PUT | `/api/teams/:teamId/password` | `current?, password` (min 4) or `password: null` to remove. Needs `current`, except from the browser that first set it (`rb_owner_<team>` cookie, which this sets). Every change signs other browsers out. Returns the team | admin |
 
 **Team passwords:** while a team has one, every team and board route answers **423** `{ error, lockedTeam: { id, name } }`

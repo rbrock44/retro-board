@@ -813,7 +813,7 @@ emoji-picker { flex: 1; width: 100%; height: 100%;
   .btn { width: 100%; }
   .error:empty { display: none; } }
 .lock-tag { margin-left: auto; font-size: 1rem; }
-.password-form { max-width: 360px; }
+.password-form { max-width: 360px; > p { margin: 0; } }
 
 /* Deleting a column that has cards: move them or delete them */
 .delete-col-ask { margin: 0; }

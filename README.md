@@ -61,7 +61,10 @@ plain email and password).
 - `Team password` - A team admin can put a password on a team (History → Settings → Password). Everyone then types
   it once per browser to open the team's boards, and again after it changes. The browser that set it never has to,
   and can set a new one without the old one, so a forgotten password isn't a dead end. Other admins need the old
-  one to change it. If both are lost, whoever runs the server removes it with `./launch.sh unlock "<team>"`
+  one to change it. If both are lost, whoever runs the server removes it with `./launch.sh unlock "<team>"`.
+  `Copy Link That Skips the Password` (and every copied invite link) carries a key instead of the password, so
+  whoever opens it isn't asked; the key leaves the address bar as the page opens, so going to the site by hand still
+  asks. Changing the password retires every link made before
 - `Instance Admin` - The first account created, plus anyone in `ADMIN_EMAILS`. Manages every account from the
   `Admin` page and acts as admin on every team
 

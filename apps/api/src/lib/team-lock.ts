@@ -12,6 +12,8 @@ import { HttpError } from './http';
  * - The browser that sets it also gets `rb_owner_<team>`: a random key whose hash the team keeps. That browser
  *   always gets in and may set a new password without the old one (for when it's forgotten)
  * - If both the password and that browser are lost, whoever runs the server clears it: `./launch.sh unlock <team>`
+ * - A team admin can copy a link that carries a key in place of the password (`#unlock=…`): the key is signed for
+ *   the current password version, so it stops working when the password changes. It is not the password itself
  */
 
 const UNLOCK = 'rb_unlock_';
@@ -37,6 +39,16 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 function sameText(a: string, b: string): boolean {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
+}
+
+/** The key a link carries in place of the password (signed apart from the cookie, so one can't stand in for the other). */
+export function linkKey(secret: string, teamId: string, version: number): string {
+  return `${version}.${createHmac('sha256', secret).update(`link:${teamId}:${version}`).digest('base64url')}`;
+}
+
+/** Does this link key open the team at its current password? */
+export function linkKeyOpens(secret: string, team: Pick<Team, 'id' | 'passwordVersion'>, key: string): boolean {
+  return sameText(key, linkKey(secret, team.id, team.passwordVersion));
 }
 
 /** Reads the team cookies from a request's (or socket's) cookies and remembers them for this user object. */

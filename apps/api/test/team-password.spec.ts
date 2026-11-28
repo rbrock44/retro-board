@@ -73,6 +73,34 @@ describe('team password', () => {
     expect((await member.client.get(`/api/boards/${board.id}`)).status).toBe(200);
   });
 
+  it('opens by a link key from an admin, until the password changes', async () => {
+    t = await makeApp();
+    const { owner, team, board } = await teamWithBoard(t.app);
+    const member = await addMember(t.app, owner.client, team.id, 'member');
+    expect((await owner.client.get(`/api/teams/${team.id}/link-key`)).body).toEqual({ key: null });
+    await owner.client.put(`/api/teams/${team.id}/password`, { password: 'sprint' });
+
+    // only admins hand out keys, and a key is not the password
+    expect((await member.client.get(`/api/teams/${team.id}/link-key`)).status).toBe(423);
+    const { key } = (await owner.client.get(`/api/teams/${team.id}/link-key`)).body as { key: string };
+    expect(key).toMatch(/^\d+\.[\w-]{20,}$/);
+    expect(key).not.toContain('sprint');
+    expect((await member.client.post(`/api/teams/${team.id}/unlock`, { password: key })).status).toBe(400);
+    expect((await member.client.post(`/api/teams/${team.id}/unlock`, { key: key + 'x' })).status).toBe(400);
+
+    const viaLink = otherBrowser(t.app, member.client);
+    expect((await viaLink.post(`/api/teams/${team.id}/unlock`, { key })).status).toBe(200);
+    expect((await viaLink.get(`/api/boards/${board.id}`)).status).toBe(200);
+
+    // a new password retires the old links
+    await owner.client.put(`/api/teams/${team.id}/password`, { password: 'retro' });
+    const late = otherBrowser(t.app, member.client);
+    const res = await late.post(`/api/teams/${team.id}/unlock`, { key });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: expect.stringMatching(/before the password changed/) });
+    expect((await late.get(`/api/boards/${board.id}`)).status).toBe(423);
+  });
+
   it('slows down guessing', async () => {
     t = await makeApp();
     const { owner, team } = await teamWithBoard(t.app);

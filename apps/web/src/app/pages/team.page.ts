@@ -19,6 +19,7 @@ import { RelativeTimePipe } from '../shared/relative-time.pipe';
 type Tab = 'boards' | 'actions' | 'members' | 'settings';
 
 import { TeamPhoto } from '../shared/team-photo';
+import { unlockLink } from '../core/unlock-link';
 @Component({
   selector: 'app-team-page',
   imports: [FormsModule, RouterLink, Modal, Avatar, ColorPicker, RelativeTimePipe, ActionList, ExportDialog, ThemeEditor, TeamPhoto],
@@ -145,11 +146,15 @@ import { TeamPhoto } from '../shared/team-photo';
                         <code class="grow">{{ inviteUrl(i) }}</code>
                         <span class="meta">{{ i.role }} · {{ i.uses }}{{ i.maxUses ? '/' + i.maxUses : '' }} used
                           @if (i.email) { · {{ i.email }} } @if (i.expiresAt) { · expires {{ i.expiresAt | ago }} }</span>
-                        <button class="btn ghost" type="button" (click)="copy(inviteUrl(i))">Copy</button>
+                        <button class="btn ghost" type="button" (click)="copyInvite(i)">Copy</button>
                         <button class="btn ghost danger" type="button" (click)="revoke(i)">Revoke</button>
                       </li>
                     }
                   </ul>
+                  @if (team()?.password?.set) {
+                    <p class="muted small">🔒 Copied invite links carry a key for the team password, so the people you send them to don't
+                      have to type it. Changing the password retires those keys.</p>
+                  }
                 }
               }
             </section>
@@ -243,6 +248,11 @@ import { TeamPhoto } from '../shared/team-photo';
                   }
                 </div>
                 @if (t.password.set) {
+                  <div class="row wrap">
+                    <button type="button" class="btn" (click)="copyUnlockLink()">Copy Link That Skips the Password</button>
+                  </div>
+                  <p class="muted small">Opens the team's current board without typing the password. The link carries a key, not the
+                    password, and stops working when the password changes. Someone who goes to the site on their own still gets asked.</p>
                   <p class="muted small">Changing it asks everyone for the new one. Forgot it, and this isn't the browser that set it?
                     Whoever runs the server can remove it with <code>./launch.sh unlock "{{ t.name }}"</code>.</p>
                 }
@@ -465,11 +475,32 @@ export class TeamPage {
    * Built from PUBLIC_URL when you're on localhost but the site is shared at another address (launch --network),
    * so the link you copy works for the people you send it to.
    */
-  inviteUrl(i: InviteDto) {
+  private shareBase() {
     const shared = this.auth.config()?.publicUrl;
     const local = ['localhost', '127.0.0.1'].includes(location.hostname);
-    const base = local && shared && !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]?/.test(shared) ? shared : location.origin;
-    return `${base}/invite/${i.token}`;
+    return local && shared && !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]?/.test(shared) ? shared : location.origin;
+  }
+
+  inviteUrl(i: InviteDto) {
+    return `${this.shareBase()}/invite/${i.token}`;
+  }
+
+  /** The team's key for a link, when it has a password (null otherwise, or when it can't be had) */
+  private async linkKey(): Promise<string | null> {
+    if (!this.team()?.password.set) return null;
+    try { return (await this.api.get<{ key: string | null }>(`${this.base()}/link-key`)).key; } catch { return null; }
+  }
+
+  /** Invite links skip the team password too: joining and then being asked for it is one step too many */
+  async copyInvite(i: InviteDto) {
+    const key = await this.linkKey();
+    await this.copy(key ? unlockLink(this.shareBase(), `/invite/${i.token}`, this.teamId(), key) : this.inviteUrl(i));
+  }
+
+  async copyUnlockLink() {
+    const key = await this.linkKey();
+    if (!key) { this.toast.show("Couldn't make the link. Reload and try again"); return; }
+    await this.copy(unlockLink(this.shareBase(), `/teams/${this.teamId()}`, this.teamId(), key), 'Link copied. It opens the team without the password');
   }
 
   async createInvite() {
@@ -477,7 +508,7 @@ export class TeamPage {
       const inv = await this.api.post<InviteDto>(`${this.base()}/invites`, { email: this.inviteEmail || null, role: this.inviteRole });
       this.invites.update(list => [inv, ...list]);
       this.inviteEmail = '';
-      await this.copy(this.inviteUrl(inv));
+      await this.copyInvite(inv);
     } catch (err) {
       this.toast.error(err);
     }
@@ -498,10 +529,10 @@ export class TeamPage {
     this.invites.update(list => list.filter(x => x.id !== i.id));
   }
 
-  async copy(text: string) {
+  async copy(text: string, done = 'Invite link copied') {
     try {
       await navigator.clipboard.writeText(text);
-      this.toast.show('Invite link copied');
+      this.toast.show(done);
     } catch {
       prompt('Copy this link', text);
     }

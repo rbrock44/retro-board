@@ -70,6 +70,7 @@ export class DemoBackend {
     return u ? { id: u.id, name: u.name, email: null, avatarUrl: u.avatarUrl, role: u.role, guest: true } : null;
   }
   private get me() { return this.state.users.find(u => u.id === this.state.meId)!; }
+  private linkKey(team: { id: string; passwordVersion?: number }) { return `${team.passwordVersion ?? 0}.demo-${team.id}`; }
   private team(id: string) { return this.state.teams.find(t => t.id === id) ?? notFound('Team'); }
   private board(id: string) { return this.state.boards.find(b => b.id === id) ?? notFound('Board'); }
   private card(id: string) { return this.state.cards.find(c => c.id === id) ?? notFound('Card'); }
@@ -515,9 +516,16 @@ export class DemoBackend {
     ['GET', /^\/api\/teams\/([^/]+)$/, ([id]) => this.teamDto(this.requireTeam(id).team)],
     ['POST', /^\/api\/teams\/([^/]+)\/unlock$/, ([id], b) => {
       const { team } = this.requireTeam(id, 'viewer', true);
-      if (team.passwordHash && team.passwordHash !== demoHash(id, String(b.password ?? ''))) fail(400, "That's not the password");
+      if (team.passwordHash && typeof b.key === 'string') {
+        // a link's key (the real server signs it; the demo only checks it's for the current password)
+        if (b.key !== this.linkKey(team)) fail(400, 'That link is from before the password changed. Ask for a new one, or type the password');
+      } else if (team.passwordHash && team.passwordHash !== demoHash(id, String(b.password ?? ''))) fail(400, "That's not the password");
       this.locks().unlocked[id] = team.passwordVersion ?? 0;
       return { ok: true };
+    }],
+    ['GET', /^\/api\/teams\/([^/]+)\/link-key$/, ([id]) => {
+      const { team } = this.requireTeam(id, 'admin');
+      return { key: team.passwordHash ? this.linkKey(team) : null };
     }],
     ['PUT', /^\/api\/teams\/([^/]+)\/password$/, ([id], b) => {
       const { team } = this.requireTeam(id, 'admin', true);

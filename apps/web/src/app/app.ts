@@ -38,6 +38,7 @@ import { TeamUnlock } from './shared/team-unlock';
             <div class="menu" role="menu" (click)="menuOpen.set(false)">
               <a role="menuitem" routerLink="/settings">Profile &amp; Theme</a>
               @if (auth.isAdmin()) { <a role="menuitem" routerLink="/admin">Instance Admin</a> }
+              @else if (auth.open()) { <a role="menuitem" routerLink="/claim-admin">Claim Admin</a> }
               @if (me.guest) { <button role="menuitem" type="button" (click)="auth.switchPerson()">Switch Person</button> }
               @else { <button role="menuitem" type="button" (click)="logout()">Sign Out</button> }
             </div>

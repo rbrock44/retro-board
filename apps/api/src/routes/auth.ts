@@ -9,10 +9,12 @@ import {
 import { createGuest, createUser, findUserByEmail, resolveExternalLogin, toMeDto, userCount } from '../auth/users';
 import type { Ctx } from '../context';
 import { identities, users, type User } from '../db/schema';
-import { badRequest, forbidden, noContent, notFound, parse, requireUser, unauthorized } from '../lib/http';
+import { HttpError, badRequest, forbidden, noContent, notFound, parse, requireUser, unauthorized } from '../lib/http';
 import { getSettings } from '../lib/instance';
 import { acceptInvite, findValidInvite } from '../lib/invites';
 import { uploadUsage } from '../lib/storage-usage';
+import { hasAdmin, useAdminCode } from '../lib/admin-code';
+import { guessAllowed, noteWrongGuess } from '../lib/team-lock';
 
 const email = z.string().trim().toLowerCase().email('enter a valid email').max(200);
 const password = z.string().min(8, 'use at least 8 characters').max(200);
@@ -70,6 +72,8 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
     providers: open ? [] : ctx.auth.list(),
     gifSearch: config.giphyApiKey ? 'giphy' : config.tenorApiKey ? 'tenor' : null,
     needsSetup: (await userCount(db)) === 0,
+    // no-sign-in mode with nobody running the site yet: the app points people at the setup code
+    needsAdmin: open && !(await hasAdmin(db)),
     };
   });
 
@@ -89,17 +93,32 @@ export async function authRoutes(app: FastifyInstance, ctx: Ctx) {
 
   /**
    * No-sign-in mode: "I'm one of these people". Switches this browser to an existing guest, so someone on a new
-   * device (or after clearing cookies) carries on as themselves. Everyone can do everything in this mode anyway,
-   * so there's nothing more to check than that the target is a named guest.
+   * device (or after clearing cookies) carries on as themselves. Never to a site admin: that would hand anyone
+   * the admin's rights; an admin on a new device uses a fresh setup code instead.
    */
   app.post('/api/auth/guest/claim', async (req, reply) => {
     if (!open) throw notFound();
     const { userId } = parse(z.object({ userId: z.string().min(1).max(64) }), req.body);
     const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!target || !target.guest || !target.name || target.disabled) throw notFound('Person');
+    if (!target || !target.guest || !target.name || target.disabled || target.role === 'admin') throw notFound('Person');
     if (req.sessionId) await deleteSession(db, req.sessionId);
     await startSession(reply, target, req.headers['user-agent']);
     return toMeDto(db, target);
+  });
+
+  /** No-sign-in mode: the setup code makes this visitor a site admin (the code then stops working) */
+  app.post('/api/auth/admin-code', async req => {
+    if (!open) throw notFound();
+    const user = requireUser(req);
+    const { code } = parse(z.object({ code: z.string().trim().min(1).max(40) }), req.body);
+    const guessKey = `admin-code:${req.ip}`;
+    if (!guessAllowed(guessKey)) throw new HttpError(429, 'Too many tries. Wait a minute and try again');
+    if (!(await useAdminCode(db, code))) {
+      noteWrongGuess(guessKey);
+      throw badRequest("That code doesn't work. Make a new one on the server with ./launch.sh admin-code");
+    }
+    const [updated] = await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id)).returning();
+    return toMeDto(db, updated);
   });
 
   /** No-sign-in mode: "I'm someone else". A fresh, unnamed guest for this browser. */

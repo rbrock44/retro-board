@@ -117,7 +117,8 @@ export class AuthService {
     if (teamId) {
       const members = await this.api.get<TeamMemberDto[]>(`/api/teams/${teamId}/members`);
       for (const m of members) {
-        if (m.user.guest && m.user.id !== meId && !out.has(m.user.id)) out.set(m.user.id, { id: m.user.id, name: m.user.name, onDevice: false });
+        // never a site admin: nobody becomes one by saying "that's me"
+        if (m.user.guest && m.user.role !== 'admin' && m.user.id !== meId && !out.has(m.user.id)) out.set(m.user.id, { id: m.user.id, name: m.user.name, onDevice: false });
       }
     }
     return [...out.values()];

@@ -8,6 +8,7 @@
 #   launch.cmd backup --encrypt   the same, locked with a passphrase (for copies kept off this computer)
 #   launch.cmd restore FILE    put a backup back
 #   launch.cmd unlock [TEAM]   remove a forgotten team password (no TEAM: list the teams that have one)
+#   launch.cmd admin-code      no sign-in: a setup code that makes whoever types it on the site an admin
 #   launch.cmd stop | logs
 #
 # launch.cmd --help lists the options. Works in Windows PowerShell 5.1 and PowerShell 7.
@@ -15,7 +16,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 $usage = @'
-Usage: launch.cmd [up|update|stop|logs|backup [--encrypt]|restore FILE|unlock [TEAM]] [options]
+Usage: launch.cmd [up|update|stop|logs|backup [--encrypt]|restore FILE|unlock [TEAM]|admin-code] [options]
 
 backup --encrypt asks for a passphrase (or reads BACKUP_PASSPHRASE) and saves a .tar.gz.enc that can't be
 opened without it; restore asks for it again. Keep the passphrase somewhere other than this computer.
@@ -125,7 +126,7 @@ $cmd = 'up'
 $encrypt = $false
 $restoreFile = ''
 $unlockTeam = ''
-if ($argList.Count -gt 0 -and @('up', 'update', 'stop', 'logs', 'backup', 'restore', 'unlock') -contains $argList[0]) {
+if ($argList.Count -gt 0 -and @('up', 'update', 'stop', 'logs', 'backup', 'restore', 'unlock', 'admin-code') -contains $argList[0]) {
   $cmd = $argList[0]
   $argList = @($argList | Select-Object -Skip 1)
   if ($cmd -eq 'unlock') {
@@ -340,6 +341,12 @@ if ($cmd -eq 'backup') {
   }
   Write-Host "Put it back any time with: launch.cmd restore $f"
   exit 0
+}
+if ($cmd -eq 'admin-code') {
+  if (-not (Test-Path $envPath)) { Fail 'Run launch.cmd once first.' }
+  Confirm-Up
+  docker compose exec -T app node dist/cli.js admin-code
+  exit $LASTEXITCODE
 }
 if ($cmd -eq 'unlock') {
   if (-not (Test-Path $envPath)) { Fail 'Run launch.cmd once first.' }
@@ -643,7 +650,12 @@ if ($access -eq 'network') {
 }
 Write-Host ''
 if ($mode -eq 'none') {
-  Write-Host 'No sign-in: anyone who can open that address can see and change everything.'
+  Write-Host 'No sign-in: anyone who can open that address can join any team and add cards.'
+  Write-Host 'Whoever makes a team runs it; the site admin (Admin page) runs everything.'
+  # nobody is admin yet: a setup code to claim it with (a new one any time: launch.cmd admin-code)
+  $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  docker compose exec -T app node dist/cli.js admin-code --if-no-admin 2>$null | ForEach-Object { Write-Host "  $_" }
+  $ErrorActionPreference = $prev
 } else {
   Write-Host 'The first account you create becomes the admin. Customize the look and defaults in Admin > Customize.'
   foreach ($p in @(@('google', 'GOOGLE_CLIENT_ID'), @('github', 'GITHUB_CLIENT_ID'), @('microsoft', 'MS_CLIENT_ID'), @('okta', 'OKTA_CLIENT_ID'))) {

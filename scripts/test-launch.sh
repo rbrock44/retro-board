@@ -80,6 +80,10 @@ for a in "--disable telepathy" "--data cloud" "--theme neon" "--accent red" "--v
   if sh launch.sh $a </dev/null >/dev/null 2>&1; then echo "  FAIL accepted $a"; fail=1; else echo "  ok   rejects $a"; fi
 done
 sh launch.sh --help | grep -q "Your data" && echo "  ok   --help" || { echo "  FAIL --help"; fail=1; }
+sh launch.sh --help | grep -q "admin-code" && echo "  ok   --help lists admin-code" || { echo "  FAIL --help admin-code"; fail=1; }
+if sh launch.sh admin-code </dev/null >out.txt 2>&1; then echo "  FAIL admin-code ran before setup"; fail=1
+elif grep -q "Run ./launch.sh once first" out.txt; then echo "  ok   admin-code needs setup first"
+else echo "  FAIL admin-code message"; fail=1; fi
 
 echo "-- no docker"
 nodocker=$(printf %s "$PATH" | sed "s#$WORK/bin:##")

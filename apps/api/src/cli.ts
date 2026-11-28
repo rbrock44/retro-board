@@ -2,6 +2,7 @@ import { eq, isNotNull } from 'drizzle-orm';
 import { loadConfig } from './config';
 import { openDatabase } from './db';
 import { teams } from './db/schema';
+import { hasAdmin, newAdminCode } from './lib/admin-code';
 import { decryptFile, encryptFile, isEncrypted } from './lib/backup-crypto';
 
 /**
@@ -13,11 +14,13 @@ import { decryptFile, encryptFile, isEncrypted } from './lib/backup-crypto';
  *   node dist/cli.js encrypt <in> <out> encrypts a backup file with the passphrase given on stdin
  *   node dist/cli.js decrypt <in> <out> the other way round (a wrong passphrase fails, writing nothing)
  *   node dist/cli.js encrypted <file>   exits 0 when the file is an encrypted backup
+ *   node dist/cli.js admin-code          a new setup code: typed on the site (no-sign-in mode), it makes that visitor
+ *                                       a site admin. --if-no-admin: only when nobody is admin yet (for launch.sh)
  *
  * Docker: ./launch.sh unlock <team>. With the embedded database (pglite:), stop the app first.
  */
 const [cmd, ...rest] = process.argv.slice(2);
-const usage = 'Usage: cli.js unlock [team name or id] | encrypt <in> <out> | decrypt <in> <out> | encrypted <file>';
+const usage = 'Usage: cli.js unlock [team name or id] | admin-code [--if-no-admin] | encrypt <in> <out> | decrypt <in> <out> | encrypted <file>';
 
 /** The passphrase, piped in so it never shows on a command line or in the process list */
 async function readPassphrase(): Promise<string> {
@@ -36,6 +39,24 @@ if ((cmd === 'encrypt' || cmd === 'decrypt') && rest.length === 2) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
+}
+if (cmd === 'admin-code') {
+  const config = loadConfig();
+  const { db, close } = await openDatabase(config.databaseUrl);
+  try {
+    if (config.authMode !== 'none') {
+      if (!rest.includes('--if-no-admin')) console.log('This site uses accounts: the first account made is its admin, and admins promote others on the Admin page.');
+    } else if (rest.includes('--if-no-admin') && (await hasAdmin(db))) {
+      // someone runs the site already: nothing to say
+    } else {
+      const code = await newAdminCode(db);
+      console.log(`Admin setup code: ${code}`);
+      console.log('Open the site, choose "Claim Admin" (or go to /claim-admin) and type it. It works once; any earlier code stops working.');
+    }
+  } finally {
+    await close();
+  }
+  process.exit(0);
 }
 if (cmd !== 'unlock') {
   console.error(usage);

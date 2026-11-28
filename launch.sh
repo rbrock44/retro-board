@@ -9,6 +9,7 @@
 #   ./launch.sh backup --encrypt   the same, locked with a passphrase (for copies kept off this computer)
 #   ./launch.sh restore FILE    put a backup back
 #   ./launch.sh unlock [TEAM]   remove a forgotten team password (no TEAM: list the teams that have one)
+#   ./launch.sh admin-code      no sign-in: a setup code that makes whoever types it on the site an admin
 #   ./launch.sh stop | logs
 #
 # Run ./launch.sh --help for the options.
@@ -17,7 +18,7 @@ cd "$(dirname "$0")"
 
 usage() {
   cat <<'EOF'
-Usage: ./launch.sh [up|update|stop|logs|backup [--encrypt]|restore FILE|unlock [TEAM]] [options]
+Usage: ./launch.sh [up|update|stop|logs|backup [--encrypt]|restore FILE|unlock [TEAM]|admin-code] [options]
 
 backup --encrypt asks for a passphrase (or reads BACKUP_PASSPHRASE) and saves a .tar.gz.enc that can't be
 opened without it; restore asks for it again. Keep the passphrase somewhere other than this computer.
@@ -126,7 +127,7 @@ case "${1:-}" in
   unlock)
     # everything after it is the team's name (or id)
     cmd=unlock; shift; unlock_team="$*"; set -- ;;
-  up|update|stop|logs|backup) cmd=$1; shift ;;
+  up|update|stop|logs|backup|admin-code) cmd=$1; shift ;;
   restore)
     cmd=restore; shift
     [ $# -ge 1 ] || { warn "Usage: ./launch.sh restore backups/<file>.tar.gz"; exit 2; }
@@ -367,6 +368,11 @@ case "$cmd" in
     fi
     say "Put it back any time with: ./launch.sh restore $f"
     exit 0 ;;
+  admin-code)
+    [ -f .env ] || { warn "Run ./launch.sh once first."; exit 1; }
+    ensure_up
+    dc exec -T app node dist/cli.js admin-code
+    exit $? ;;
   unlock)
     [ -f .env ] || { warn "Run ./launch.sh once first."; exit 1; }
     ensure_up
@@ -669,7 +675,10 @@ if [ "$access" = network ]; then
 fi
 say ""
 if [ "$mode" = none ]; then
-  say "No sign-in: anyone who can open that address can see and change everything."
+  say "No sign-in: anyone who can open that address can join any team and add cards."
+  say "Whoever makes a team runs it; the site admin (Admin page) runs everything."
+  # nobody is admin yet: a setup code to claim it with (a new one any time: ./launch.sh admin-code)
+  dc exec -T app node dist/cli.js admin-code --if-no-admin 2>/dev/null | while IFS= read -r line; do say "  $line"; done
 else
   say "The first account you create becomes the admin. Customize the look and defaults in Admin > Customize."
   for p in google:GOOGLE_CLIENT_ID github:GITHUB_CLIENT_ID microsoft:MS_CLIENT_ID okta:OKTA_CLIENT_ID; do

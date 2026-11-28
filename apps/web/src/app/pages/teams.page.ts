@@ -23,6 +23,11 @@ import { TeamPhoto } from '../shared/team-photo';
         <button class="btn primary" type="button" (click)="creating.set(true)">New Team</button>
       </div>
 
+      @if (auth.config()?.needsAdmin) {
+        <!-- no sign-in, and nobody runs the site yet -->
+        <p class="notice">Nobody runs this site yet. If you set it up, <a routerLink="/claim-admin">claim admin</a> with the setup
+          code from the server (<code>./launch.sh admin-code</code>).</p>
+      }
       @if (teams() === null) {
         <p class="muted">Loading…</p>
       } @else if (!teams()!.length) {

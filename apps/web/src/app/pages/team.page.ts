@@ -127,7 +127,7 @@ import { unlockLink } from '../core/unlock-link';
                 </ul>
               </details>
 
-              @if (isAdmin()) {
+              @if (isAdmin() && !auth.open()) {
                 <h2>Invite People</h2>
                 <form class="row wrap" (ngSubmit)="createInvite()">
                   <input name="email" type="email" [(ngModel)]="inviteEmail" placeholder="Email (optional, locks the link to one person)" class="grow">

@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { eq, sql } from 'drizzle-orm';
+import { teamMembers, users } from '../src/db/schema';
+import { newAdminCode } from '../src/lib/admin-code';
 import { Client, makeApp, signUp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -24,10 +29,73 @@ describe('no-sign-in mode (AUTH_MODE=none)', () => {
     expect((await anon.get('/api/teams')).status).toBe(401);
 
     const { c, me } = await guest(t.app);
-    expect(me).toMatchObject({ guest: true, needsName: true, name: 'Guest', role: 'admin' });
+    expect(me).toMatchObject({ guest: true, needsName: true, name: 'Guest', role: 'user' });
     // calling again keeps the same identity
     expect((await c.post('/api/auth/guest')).body.id).toBe(me.id);
     expect((await c.get('/api/auth/me')).body.id).toBe(me.id);
+  });
+
+  it('makes the site admin whoever types the setup code, once', async () => {
+    t = await makeApp({ env: { AUTH_MODE: 'none' } });
+    const a = await guest(t.app);
+    const b = await guest(t.app);
+    expect((await a.c.get('/api/auth/config')).body.needsAdmin).toBe(true);
+    expect((await a.c.get('/api/admin/users')).status).toBe(403);
+
+    expect((await a.c.post('/api/auth/admin-code', { code: 'nope-nope-nope' })).status).toBe(400);
+    const code = await newAdminCode(t.ctx.db);
+    expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    const claimed = await a.c.post('/api/auth/admin-code', { code: code.toLowerCase().replace(/-/g, ' ') });
+    expect(claimed.body).toMatchObject({ id: a.me.id, role: 'admin' });
+    expect((await a.c.get('/api/admin/users')).status).toBe(200);
+    expect((await a.c.get('/api/auth/config')).body.needsAdmin).toBe(false);
+    // it works once
+    expect((await b.c.post('/api/auth/admin-code', { code })).status).toBe(400);
+
+    // nobody takes over the admin by saying "that's me"
+    await a.c.patch('/api/auth/me', { name: 'Ada' });
+    expect((await b.c.post('/api/auth/guest/claim', { userId: a.me.id })).status).toBe(404);
+
+    // the admin makes a co-admin from the Admin page
+    expect((await a.c.patch(`/api/admin/users/${b.me.id}`, { role: 'admin' })).status).toBe(204);
+    expect((await b.c.get('/api/admin/users')).status).toBe(200);
+  });
+
+  it('demotes the guests an older version made admins, keeping each team its creator', async () => {
+    t = await makeApp({ env: { AUTH_MODE: 'none' } });
+    const a = await guest(t.app);
+    const b = await guest(t.app);
+    const team = (await a.c.post('/api/teams', { name: 'Old team' })).body;
+    await b.c.get(`/api/teams/${team.id}`);
+    // as the older version left things: everyone a site admin and an admin of every team they opened
+    await t.ctx.db.update(users).set({ role: 'admin' });
+    await t.ctx.db.update(teamMembers).set({ role: 'admin' });
+    const migration = readFileSync(join(__dirname, '../drizzle/0010_guests_not_admins.sql'), 'utf8');
+    for (const statement of migration.split('--> statement-breakpoint')) await t.ctx.db.execute(sql.raw(statement));
+    expect((await t.ctx.db.select().from(users)).every(u => u.role === 'user')).toBe(true);
+    const roles = Object.fromEntries((await t.ctx.db.select().from(teamMembers).where(eq(teamMembers.teamId, team.id))).map(m => [m.userId, m.role]));
+    expect(roles).toEqual({ [a.me.id]: 'admin', [b.me.id]: 'member' });
+  });
+
+  it("makes a team's creator its admin; others join as members, and team admins manage them", async () => {
+    t = await makeApp({ env: { AUTH_MODE: 'none' } });
+    const a = await guest(t.app);
+    const b = await guest(t.app);
+    const team = (await a.c.post('/api/teams', { name: 'Open team' })).body;
+    // b joins by opening it, as a member
+    expect((await b.c.get(`/api/teams/${team.id}`)).body.myRole).toBe('member');
+    expect((await b.c.patch(`/api/teams/${team.id}`, { name: 'Mine now' })).status).toBe(403);
+    expect((await b.c.del(`/api/teams/${team.id}`)).status).toBe(403);
+
+    // the creator promotes them, and they can then manage the team
+    expect((await a.c.patch(`/api/teams/${team.id}/members/${b.me.id}`, { role: 'admin' })).status).toBe(204);
+    expect((await b.c.get(`/api/teams/${team.id}`)).body.myRole).toBe('admin');
+    expect((await b.c.patch(`/api/teams/${team.id}/members/${a.me.id}`, { role: 'member' })).status).toBe(204);
+    expect((await a.c.get(`/api/teams/${team.id}`)).body.myRole).toBe('member');
+    // and remove someone
+    expect((await b.c.del(`/api/teams/${team.id}/members/${a.me.id}`)).status).toBe(204);
+    const ids = ((await b.c.get(`/api/teams/${team.id}/members`)).body as { user: { id: string } }[]).map(m => m.user.id);
+    expect(ids).toEqual([b.me.id]);
   });
 
   it('lets guests do everything, but asks for a name before writing', async () => {

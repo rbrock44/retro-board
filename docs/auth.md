@@ -39,8 +39,14 @@ The startup log line `sign-in providers` shows which providers are on and which 
 `AUTH_MODE=none` (`./launch.sh --auth none`) switches accounts off for the whole site:
 
 - Each browser gets a **guest** identity on its first visit (a session cookie, no password, no email)
-- Guests see every team and board and can do everything: create teams, start, facilitate and close retros. They
-  join a team's member list the first time they open it, so they can own action items
+- Guests see every team and can create teams, start retros and add cards. Opening a team joins it as a **member**
+  (so they can own action items); the guest who made a team is its **admin**, and team admins promote, demote or
+  remove people from the team's Members tab
+- Nobody is a **site admin** at first. `./launch.sh admin-code` (also printed by `./launch.sh` while nobody is
+  admin) makes a one-time setup code; typing it on **Claim Admin** makes that guest a site admin, who can then make
+  other guests admins from the Admin page. "Who are you?" never offers a site admin, so picking a name can't take
+  one over; an admin on a new device uses a new code. Upgrading from a version where every guest was an admin
+  demotes them all (each team keeps its creator as admin), so claim it once after updating
 - The first time a guest adds a card or reply, they're asked for their name. The API refuses the write until they
   give one
 - Sign-up, sign-in, providers and invite links are all switched off

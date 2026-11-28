@@ -21,10 +21,9 @@ export function atLeast(role: TeamRole | null, min: TeamRole): boolean {
 /** Instance admins act as team admins everywhere. */
 export async function teamRole(db: Db, user: User, teamId: string): Promise<TeamRole | null> {
   if (user.guest) {
-    // No-sign-in mode: everyone can do everything. Joining on first visit puts them in member lists
-    // (action owners, presence) like anyone else.
-    await db.insert(teamMembers).values({ teamId, userId: user.id, role: 'admin' }).onConflictDoNothing();
-    return 'admin';
+    // No-sign-in mode: every team is open, and opening one joins it as a member (so they're in member lists for
+    // action owners and presence). Its creator is its admin, and team admins can promote, demote or remove people.
+    await db.insert(teamMembers).values({ teamId, userId: user.id, role: 'member' }).onConflictDoNothing();
   }
   if (user.role === 'admin') return 'admin';
   const [m] = await db

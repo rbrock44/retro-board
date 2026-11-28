@@ -69,7 +69,7 @@ There are no vote settings: everyone can like every card, once. Vote settings le
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `AUTH_MODE` | `accounts` | `accounts`: people sign in to see anything. `none`: no sign-in; anyone who can open the site can do everything and is asked for a name before their first card. Trusted networks only |
+| `AUTH_MODE` | `accounts` | `accounts`: people sign in to see anything. `none`: no sign-in; anyone who can open the site can join teams and add cards, and is asked for a name before their first card. The site admin claims it with `./launch.sh admin-code`. Trusted networks only |
 | `LOCAL_SIGNUP` | `open` | Who can create an email/password account: `open`, `invite` (team invite link only), `closed`. Read by the default `config/auth.yaml` |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | | Turns on Google sign-in. See [auth.md](auth.md#google) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | | Turns on GitHub sign-in |

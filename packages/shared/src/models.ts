@@ -134,6 +134,8 @@ export interface AuthConfigDto {
    *  'demo' is the in-browser demo's own sample library */
   gifSearch: 'giphy' | 'tenor' | 'demo' | null;
   needsSetup: boolean;
+  /** No-sign-in mode with no site admin yet: someone should claim it with the setup code */
+  needsAdmin?: boolean;
 }
 
 export interface TeamDto {

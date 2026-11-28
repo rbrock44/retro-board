@@ -290,6 +290,7 @@ Pass options instead of answering questions, which suits scripts and servers:
 | `./launch.sh backup --encrypt` | The same, locked with a passphrase (for copies kept elsewhere) |
 | `./launch.sh restore <file>` | Put a backup back |
 | `./launch.sh unlock ["<team>"]` | Remove a forgotten team password (no team: list the ones that have one) |
+| `./launch.sh admin-code` | No sign-in: a setup code that makes whoever types it on `Claim Admin` a site admin |
 | `./launch.sh logs` | Follow the app logs |
 | `./launch.sh stop` | Stop it (your data stays) |
 
@@ -360,16 +361,25 @@ one. On Windows, `launch.cmd` offers to open the port in Windows Firewall (it as
 ### No Sign-in Mode
 
 `./launch.sh --auth none` (or `AUTH_MODE=none` in `.env`) turns accounts off. Anyone who can open the site can see
-every team and board and do everything, including starting and facilitating retros. Each browser gets a guest
-identity, and people are asked for their name the first time they add a card or reply.
+every team, join it by opening it, start retros and add cards. Each browser gets a guest identity, and people are
+asked for their name the first time they add a card or reply.
+
+- **Teams** - Whoever makes a team is its admin; everyone else joins as a member. Team admins promote people to
+  admin, demote them or remove them on the team's `Members` tab (someone removed joins again as a member if they
+  open the team, since every team is open in this mode)
+- **The site admin** runs everything: every team, `Admin → Customize`, backups, and who else is a site admin (the
+  role menu on the `Admin` page). Nobody is one at first. The launch script prints a setup code when nobody is admin
+  yet, and `./launch.sh admin-code` makes a new one any time (each works once, and a new one retires the last).
+  Whoever types it on `Claim Admin` (in the menu, or `/claim-admin`) becomes a site admin. On a new device, an admin
+  uses a new code: "Who are you?" never offers an admin, so nobody takes one over by picking their name
 
 People don't have to stay tied to one browser. When someone new opens a team, they're asked **"Who are you?"** with
 the team's people listed ("Are you one of these?") plus anyone who has used this browser before. Picking a name
 carries on as that person; otherwise they type a new one. **Switch person** in the menu does the same at any time,
 for a shared meeting-room laptop.
 
-A team password keeps a team's boards from people who don't have it, but with no sign-in, everyone is also an
-instance admin, so anyone can download a full backup from `Admin`. Use it only on a trusted network, or behind
+A team password keeps a team's boards from people who don't have it. Without sign-in, though, people are only who
+their browser says they are, so use it only on a trusted network, or behind
 something that already controls who gets in (a VPN, or a proxy with
 its own login). Switching back to `accounts` signs guests out; what they wrote stays.
 
